@@ -1,4 +1,6 @@
 import org.gradle.kotlin.dsl.implementation
+import org.gradle.kotlin.dsl.testImplementation
+import org.gradle.kotlin.dsl.testRuntimeOnly
 
 plugins {
 	java
@@ -22,23 +24,36 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	implementation("org.flywaydb:flyway-mysql")
-	compileOnly("org.projectlombok:lombok")
-	developmentOnly("org.springframework.boot:spring-boot-devtools")
+	implementation("org.springframework.boot:spring-boot-starter-flyway")
+
+	// Security
+	implementation("org.springframework.boot:spring-boot-starter-security")
+
+	// MySQL
 	runtimeOnly("com.mysql:mysql-connector-j")
+
+	// Flyway MySQL support
+	implementation("org.flywaydb:flyway-mysql")
+
+	// Lombok
+	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
+
+	// Devtools
+	developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+	// Test
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-	testCompileOnly("org.projectlombok:lombok")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testAnnotationProcessor("org.projectlombok:lombok")
+	testImplementation("org.springframework.security:spring-security-test")
 
-    // Flyway
-    implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-mysql")
+	testRuntimeOnly("com.h2database:h2")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+	testCompileOnly("org.projectlombok:lombok")
+	testAnnotationProcessor("org.projectlombok:lombok")
 
 }
 
