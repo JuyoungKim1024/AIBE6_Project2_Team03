@@ -1,0 +1,12 @@
+spring.application.name=backend
+
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/your_db
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+
+# JWT
+jwt.secret=your_jwt_secret
+jwt.expiration=86400000
+
+# 실제 값은 application.properties에 작성 (gitignore됨)
