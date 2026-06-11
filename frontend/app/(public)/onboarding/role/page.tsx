@@ -3,19 +3,56 @@
 import React, { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Video, Youtube, Scissors, Users, Check, ArrowRight } from 'lucide-react';
+import { ArrowRight, Check, Scissors, Users, Video, Youtube } from 'lucide-react';
 
-type Role = '유튜버' | '편집자' | '둘다';
+type Role = 'YOUTUBER' | 'EDITOR' | 'BOTH';
 
 const roles: { id: Role; label: string; desc: string; icon: typeof Youtube }[] = [
-  { id: '유튜버', label: '유튜버', desc: '내 채널 영상을 편집해줄 에디터를 찾고 있어요', icon: Youtube },
-  { id: '편집자', label: '편집자', desc: '편집 실력으로 일감을 찾고 수익을 내고 싶어요', icon: Scissors },
-  { id: '둘다', label: '둘 다', desc: '유튜버이면서 편집도 직접 하거나 의뢰해요', icon: Users },
+  { id: 'YOUTUBER', label: '유튜버', desc: '내 채널 영상 작업을 맡길 편집자를 찾고 있어요', icon: Youtube },
+  { id: 'EDITOR', label: '에디터', desc: '편집 실력으로 의뢰를 찾고 수익을 만들고 싶어요', icon: Scissors },
+  { id: 'BOTH', label: '둘 다', desc: '유튜버이면서 편집 작업도 직접 하거나 받고 싶어요', icon: Users },
 ];
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export default function OnboardingRolePage() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitRole = async () => {
+    if (!selectedRole || isSubmitting) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      router.push('/login');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const response = await fetch(`${API_BASE_URL}/api/users/me/role`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ role: selectedRole }),
+    });
+
+    setIsSubmitting(false);
+    if (!response.ok) {
+      alert('역할 저장에 실패했습니다.');
+      return;
+    }
+
+    router.push('/onboarding/profile');
+  };
+
+  const skipRole = () => {
+    router.push('/onboarding/profile');
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -24,19 +61,19 @@ export default function OnboardingRolePage() {
           <div className="bg-primary/10 p-3 rounded-2xl mb-3">
             <Video size={32} className="text-primary" />
           </div>
-          <span className="font-bold text-2xl tracking-tight text-text-primary">Cut<span className="text-primary">Match</span></span>
+          <span className="font-bold text-2xl tracking-tight text-text-primary">크크<span className="text-primary">킄</span></span>
         </div>
         <div className="flex items-center justify-center gap-2 mb-8">
-          {['role', 'profile'].map((s, i) => (
-            <Fragment key={s}>
-              <div className={`w-2.5 h-2.5 rounded-full transition-colors ${s === 'role' ? 'bg-primary' : 'bg-surface-elevated'}`} />
-              {i === 0 && <div className="w-8 h-px bg-border" />}
+          {['role', 'profile'].map((step, index) => (
+            <Fragment key={step}>
+              <div className={`w-2.5 h-2.5 rounded-full transition-colors ${step === 'role' ? 'bg-primary' : 'bg-surface-elevated'}`} />
+              {index === 0 && <div className="w-8 h-px bg-border" />}
             </Fragment>
           ))}
         </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-2xl p-8">
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">어떤 목적으로 오셨나요?</h1>
-          <p className="text-sm text-text-secondary text-center mb-6">선택에 따라 맞춤 기능을 보여드려요</p>
+          <p className="text-sm text-text-secondary text-center mb-6">선택한 역할에 맞춰 기능을 보여드릴게요</p>
           <div className="space-y-3 mb-6">
             {roles.map((role) => {
               const active = selectedRole === role.id;
@@ -54,8 +91,11 @@ export default function OnboardingRolePage() {
               );
             })}
           </div>
-          <button onClick={() => router.push('/onboarding/profile')} disabled={!selectedRole} className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold transition-colors ${selectedRole ? 'bg-primary text-white hover:bg-primary/90' : 'bg-surface-elevated text-text-muted cursor-not-allowed'}`}>
+          <button onClick={submitRole} disabled={!selectedRole || isSubmitting} className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold transition-colors ${selectedRole && !isSubmitting ? 'bg-primary text-white hover:bg-primary/90' : 'bg-surface-elevated text-text-muted cursor-not-allowed'}`}>
             다음 <ArrowRight size={18} />
+          </button>
+          <button type="button" onClick={skipRole} className="w-full mt-4 text-sm text-text-muted hover:text-text-primary transition-colors">
+            다음에 할게요
           </button>
         </motion.div>
       </div>
