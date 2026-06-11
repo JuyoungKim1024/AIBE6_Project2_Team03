@@ -1,0 +1,109 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { Heart, MessageCircle, Eye } from 'lucide-react';
+import { RankBadge } from '@/components/common/RankBadge';
+import { PriceChip } from '@/components/common/PriceChip';
+import type { RankTier } from '@/types/user';
+import type { PostType } from '@/types/post';
+
+export type { PostType };
+
+export interface PostCardProps {
+  id: string;
+  linkTo: string;
+  type: PostType;
+  title: string;
+  preview?: string;
+  author: { name: string; rank: RankTier; avatar?: string };
+  categoryTags: string[];
+  toolTags: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  priceHidden?: boolean;
+  likes: number;
+  comments: number;
+  views: number;
+  timeAgo: string;
+  thumbnail?: string;
+  onUnlike?: (id: string) => void;
+  initialLiked?: boolean;
+}
+
+const typeConfig: Record<PostType, { label: string; color: string; bg: string }> = {
+  hiring: { label: '구인', color: 'text-accent', bg: 'bg-accent/10' },
+  looking: { label: '구직', color: 'text-primary', bg: 'bg-primary/10' },
+  rate: { label: '단가 토크', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  portfolio: { label: '포트폴리오', color: 'text-violet-400', bg: 'bg-violet-400/10' },
+  free: { label: '자유게시판', color: 'text-text-secondary', bg: 'bg-surface-elevated' },
+  info: { label: '정보공유', color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
+};
+
+export function PostCard({ id, linkTo, type, title, preview, author, categoryTags, toolTags, minPrice, maxPrice, priceHidden, likes: initialLikes, comments, views, timeAgo, thumbnail, onUnlike, initialLiked = false }: PostCardProps) {
+  const config = typeConfig[type];
+  const isJobPost = type === 'hiring' || type === 'looking';
+  const hasPrice = isJobPost && (minPrice !== undefined || priceHidden);
+  const isDeprioritized = isJobPost && priceHidden;
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialLikes);
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (liked) {
+      setLikeCount((prev) => prev - 1);
+      setLiked(false);
+      if (onUnlike) onUnlike(id);
+    } else {
+      setLikeCount((prev) => prev + 1);
+      setLiked(true);
+    }
+  };
+
+  return (
+    <Link href={linkTo} className={`block bg-surface rounded-xl border p-5 transition-all hover:border-primary/50 ${isDeprioritized ? 'border-border/40 opacity-75 hover:opacity-100' : 'border-border'}`}>
+      <div className="flex justify-between items-start mb-3 gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className={`px-2.5 py-1 rounded-md text-xs font-bold tracking-wide ${config.bg} ${config.color}`}>{config.label}</span>
+          <div className="flex items-center gap-2 text-sm">
+            {author.avatar && <img src={author.avatar} alt={author.name} className="w-5 h-5 rounded-full object-cover bg-surface-elevated" />}
+            <span className="font-medium text-text-primary">{author.name}</span>
+            <RankBadge tier={author.rank} size="sm" showLabel={false} />
+            <span className="text-text-muted text-xs">•</span>
+            <span className="text-text-muted text-xs">{timeAgo}</span>
+          </div>
+        </div>
+        {hasPrice && (
+          <PriceChip minPrice={minPrice} maxPrice={maxPrice} hidden={priceHidden} display="list" variant={!priceHidden ? (type === 'hiring' ? 'highlighted' : 'default') : 'muted'} />
+        )}
+      </div>
+      <div className="flex gap-4">
+        <div className="flex-1 min-w-0">
+          <h3 className={`text-lg font-bold mb-2 line-clamp-2 ${isDeprioritized ? 'text-text-secondary' : 'text-text-primary'}`}>{title}</h3>
+          {preview && <p className="text-sm text-text-secondary line-clamp-2 mb-4 leading-relaxed">{preview}</p>}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {categoryTags.map((tag) => (
+              <span key={tag} className="px-2 py-0.5 rounded bg-surface-elevated text-xs text-text-secondary border border-border/50">{tag}</span>
+            ))}
+            {toolTags.map((tag) => (
+              <span key={tag} className="px-2 py-0.5 rounded bg-surface-elevated text-xs text-text-muted">{tag}</span>
+            ))}
+          </div>
+        </div>
+        {thumbnail && (
+          <div className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-24 rounded-lg overflow-hidden bg-surface-elevated border border-border">
+            <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-4 pt-4 border-t border-border/50 text-xs font-medium text-text-muted">
+        <button onClick={handleLike} className={`flex items-center gap-1.5 transition-colors ${liked ? 'text-accent' : 'hover:text-accent'}`}>
+          <Heart size={14} fill={liked ? 'currentColor' : 'none'} /> {likeCount}
+        </button>
+        <span className="flex items-center gap-1.5"><MessageCircle size={14} /> {comments}</span>
+        <span className="flex items-center gap-1.5"><Eye size={14} /> {views}</span>
+      </div>
+    </Link>
+  );
+}

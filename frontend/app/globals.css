@@ -1,0 +1,25 @@
+/* @import url() FONT IMPORTS MUST ALWAYS BE AT THE VERY TOP OF THIS FILE */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background text-text-primary font-sans antialiased;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-elevated rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-border;
+}
