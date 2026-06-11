@@ -29,7 +29,7 @@ export default function OnboardingProfilePage() {
         </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-2xl p-8">
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">프로필을 설정해주세요</h1>
-          <p className="text-sm text-text-secondary text-center mb-8">나중에 다시 수정할 수 있어요</p>
+          <p className="text-sm text-text-secondary text-center mb-8">프로필은 다음에 설정해도 됩니다</p>
           <div className="flex flex-col items-center mb-6">
             <button className="relative group" type="button">
               <div className="w-24 h-24 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
@@ -46,7 +46,7 @@ export default function OnboardingProfilePage() {
             <p className="text-xs text-text-muted mt-2">입력하지 않으면 소셜 계정 닉네임을 사용합니다.</p>
           </div>
           <div className="flex gap-3">
-            <button onClick={finish} className="flex-1 py-3.5 rounded-xl bg-surface-elevated text-text-secondary font-bold hover:text-text-primary transition-colors">건너뛰기</button>
+            <button onClick={finish} className="flex-1 py-3.5 rounded-xl bg-surface-elevated text-text-secondary font-bold hover:text-text-primary transition-colors">다음에 할게요</button>
             <button onClick={finish} className="flex-1 py-3.5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors">완료</button>
           </div>
         </motion.div>
