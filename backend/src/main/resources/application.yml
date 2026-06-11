@@ -13,3 +13,6 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.flywaydb: debug
+
+server:
+  port: 8081
