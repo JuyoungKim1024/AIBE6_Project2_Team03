@@ -13,7 +13,9 @@ import com.backend.domain.profile.repository.PortfolioRepository;
 import com.backend.domain.profile.repository.ProjectRepository;
 import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
+import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
+import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -32,25 +34,30 @@ public class PublicProfileService {
     private final UserTagRepository userTagRepository;
     private final ReviewRepository reviewRepository;
     private final ProjectRepository projectRepository;
+    private final ProfileRepository profileRepository;
 
     public PublicProfileService(
             UserRepository userRepository,
             PortfolioRepository portfolioRepository,
             UserTagRepository userTagRepository,
             ReviewRepository reviewRepository,
-            ProjectRepository projectRepository
+            ProjectRepository projectRepository,
+            ProfileRepository profileRepository
     ) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
         this.userTagRepository = userTagRepository;
         this.reviewRepository = reviewRepository;
         this.projectRepository = projectRepository;
+        this.profileRepository = profileRepository;
     }
 
     @Transactional(readOnly = true)
     public PublicProfileResponse getPublicProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다"));
+
+        Profile profile = profileRepository.findByUser_Id(userId).orElse(null);
 
         return new PublicProfileResponse(
                 user.getId(),
@@ -62,7 +69,9 @@ public class PublicProfileService {
                 user.getMannerScore(),
                 getPortfolios(userId),
                 getReviews(userId),
-                getRecentDeals(userId)
+                getRecentDeals(userId),
+                profile != null && profile.isPublicPostsVisible(),
+                profile != null && profile.isPublicLikedPostsVisible()
         );
     }
 

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ChevronDown,
-  DollarSign,
   Edit2,
   FileText,
   FolderOpen,
@@ -39,9 +38,17 @@ const activityItems = [
 ];
 
 const editorItems = [
-  { label: '포트폴리오 관리', icon: FolderOpen, to: '/profile/edit' },
-  { label: '가격 설정', icon: DollarSign, to: '/profile/edit' },
+  { label: '포트폴리오 관리', icon: FolderOpen, to: '/mypage?tab=portfolio' },
 ];
+
+type MatchPriceUnit = 'MIN' | 'CASE';
+
+type MatchingPrice = {
+  matchEnabled: boolean;
+  matchPrice: number | null;
+  matchPriceUnit: MatchPriceUnit | null;
+  representativePortfolioConfigured: boolean;
+};
 
 interface Props {
   user: AuthUser;
@@ -51,9 +58,11 @@ interface Props {
 export function ProfileDropdown({ user, onLogout }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [matchEnabled, setMatchEnabled] = useState(true);
+  const [matchingPrice, setMatchingPrice] = useState<MatchingPrice | null>(null);
+  const [isMatchSaving, setIsMatchSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const isEditor = user.role === 'EDITOR';
+  const matchEnabled = matchingPrice?.matchEnabled ?? false;
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -64,6 +73,40 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
+
+  useEffect(() => {
+    if (!isEditor) {
+      setMatchingPrice(null);
+      return;
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      setMatchingPrice(null);
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/users/me/matching-price`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: MatchingPrice | null) => setMatchingPrice(data))
+      .catch(() => setMatchingPrice(null));
+  }, [isEditor]);
+
+  useEffect(() => {
+    const handleUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<MatchingPrice>).detail;
+      if (detail) {
+        setMatchingPrice(detail);
+      }
+    };
+
+    window.addEventListener('matchingPriceUpdated', handleUpdated);
+    return () => window.removeEventListener('matchingPriceUpdated', handleUpdated);
+  }, []);
 
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');
@@ -87,10 +130,59 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     }
   };
 
+  const toggleMatchEnabled = async () => {
+    if (!matchingPrice || isMatchSaving) {
+      return;
+    }
+
+    const nextEnabled = !matchingPrice.matchEnabled;
+    if (nextEnabled && (!matchingPrice.matchPrice || matchingPrice.matchPrice <= 0)) {
+      alert('단가를 먼저 설정해주세요');
+      return;
+    }
+    if (nextEnabled && !matchingPrice.representativePortfolioConfigured) {
+      alert('대표 포트폴리오를 먼저 설정해주세요');
+      return;
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      return;
+    }
+
+    setIsMatchSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/me/matching-price`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          ...matchingPrice,
+          matchEnabled: nextEnabled,
+          matchPriceUnit: matchingPrice.matchPriceUnit ?? 'MIN',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        alert(error?.message ?? '저장에 실패했습니다.');
+        return;
+      }
+
+      const saved = await response.json();
+      setMatchingPrice(saved);
+      window.dispatchEvent(new CustomEvent('matchingPriceUpdated', { detail: saved }));
+    } finally {
+      setIsMatchSaving(false);
+    }
+  };
+
   const accountItems = [
     { label: '공개 프로필 보기', icon: UserCircle, to: `/profile/${user.id}` },
-    { label: '프로필 관리', icon: Edit2, to: '/profile/edit' },
-    { label: '설정', icon: Settings, to: '/mypage/settings' },
+    { label: '프로필 관리', icon: Edit2, to: '/mypage' },
+    { label: '설정', icon: Settings, to: '/settings' },
   ];
 
   return (
@@ -147,7 +239,11 @@ export function ProfileDropdown({ user, onLogout }: Props) {
                   <div className="flex items-center gap-3 text-sm text-text-secondary">
                     <Zap size={16} />매칭 활성화
                   </div>
-                  <button onClick={() => setMatchEnabled(!matchEnabled)} className={`relative w-10 h-6 rounded-full transition-colors ${matchEnabled ? 'bg-primary' : 'bg-surface-elevated border border-border'}`}>
+                  <button
+                    onClick={toggleMatchEnabled}
+                    disabled={isMatchSaving}
+                    className={`relative w-10 h-6 rounded-full transition-colors ${matchEnabled ? 'bg-primary' : 'bg-surface-elevated border border-border'} ${isMatchSaving ? 'opacity-60' : ''}`}
+                  >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${matchEnabled ? 'translate-x-4' : ''}`} />
                   </button>
                 </div>

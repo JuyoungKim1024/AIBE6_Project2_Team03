@@ -98,6 +98,11 @@ type MatchingPrice = {
   representativePortfolioConfigured: boolean;
 };
 
+type PublicContentVisibility = {
+  publicPostsVisible: boolean;
+  publicLikedPostsVisible: boolean;
+};
+
 const fieldTags = ['롱폼', '숏폼', '썸네일'];
 const detailTags = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
 const videoTools = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
@@ -387,6 +392,45 @@ function ToggleButton({ active, onClick, label }: { active: boolean; onClick: ()
   );
 }
 
+function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVisibility; label: string }) {
+  const [active, setActive] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchMyPageData<PublicContentVisibility>('/api/users/me/public-content-visibility')
+      .then((data) => setActive(data[field]))
+      .catch(() => setActive(false));
+  }, [field]);
+
+  const toggle = async () => {
+    const next = !active;
+    setActive(next);
+    setIsSaving(true);
+    try {
+      const saved = await patchMyPageData<PublicContentVisibility>('/api/users/me/public-content-visibility', {
+        [field]: next,
+      });
+      setActive(saved[field]);
+    } catch {
+      setActive(!next);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 flex items-center justify-between gap-4 rounded-xl bg-surface-elevated border border-border p-4">
+      <div>
+        <div className="font-bold text-text-primary">{label}</div>
+        <div className="text-xs text-text-muted mt-1">켜두면 공개 프로필에 이 목록이 표시됩니다.</div>
+      </div>
+      <button type="button" onClick={toggle} disabled={isSaving} className={`relative w-14 h-8 rounded-full transition-colors ${active ? 'bg-primary' : 'bg-surface border border-border'} ${isSaving ? 'opacity-60' : ''}`}>
+        <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${active ? 'translate-x-6' : ''}`} />
+      </button>
+    </div>
+  );
+}
+
 function PostsSection() {
   const [posts, setPosts] = useState<MyPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -410,6 +454,7 @@ function PostsSection() {
 
   return (
     <SectionCard title="내가 쓴 글" description="구인구직과 커뮤니티 작성글을 통합 관리합니다.">
+      <PublicVisibilityToggle field="publicPostsVisible" label="공개 프로필에 내가 쓴 글 공개" />
       {isLoading ? (
         <EmptyState message="작성글을 불러오는 중입니다" />
       ) : posts.length > 0 ? (
@@ -455,6 +500,7 @@ function LikedSection() {
 
   return (
     <SectionCard title="좋아요한 글" description="좋아요한 게시글을 통합 조회합니다.">
+      <PublicVisibilityToggle field="publicLikedPostsVisible" label="공개 프로필에 좋아요한 글 공개" />
       {isLoading ? (
         <EmptyState message="좋아요한 게시글을 불러오는 중입니다" />
       ) : likedPosts.length > 0 ? (
