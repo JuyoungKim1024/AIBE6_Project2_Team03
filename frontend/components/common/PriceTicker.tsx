@@ -17,55 +17,50 @@ const mockPrices: PriceItem[] = [
   { label: '모션그래픽 평균', price: 22000, unit: '분' },
 ];
 
+const REPEAT = 10;  // 복제 수 — 화면이 넓어도 항상 꽉 차게
+const SPEED = 1;    // px per frame
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat('ko-KR').format(price);
 }
 
 export function PriceTicker() {
-  const [prices] = useState<PriceItem[]>(mockPrices);
   const [paused, setPaused] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const animRef = useRef<number | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const offsetRef = useRef(0);
+
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   useEffect(() => {
-    if (prices.length === 0) return;
+    if (mockPrices.length === 0) return;
 
-    let start: number | null = null;
-    const speed = 0.4; // px per ms
+    const inner = innerRef.current;
+    if (!inner) return;
 
-    function step(timestamp: number) {
-      if (paused) {
-        start = null;
-        animRef.current = requestAnimationFrame(step);
-        return;
+    // 레이아웃 확정 후 1세트 너비 한 번만 측정
+    const singleWidth = inner.scrollWidth / REPEAT;
+    let animId: number;
+
+    function step() {
+      if (!pausedRef.current) {
+        offsetRef.current += SPEED;
+        if (offsetRef.current >= singleWidth) offsetRef.current -= singleWidth;
+        inner!.style.transform = `translateX(-${offsetRef.current}px)`;
       }
-
-      if (start === null) start = timestamp - offset / speed;
-      const elapsed = timestamp - start;
-      const innerWidth = innerRef.current?.scrollWidth ?? 0;
-      const half = innerWidth / 2;
-
-      const next = (elapsed * speed) % half;
-      setOffset(next);
-      animRef.current = requestAnimationFrame(step);
+      animId = requestAnimationFrame(step);
     }
 
-    animRef.current = requestAnimationFrame(step);
-    return () => {
-      if (animRef.current !== null) cancelAnimationFrame(animRef.current);
-    };
-  }, [paused, prices]);
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, []);
 
-  if (prices.length === 0) return null;
+  if (mockPrices.length === 0) return null;
 
-  // 아이템을 2배로 복제해 무한 루프처럼 보이게 함
-  const items = [...prices, ...prices];
+  const items = Array.from({ length: REPEAT }, () => mockPrices).flat();
 
   return (
     <div
-      ref={containerRef}
       className="w-full bg-surface border-b border-border overflow-hidden h-8 flex items-center select-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -75,11 +70,10 @@ export function PriceTicker() {
         <span className="text-xs font-bold text-primary whitespace-nowrap">실시간 시세</span>
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-hidden">
         <div
           ref={innerRef}
           className="flex items-center gap-8 whitespace-nowrap"
-          style={{ transform: `translateX(-${offset}px)` }}
         >
           {items.map((item, i) => (
             <span key={i} className="flex items-center gap-1.5 text-xs text-text-secondary shrink-0">
@@ -88,7 +82,7 @@ export function PriceTicker() {
                 ₩{formatPrice(item.price)}
                 <span className="font-sans font-normal text-text-muted">/{item.unit}</span>
               </span>
-              <span className="text-border mx-2">|</span>
+              <span className="text-border mx-4">|</span>
             </span>
           ))}
         </div>
