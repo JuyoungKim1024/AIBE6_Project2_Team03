@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Plus, ChevronDown } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import type { PostType } from '@/types/post';
@@ -40,7 +41,10 @@ const mockJobs: JobPost[] = [
   { id: '7', type: 'looking', title: '열심히 배우면서 일할 신입 편집자입니다!', author: { name: '신입에디터', rank: 'bronze', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80', region: '서울' }, categoryTags: [], toolTags: ['Premiere Pro'], priceHidden: true, views: 156, comments: 2, likes: 5, timeAgo: '하루 전' },
 ];
 
-export default function JobsPage() {
+function JobsContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+
   const [activeTab, setActiveTab] = useState<JobType>('hiring');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sort, setSort] = useState('latest');
@@ -50,16 +54,30 @@ export default function JobsPage() {
     setActiveFilters((prev) => prev.includes(filter) ? prev.filter((f) => f !== filter) : [...prev, filter]);
   };
 
-  const filteredJobs = mockJobs.filter(
-    (j) => j.type === activeTab && (activeFilters.length === 0 || j.categoryTags.some((t) => activeFilters.includes(t)))
-  );
+  const filteredJobs = mockJobs.filter((j) => {
+    const matchesTab = j.type === activeTab;
+    const matchesFilter = activeFilters.length === 0 || j.categoryTags.some((t) => activeFilters.includes(t));
+    const matchesQuery = query === '' || (
+      j.title.includes(query) ||
+      j.categoryTags.some((t) => t.includes(query)) ||
+      j.toolTags.some((t) => t.includes(query)) ||
+      j.author.name.includes(query)
+    );
+    return matchesTab && matchesFilter && matchesQuery;
+  });
 
   return (
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text-primary mb-1">구인구직</h1>
-          <p className="text-text-secondary text-sm">검증된 유튜버와 에디터가 만나는 곳</p>
+          {query ? (
+            <p className="text-text-secondary text-sm">
+              <span className="text-primary font-medium">"{query}"</span> 검색 결과 {filteredJobs.length}건
+            </p>
+          ) : (
+            <p className="text-text-secondary text-sm">검증된 유튜버와 에디터가 만나는 곳</p>
+          )}
         </div>
         <div className="flex border-b border-border mb-6">
           {[{ id: 'hiring' as const, label: '구인 (Hiring)', color: 'text-accent' }, { id: 'looking' as const, label: '구직 (Looking for Work)', color: 'text-primary' }].map((tab) => {
@@ -100,14 +118,26 @@ export default function JobsPage() {
           </div>
         </div>
         <div className="space-y-4">
-          {filteredJobs.map((job, i) => (
-            <motion.div key={job.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
-              <PostCard id={job.id} linkTo={`/jobs/${job.id}`} type={job.type as PostType} title={job.title} author={job.author} categoryTags={job.categoryTags} toolTags={job.toolTags} minPrice={job.minPrice} maxPrice={job.maxPrice} priceHidden={job.priceHidden} likes={job.likes} comments={job.comments} views={job.views} timeAgo={job.timeAgo} thumbnail={job.thumbnail} />
-            </motion.div>
-          ))}
+          {filteredJobs.length === 0 ? (
+            <p className="text-center text-text-muted py-20 text-sm">검색 결과가 없습니다.</p>
+          ) : (
+            filteredJobs.map((job, i) => (
+              <motion.div key={job.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
+                <PostCard id={job.id} linkTo={`/jobs/${job.id}`} type={job.type as PostType} title={job.title} author={job.author} categoryTags={job.categoryTags} toolTags={job.toolTags} minPrice={job.minPrice} maxPrice={job.maxPrice} priceHidden={job.priceHidden} likes={job.likes} comments={job.comments} views={job.views} timeAgo={job.timeAgo} thumbnail={job.thumbnail} />
+              </motion.div>
+            ))
+          )}
         </div>
       </div>
       <WritePostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-text-muted text-sm">불러오는 중...</div>}>
+      <JobsContent />
+    </Suspense>
   );
 }
