@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
   ChevronDown,
-  DollarSign,
   Edit2,
   FileText,
   FolderOpen,
@@ -45,10 +44,22 @@ function clearTokens() {
   localStorage.removeItem('refreshToken');
 }
 
+function hasLocalRepresentativePortfolio() {
+  try {
+    const portfolios = JSON.parse(localStorage.getItem('editorPortfolios') ?? '[]') as Array<{ isPublic: boolean; order: number }>;
+    return portfolios.some((portfolio) => portfolio.isPublic && portfolio.order === 1);
+  } catch {
+    return false;
+  }
+}
+
 function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [matchEnabled, setMatchEnabled] = useState(true);
+  const [matchEnabled, setMatchEnabled] = useState(false);
+  const [matchPrice, setMatchPrice] = useState<number | null>(null);
+  const [matchPriceUnit, setMatchPriceUnit] = useState<'MIN' | 'CASE'>('MIN');
+  const [representativePortfolioConfigured, setRepresentativePortfolioConfigured] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const isEditor = user.role === 'EDITOR';
 
@@ -63,6 +74,53 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
       document.addEventListener('mousedown', handleClick);
     }
     return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const loadMatchingPrice = () => {
+    if (!isEditor) {
+      return;
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/users/me/matching-price`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!data) {
+          return;
+        }
+        setMatchEnabled(data.matchEnabled);
+        setMatchPrice(data.matchPrice);
+        setMatchPriceUnit(data.matchPriceUnit ?? 'MIN');
+        setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio());
+      });
+  };
+
+  useEffect(() => {
+    loadMatchingPrice();
+    function handleMatchingPriceUpdated(event: Event) {
+      const detail = (event as CustomEvent).detail;
+      setMatchEnabled(detail.matchEnabled);
+      setMatchPrice(detail.matchPrice);
+      setMatchPriceUnit(detail.matchPriceUnit ?? 'MIN');
+      setRepresentativePortfolioConfigured(detail.representativePortfolioConfigured || hasLocalRepresentativePortfolio());
+    }
+
+    window.addEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
+    return () => window.removeEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
+  }, [isEditor]);
+
+  useEffect(() => {
+    if (open) {
+      loadMatchingPrice();
+    }
   }, [open]);
 
   const logout = async () => {
@@ -101,8 +159,57 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
   ];
   const editorItems = [
     { label: '포트폴리오 관리', icon: FolderOpen, to: '/mypage?tab=portfolio' },
-    { label: '가격 설정', icon: DollarSign, to: '/mypage?tab=pricing' },
   ];
+
+  const toggleMatching = async () => {
+    const nextEnabled = !matchEnabled;
+    const hasRepresentative = representativePortfolioConfigured || hasLocalRepresentativePortfolio();
+
+    if (nextEnabled && (!matchPrice || matchPrice <= 0)) {
+      alert('단가를 먼저 설정해주세요');
+      router.push('/mypage?tab=pricing');
+      setOpen(false);
+      return;
+    }
+    if (nextEnabled && !hasRepresentative) {
+      alert('대표 포트폴리오를 먼저 설정해주세요');
+      router.push('/mypage?tab=portfolio');
+      setOpen(false);
+      return;
+    }
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      router.push('/login');
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/users/me/matching-price`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        matchEnabled: nextEnabled,
+        matchPrice,
+        matchPriceUnit,
+        representativePortfolioConfigured: hasRepresentative,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      alert(data?.message ?? '맞춤매칭 설정에 실패했습니다.');
+      return;
+    }
+
+    const data = await response.json();
+    setMatchEnabled(data.matchEnabled);
+    setMatchPrice(data.matchPrice);
+    setMatchPriceUnit(data.matchPriceUnit ?? 'MIN');
+    setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio());
+  };
 
   return (
     <div className="relative" ref={ref}>
@@ -153,7 +260,7 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
                   <div className="flex items-center gap-3 text-sm text-text-secondary">
                     <Zap size={16} />매칭 활성화
                   </div>
-                  <button onClick={() => setMatchEnabled(!matchEnabled)} className={`relative w-10 h-6 rounded-full transition-colors ${matchEnabled ? 'bg-primary' : 'bg-surface-elevated border border-border'}`}>
+                  <button onClick={toggleMatching} className={`relative w-10 h-6 rounded-full transition-colors ${matchEnabled ? 'bg-primary' : 'bg-surface-elevated border border-border'}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${matchEnabled ? 'translate-x-4' : ''}`} />
                   </button>
                 </div>

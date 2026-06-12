@@ -49,6 +49,13 @@ public class User {
     @Column(name = "match_enabled", nullable = false)
     private boolean matchEnabled = false;
 
+    @Column(name = "match_price")
+    private Integer matchPrice;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "match_price_unit", length = 20)
+    private MatchPriceUnit matchPriceUnit;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -83,5 +90,11 @@ public class User {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateMatchingPrice(boolean matchEnabled, Integer matchPrice, MatchPriceUnit matchPriceUnit) {
+        this.matchEnabled = matchEnabled;
+        this.matchPrice = matchPrice;
+        this.matchPriceUnit = matchPriceUnit;
     }
 }
