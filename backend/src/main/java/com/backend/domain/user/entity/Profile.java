@@ -43,6 +43,12 @@ public class Profile {
     @Column(name = "representative_portfolio_id", length = 36)
     private String representativePortfolioId;
 
+    @Column(name = "public_posts_visible", nullable = false)
+    private boolean publicPostsVisible = false;
+
+    @Column(name = "public_liked_posts_visible", nullable = false)
+    private boolean publicLikedPostsVisible = false;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -65,5 +71,10 @@ public class Profile {
     public void update(String name, String phone) {
         this.name = name;
         this.phone = phone;
+    }
+
+    public void updatePublicContentVisibility(boolean publicPostsVisible, boolean publicLikedPostsVisible) {
+        this.publicPostsVisible = publicPostsVisible;
+        this.publicLikedPostsVisible = publicLikedPostsVisible;
     }
 }

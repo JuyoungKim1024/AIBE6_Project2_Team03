@@ -8,6 +8,7 @@
 # Editor
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 

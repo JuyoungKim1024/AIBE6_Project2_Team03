@@ -3,8 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function LoginPage() {
   const handleSocial = (provider: 'google' | 'kakao') => {

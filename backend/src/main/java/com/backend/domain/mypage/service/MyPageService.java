@@ -1,27 +1,23 @@
 package com.backend.domain.mypage.service;
 
 import com.backend.domain.mypage.dto.MyChatRoomResponse;
-import com.backend.domain.mypage.dto.MyLikedPostResponse;
 import com.backend.domain.mypage.dto.MyMatchRequestResponse;
-import com.backend.domain.mypage.dto.MyPostResponse;
 import com.backend.domain.mypage.dto.MyProjectResponse;
 import com.backend.domain.mypage.dto.MyProjectsResponse;
 import com.backend.domain.mypage.dto.MatchingPriceRequest;
 import com.backend.domain.mypage.dto.MatchingPriceResponse;
+import com.backend.domain.mypage.dto.PublicContentVisibilityRequest;
+import com.backend.domain.mypage.dto.PublicContentVisibilityResponse;
 import com.backend.domain.mypage.entity.ChatRoomUser;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.entity.Message;
-import com.backend.domain.post.entity.JobPost;
-import com.backend.domain.post.entity.Post;
-import com.backend.domain.mypage.entity.PostLike;
 import com.backend.domain.mypage.repository.MyPageChatRoomUserRepository;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.mypage.repository.MyPageMessageRepository;
-import com.backend.domain.mypage.repository.MyPagePostLikeRepository;
-import com.backend.domain.mypage.repository.MyPagePostRepository;
 import com.backend.domain.mypage.repository.MyPageProjectRepository;
 import com.backend.domain.profile.entity.Project;
+import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
@@ -36,8 +32,6 @@ public class MyPageService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
-    private final MyPagePostRepository postRepository;
-    private final MyPagePostLikeRepository postLikeRepository;
     private final MyPageChatRoomUserRepository chatRoomUserRepository;
     private final MyPageMessageRepository messageRepository;
     private final MyPageMatchRequestRepository matchRequestRepository;
@@ -46,8 +40,6 @@ public class MyPageService {
     private final ProfileRepository profileRepository;
 
     public MyPageService(
-            MyPagePostRepository postRepository,
-            MyPagePostLikeRepository postLikeRepository,
             MyPageChatRoomUserRepository chatRoomUserRepository,
             MyPageMessageRepository messageRepository,
             MyPageMatchRequestRepository matchRequestRepository,
@@ -55,41 +47,12 @@ public class MyPageService {
             UserRepository userRepository,
             ProfileRepository profileRepository
     ) {
-        this.postRepository = postRepository;
-        this.postLikeRepository = postLikeRepository;
         this.chatRoomUserRepository = chatRoomUserRepository;
         this.messageRepository = messageRepository;
         this.matchRequestRepository = matchRequestRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
-    }
-
-    public List<MyPostResponse> getMyPosts(String userId) {
-        return postRepository.findByAuthor_IdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::toMyPostResponse)
-                .toList();
-    }
-
-    @Transactional
-    public void deleteMyPost(String userId, String postId) {
-        postRepository.findByIdAndAuthor_Id(postId, userId)
-                .ifPresent(postRepository::delete);
-    }
-
-    public List<MyLikedPostResponse> getLikedPosts(String userId) {
-        return postLikeRepository.findByUser_IdOrderByPost_CreatedAtDesc(userId)
-                .stream()
-                .map(PostLike::getPost)
-                .map(this::toLikedPostResponse)
-                .toList();
-    }
-
-    @Transactional
-    public void unlikePost(String userId, String postId) {
-        postLikeRepository.findByUser_IdAndPost_Id(userId, postId)
-                .ifPresent(postLikeRepository::delete);
     }
 
     public List<MyChatRoomResponse> getChatRooms(String userId) {
@@ -142,6 +105,33 @@ public class MyPageService {
         return getMatchingPrice(userId);
     }
 
+    public PublicContentVisibilityResponse getPublicContentVisibility(String userId) {
+        return profileRepository.findByUser_Id(userId)
+                .map(profile -> new PublicContentVisibilityResponse(
+                        profile.isPublicPostsVisible(),
+                        profile.isPublicLikedPostsVisible()
+                ))
+                .orElseGet(() -> new PublicContentVisibilityResponse(false, false));
+    }
+
+    @Transactional
+    public PublicContentVisibilityResponse updatePublicContentVisibility(String userId, PublicContentVisibilityRequest request) {
+        User user = getUser(userId);
+        Profile profile = profileRepository.findByUser_Id(userId)
+                .orElseGet(() -> profileRepository.save(new Profile(user, null, null)));
+        boolean publicPostsVisible = request.publicPostsVisible() == null
+                ? profile.isPublicPostsVisible()
+                : request.publicPostsVisible();
+        boolean publicLikedPostsVisible = request.publicLikedPostsVisible() == null
+                ? profile.isPublicLikedPostsVisible()
+                : request.publicLikedPostsVisible();
+        profile.updatePublicContentVisibility(publicPostsVisible, publicLikedPostsVisible);
+        return new PublicContentVisibilityResponse(
+                profile.isPublicPostsVisible(),
+                profile.isPublicLikedPostsVisible()
+        );
+    }
+
     private User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
@@ -151,38 +141,6 @@ public class MyPageService {
         return profileRepository.findByUser_Id(userId)
                 .map(profile -> profile.getRepresentativePortfolioId() != null && !profile.getRepresentativePortfolioId().isBlank())
                 .orElse(false);
-    }
-
-    private MyPostResponse toMyPostResponse(Post post) {
-        String boardType = post instanceof JobPost ? "JOB" : "COMMUNITY";
-        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
-                ? jobPost.getPostType().name() : null;
-        return new MyPostResponse(
-                post.getId(),
-                boardType,
-                postType,
-                post.getTitle(),
-                formatDate(post.getCreatedAt()),
-                post.getViewCount(),
-                post.getChatCount()
-        );
-    }
-
-    private MyLikedPostResponse toLikedPostResponse(Post post) {
-        String boardType = post instanceof JobPost ? "JOB" : "COMMUNITY";
-        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
-                ? jobPost.getPostType().name() : null;
-        return new MyLikedPostResponse(
-                post.getId(),
-                boardType,
-                postType,
-                post.getTitle(),
-                post.getAuthor().getNickname(),
-                post.getLikeCount(),
-                post.getChatCount(),
-                post.getViewCount(),
-                formatDate(post.getCreatedAt())
-        );
     }
 
     private MyChatRoomResponse toChatRoomResponse(String userId, ChatRoomUser roomUser) {

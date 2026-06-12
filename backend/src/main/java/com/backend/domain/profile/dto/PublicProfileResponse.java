@@ -12,6 +12,8 @@ public record PublicProfileResponse(
         int battlePower,
         List<PortfolioResponse> portfolios,
         List<ReviewResponse> reviews,
-        List<RecentDealResponse> recentDeals
+        List<RecentDealResponse> recentDeals,
+        boolean publicPostsVisible,
+        boolean publicLikedPostsVisible
 ) {
 }
