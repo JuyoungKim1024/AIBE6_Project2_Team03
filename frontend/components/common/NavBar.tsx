@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Menu, MessageSquare, Video, X } from 'lucide-react';
+import { Menu, MessageSquare, Video, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileDropdown } from '@/components/common/ProfileDropdown';
+import { NotificationDropdown } from '@/components/common/NotificationDropdown';
 
 type NavLink = { name: string; path: string; requireAuth?: boolean };
 
@@ -84,10 +85,7 @@ export function NavBar() {
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
                   ) */}
                 </Link>
-                <button className="p-2 text-text-secondary hover:text-text-primary transition-colors relative">
-                  <Bell size={20} />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-                </button>
+                <NotificationDropdown />
                 <div className="h-6 w-px bg-border" />
               </>
             )}
