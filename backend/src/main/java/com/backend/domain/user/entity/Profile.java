@@ -40,6 +40,9 @@ public class Profile {
     @Column(name = "public_status", nullable = false)
     private boolean publicStatus = true;
 
+    @Column(name = "representative_portfolio_id", length = 36)
+    private String representativePortfolioId;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

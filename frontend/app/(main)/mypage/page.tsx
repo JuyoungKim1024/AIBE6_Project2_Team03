@@ -10,21 +10,21 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Film,
   FolderOpen,
   Heart,
+  Image as ImageIcon,
   MessageCircle,
   Settings,
   Tag,
+  Upload,
   Wallet,
 } from 'lucide-react';
-import { RankBadge } from '@/components/common/RankBadge';
-import { PostCard } from '@/components/post/PostCard';
-import type { RankTier } from '@/types/user';
-import type { PostType } from '@/types/post';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing';
 type SidebarItemId = Section | 'settings';
 type UserRole = 'YOUTUBER' | 'EDITOR' | null;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 const sectionIds: Section[] = ['editor-profile', 'posts', 'liked', 'chats', 'portfolio', 'projects', 'pricing'];
 
@@ -34,50 +34,185 @@ const sidebarItems: { id: SidebarItemId; label: string; icon: any; hasDot?: bool
   { id: 'liked', label: '좋아요한 글', icon: Heart },
   { id: 'chats', label: '채팅', icon: MessageCircle },
   { id: 'portfolio', label: '포트폴리오 관리', icon: FolderOpen, editorOnly: true },
-  { id: 'projects', label: '프로젝트 관리', icon: Briefcase, hasDot: true },
+  { id: 'projects', label: '프로젝트 관리', icon: Briefcase },
   { id: 'pricing', label: '맞춤매칭 단가 설정', icon: Wallet, editorOnly: true },
   { id: 'settings', label: '설정', icon: Settings },
 ];
 
-const myPosts = [
-  { id: '1', category: '구인구직', type: '구인', title: '게임 하이라이트 주 2회 편집해주실 분 구합니다', date: '2일 전', views: 342, comments: 4 },
-  { id: '2', category: '커뮤니티', type: '정보공유', title: '프리미어프로 단축키 세팅 공유합니다', date: '5일 전', views: 850, comments: 42 },
-  { id: '3', category: '구인구직', type: '구인', title: 'IT 리뷰 채널 전속 편집자 구인', date: '1주 전', views: 1280, comments: 24 },
-];
-
-const projects = {
-  received: [{ id: '1', partner: '모션그래픽왕', rank: 'diamond' as RankTier, field: '게임 하이라이트', price: 15000, status: 'pending' }],
-  ongoing: [
-    { id: '2', partner: '예능자막마스터', rank: 'platinum' as RankTier, field: '예능 자막', price: 12000, status: 'active', progress: '작업 중' },
-    { id: '3', partner: '빠른컷편집러', rank: 'gold' as RankTier, field: '브이로그 편집', price: 10000, status: 'completed', progress: '작업완료' },
-  ],
+type MyPost = {
+  id: string;
+  boardType: 'JOB' | 'COMMUNITY';
+  postType: string | null;
+  title: string;
+  date: string;
+  views: number;
+  comments: number;
 };
 
-const chatRooms = [
-  { id: '1', partner: '모션그래픽왕', rank: 'diamond' as RankTier, avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80', last: '네 가능합니다. 분당 단가는...', time: '방금', unread: 2, badge: '진행 중' },
-  { id: '2', partner: '예능자막마스터', rank: 'platinum' as RankTier, avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80', last: '수정본 확인 부탁드립니다!', time: '1시간 전', unread: 0, badge: null },
-  { id: '3', partner: '쇼츠공장장', rank: 'gold' as RankTier, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80', last: '포트폴리오 보내드렸어요', time: '어제', unread: 0, badge: null },
-];
+type MyLikedPost = {
+  id: string;
+  boardType: 'JOB' | 'COMMUNITY';
+  postType: string | null;
+  title: string;
+  authorName: string;
+  likes: number;
+  comments: number;
+  views: number;
+  date: string;
+};
 
-const initialLikedPosts = [
-  { id: 'l1', type: 'hiring' as PostType, title: 'IT 리뷰 채널 전속 편집자 구인', author: { name: '테크리뷰어', rank: 'diamond' as RankTier }, categoryTags: ['롱폼', 'IT/테크'], toolTags: ['Premiere Pro'], minPrice: 20000, maxPrice: 30000, likes: 89, comments: 24, views: 1280, timeAgo: '5시간 전' },
-  { id: 'l2', type: 'info' as PostType, title: '프리미어프로 단축키 세팅 공유합니다', author: { name: '편집장인', rank: 'platinum' as RankTier }, categoryTags: ['꿀팁'], toolTags: ['Premiere Pro'], likes: 234, comments: 42, views: 1500, timeAgo: '2시간 전' },
-];
+type MyChatRoom = {
+  id: string;
+  partnerName: string;
+  lastMessage: string;
+  time: string;
+  unreadCount: number;
+};
+
+type MyProject = {
+  id: string;
+  partnerName: string;
+  field: string | null;
+  status: string;
+  date: string;
+};
+
+type MyMatchRequest = {
+  id: string;
+  requesterName: string;
+  status: string;
+  date: string;
+};
+
+type MyProjects = {
+  received: MyMatchRequest[];
+  ongoing: MyProject[];
+};
+
+type MatchPriceUnit = 'MIN' | 'CASE';
+
+type MatchingPrice = {
+  matchEnabled: boolean;
+  matchPrice: number | null;
+  matchPriceUnit: MatchPriceUnit | null;
+  representativePortfolioConfigured: boolean;
+};
 
 const fieldTags = ['롱폼', '숏폼', '썸네일'];
 const detailTags = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
 const videoTools = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
 const designTools = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 
+type PortfolioType = 'video' | 'image';
+
+type PortfolioDraft = {
+  id: string;
+  type: PortfolioType;
+  title: string;
+  fileName: string;
+  dataUrl: string;
+  order: number;
+  isPublic: boolean;
+  isRepresentative: boolean;
+};
+
+function loadPortfolios() {
+  try {
+    return JSON.parse(localStorage.getItem('editorPortfolios') ?? '[]') as PortfolioDraft[];
+  } catch {
+    return [];
+  }
+}
+
+function savePortfolios(portfolios: PortfolioDraft[]) {
+  localStorage.setItem('editorPortfolios', JSON.stringify(portfolios));
+}
+
+function hasLocalRepresentativePortfolio() {
+  return loadPortfolios().some((portfolio) => portfolio.isPublic && portfolio.order === 1);
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function fetchMyPageData<T>(path: string): Promise<T> {
+  const accessToken = localStorage.getItem('accessToken');
+  if (!accessToken) {
+    throw new Error('Login required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to load data');
+  }
+
+  return response.json();
+}
+
+async function deleteMyPageData(path: string) {
+  const accessToken = localStorage.getItem('accessToken');
+  if (!accessToken) {
+    throw new Error('Login required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete data');
+  }
+}
+
+async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
+  const accessToken = localStorage.getItem('accessToken');
+  if (!accessToken) {
+    throw new Error('Login required');
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    try {
+      const data = await response.json();
+      throw new Error(data.message ?? '저장에 실패했습니다.');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('저장에 실패했습니다.');
+    }
+  }
+
+  return response.json();
+}
+
 function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [selectedDetails, setSelectedDetails] = useState<string[]>([]);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [portfolioTitle, setPortfolioTitle] = useState('');
-  const [portfolioUrl, setPortfolioUrl] = useState('');
-  const [displayOrder, setDisplayOrder] = useState('1');
-  const [isPublic, setIsPublic] = useState(true);
-  const [isRepresentative, setIsRepresentative] = useState(false);
+  const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
   const [isRegistered, setIsRegistered] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -90,11 +225,7 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
     setSelectedFields(profile.selectedFields ?? []);
     setSelectedDetails(profile.selectedDetails ?? []);
     setSelectedTools(profile.selectedTools ?? []);
-    setPortfolioTitle(profile.portfolioTitle ?? '');
-    setPortfolioUrl(profile.portfolioUrl ?? '');
-    setDisplayOrder(profile.displayOrder ?? '1');
-    setIsPublic(profile.isPublic ?? true);
-    setIsRepresentative(profile.isRepresentative ?? false);
+    setPortfolios(loadPortfolios());
     setIsRegistered(true);
   }, []);
 
@@ -102,17 +233,43 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
     setter((prev) => prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]);
   };
 
+  const addPortfolio = async (type: PortfolioType, file: File) => {
+    const dataUrl = await readFileAsDataUrl(file);
+    setPortfolios((prev) => {
+      const sameTypeCount = prev.filter((portfolio) => portfolio.type === type).length;
+      const next = [
+        ...prev,
+        {
+          id: `${type}-${Date.now()}`,
+          type,
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          fileName: file.name,
+          dataUrl,
+          order: sameTypeCount + 1,
+          isPublic: true,
+          isRepresentative: sameTypeCount === 0,
+        },
+      ];
+      savePortfolios(next);
+      return next;
+    });
+  };
+
+  const removePortfolio = (id: string) => {
+    setPortfolios((prev) => {
+      const next = prev.filter((portfolio) => portfolio.id !== id);
+      savePortfolios(next);
+      return next;
+    });
+  };
+
   const saveEditorProfile = () => {
     localStorage.setItem('editorProfileDraft', JSON.stringify({
       selectedFields,
       selectedDetails,
       selectedTools,
-      portfolioTitle,
-      portfolioUrl,
-      displayOrder,
-      isPublic,
-      isRepresentative,
     }));
+    savePortfolios(portfolios);
     setIsRegistered(true);
     onSaved();
     setMessage('에디터 프로필이 저장되었습니다.');
@@ -125,27 +282,82 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
         <TagGroup title="세부 분야" options={detailTags} selected={selectedDetails} onToggle={(value) => toggleValue(value, setSelectedDetails)} />
         <TagGroup title="영상편집 툴" options={videoTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
         <TagGroup title="디자인 툴" options={designTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_160px] gap-4">
-          <Field label="포트폴리오 제목">
-            <input value={portfolioTitle} onChange={(event) => setPortfolioTitle(event.target.value)} placeholder="예: 게임 하이라이트 쇼릴" className="form-input" />
-          </Field>
-          <Field label="노출 순번">
-            <input type="number" min="1" value={displayOrder} onChange={(event) => setDisplayOrder(event.target.value)} className="form-input" />
-          </Field>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <PortfolioDropzone type="video" title="영상 포트폴리오 등록" accept="video/*" onAdd={addPortfolio} />
+          <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/*" onAdd={addPortfolio} />
         </div>
-        <Field label="포트폴리오 이미지 URL">
-          <input value={portfolioUrl} onChange={(event) => setPortfolioUrl(event.target.value)} placeholder="썸네일 또는 이미지 URL" className="form-input" />
-        </Field>
-        <div className="flex flex-wrap gap-3">
-          <ToggleButton active={isPublic} onClick={() => setIsPublic((prev) => !prev)} label={isPublic ? '공개' : '비공개'} />
-          <ToggleButton active={isRepresentative} onClick={() => setIsRepresentative((prev) => !prev)} label="대표 설정" />
-        </div>
+        <PortfolioPreviewList portfolios={portfolios} onRemove={removePortfolio} />
         {message && <p className="text-sm font-bold text-primary">{message}</p>}
         <button onClick={saveEditorProfile} className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors">
-          {isRegistered ? '수정 저장' : '등록'}
+          {isRegistered ? '수정' : '등록'}
         </button>
       </div>
     </SectionCard>
+  );
+}
+
+function PortfolioDropzone({ type, title, accept, onAdd }: { type: PortfolioType; title: string; accept: string; onAdd: (type: PortfolioType, file: File) => void }) {
+  const inputId = `${type}-portfolio-input`;
+
+  const addFiles = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file) {
+      onAdd(type, file);
+    }
+  };
+
+  return (
+    <label
+      htmlFor={inputId}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        addFiles(event.dataTransfer.files);
+      }}
+      className="min-h-44 cursor-pointer rounded-xl border border-dashed border-border bg-surface-elevated p-5 flex flex-col items-center justify-center text-center hover:border-primary/60 transition-colors"
+    >
+      <input id={inputId} type="file" accept={accept} className="hidden" onChange={(event) => addFiles(event.target.files)} />
+      <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
+        {type === 'video' ? <Film size={20} /> : <ImageIcon size={20} />}
+      </div>
+      <div className="font-bold text-text-primary">{title}</div>
+      <div className="flex items-center gap-1.5 text-xs text-text-muted mt-2">
+        <Upload size={13} />
+        파일 선택 또는 드래그 앤 드롭
+      </div>
+    </label>
+  );
+}
+
+function PortfolioPreviewList({ portfolios, onRemove }: { portfolios: PortfolioDraft[]; onRemove: (id: string) => void }) {
+  if (portfolios.length === 0) {
+    return <EmptyState message="등록된 포트폴리오가 없습니다" />;
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {portfolios.map((portfolio) => (
+        <div key={portfolio.id} className="rounded-xl bg-surface-elevated border border-border p-4 flex gap-3">
+          <div className="w-20 h-14 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+            {portfolio.type === 'image' ? (
+              <img src={portfolio.dataUrl} alt={portfolio.title} className="w-full h-full object-cover" />
+            ) : (
+              <Film size={22} className="text-text-muted" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-primary">{portfolio.type === 'video' ? '영상' : '이미지'}</span>
+              <span className="text-xs text-text-muted truncate">{portfolio.fileName}</span>
+            </div>
+            <div className="font-bold text-sm text-text-primary truncate mt-1">{portfolio.title}</div>
+          </div>
+          <button type="button" onClick={() => onRemove(portfolio.id)} className="text-xs font-bold text-accent hover:opacity-80">
+            삭제
+          </button>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -176,21 +388,43 @@ function ToggleButton({ active, onClick, label }: { active: boolean; onClick: ()
 }
 
 function PostsSection() {
+  const [posts, setPosts] = useState<MyPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadPosts = () => {
+    setIsLoading(true);
+    fetchMyPageData<MyPost[]>('/api/users/me/posts')
+      .then(setPosts)
+      .catch(() => setPosts([]))
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const deletePost = async (postId: string) => {
+    await deleteMyPageData(`/api/users/me/posts/${postId}`);
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
+
   return (
     <SectionCard title="내가 쓴 글" description="구인구직과 커뮤니티 작성글을 통합 관리합니다.">
-      {myPosts.length > 0 ? (
+      {isLoading ? (
+        <EmptyState message="작성글을 불러오는 중입니다" />
+      ) : posts.length > 0 ? (
         <div className="space-y-3">
-          {myPosts.map((post) => (
+          {posts.map((post) => (
             <div key={post.id} className="bg-surface-elevated border border-border rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.category === '구인구직' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>{post.category}</span>
-                <span className="text-xs text-text-muted">{post.type}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.boardType === 'JOB' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>{post.boardType === 'JOB' ? '구인구직' : '커뮤니티'}</span>
+                {post.postType && <span className="text-xs text-text-muted">{post.postType}</span>}
                 <span className="text-xs text-text-muted">·</span>
                 <span className="text-xs text-text-muted">{post.date}</span>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <h3 className="font-bold text-text-primary">{post.title}</h3>
-                <button className="px-3 py-1.5 rounded-lg text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 transition-colors">삭제</button>
+                <button onClick={() => deletePost(post.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 transition-colors">삭제</button>
               </div>
               <div className="flex items-center gap-4 text-xs text-text-muted mt-2"><span>조회 {post.views}</span><span>댓글 {post.comments}</span></div>
             </div>
@@ -203,13 +437,42 @@ function PostsSection() {
   );
 }
 
-function LikedSection({ likedPosts, onUnlike }: { likedPosts: typeof initialLikedPosts; onUnlike: (id: string) => void }) {
+function LikedSection() {
+  const [likedPosts, setLikedPosts] = useState<MyLikedPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMyPageData<MyLikedPost[]>('/api/users/me/liked-posts')
+      .then(setLikedPosts)
+      .catch(() => setLikedPosts([]))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const unlikePost = async (postId: string) => {
+    await deleteMyPageData(`/api/users/me/liked-posts/${postId}`);
+    setLikedPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
+
   return (
     <SectionCard title="좋아요한 글" description="좋아요한 게시글을 통합 조회합니다.">
-      {likedPosts.length > 0 ? (
-        <div className="space-y-4">
+      {isLoading ? (
+        <EmptyState message="좋아요한 게시글을 불러오는 중입니다" />
+      ) : likedPosts.length > 0 ? (
+        <div className="space-y-3">
           {likedPosts.map((post) => (
-            <PostCard key={post.id} id={post.id} linkTo={post.type === 'hiring' || post.type === 'looking' ? '/jobs/example' : '/community'} type={post.type} title={post.title} author={post.author} categoryTags={post.categoryTags} toolTags={post.toolTags} minPrice={post.minPrice} maxPrice={post.maxPrice} likes={post.likes} comments={post.comments} views={post.views} timeAgo={post.timeAgo} initialLiked={true} onUnlike={onUnlike} />
+            <div key={post.id} className="bg-surface-elevated border border-border rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.boardType === 'JOB' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>{post.boardType === 'JOB' ? '구인구직' : '커뮤니티'}</span>
+                <span className="text-xs text-text-muted">{post.authorName}</span>
+                <span className="text-xs text-text-muted">·</span>
+                <span className="text-xs text-text-muted">{post.date}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="font-bold text-text-primary">{post.title}</h3>
+                <button onClick={() => unlikePost(post.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-colors">좋아요 해제</button>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-text-muted mt-2"><span>좋아요 {post.likes}</span><span>조회 {post.views}</span><span>댓글 {post.comments}</span></div>
+            </div>
           ))}
         </div>
       ) : (
@@ -220,34 +483,63 @@ function LikedSection({ likedPosts, onUnlike }: { likedPosts: typeof initialLike
 }
 
 function ChatsSection() {
+  const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMyPageData<MyChatRoom[]>('/api/users/me/chats')
+      .then(setChatRooms)
+      .catch(() => setChatRooms([]))
+      .finally(() => setIsLoading(false));
+  }, []);
+
   return (
     <SectionCard title="채팅" description="진행 중인 DM과 프로젝트 채팅을 확인합니다.">
-      <div className="space-y-2">
+      {isLoading ? (
+        <EmptyState message="채팅 목록을 불러오는 중입니다" />
+      ) : chatRooms.length > 0 ? (
+        <div className="space-y-2">
         {chatRooms.map((room) => (
           <Link key={room.id} href={`/chat/${room.id}`} className="flex items-center gap-4 bg-surface-elevated border border-border rounded-xl p-4 hover:border-primary/50 transition-colors">
-            <img src={room.avatar} alt={room.partner} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+            <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
+              <MessageCircle size={18} className="text-text-muted" />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-bold text-text-primary">{room.partner}</span>
-                <RankBadge tier={room.rank} size="sm" showLabel={false} />
-                {room.badge && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">{room.badge}</span>}
+                <span className="font-bold text-text-primary">{room.partnerName}</span>
               </div>
-              <p className="text-sm text-text-secondary truncate">{room.last}</p>
+              <p className="text-sm text-text-secondary truncate">{room.lastMessage || '아직 메시지가 없습니다'}</p>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
               <span className="text-xs text-text-muted">{room.time}</span>
-              {room.unread > 0 && <span className="w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{room.unread}</span>}
+              {room.unreadCount > 0 && <span className="w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{room.unreadCount}</span>}
             </div>
           </Link>
         ))}
-      </div>
+        </div>
+      ) : (
+        <EmptyState message="채팅 목록이 없습니다" />
+      )}
     </SectionCard>
   );
 }
 
 function ProjectsSection() {
+  const [projects, setProjects] = useState<MyProjects>({ received: [], ongoing: [] });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMyPageData<MyProjects>('/api/users/me/projects')
+      .then(setProjects)
+      .catch(() => setProjects({ received: [], ongoing: [] }))
+      .finally(() => setIsLoading(false));
+  }, []);
+
   return (
     <SectionCard title="프로젝트 관리" description="받은 매칭 요청과 진행 중인 프로젝트를 관리합니다.">
+      {isLoading ? (
+        <EmptyState message="프로젝트 정보를 불러오는 중입니다" />
+      ) : (
       <div className="space-y-8">
         <section>
           <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-4">받은 매칭 요청</h3>
@@ -259,8 +551,8 @@ function ProjectsSection() {
                   <div>
                     <div className="text-xs text-primary font-bold mb-1">새로운 매칭 요청이 도착했습니다!</div>
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2"><span className="font-bold text-text-primary">{project.partner}</span><RankBadge tier={project.rank} size="sm" showLabel={false} /></div>
-                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.field}</span>
+                      <span className="font-bold text-text-primary">{project.requesterName}</span>
+                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.date}</span>
                     </div>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
@@ -282,12 +574,12 @@ function ProjectsSection() {
                 <Link key={project.id} href="/chat/1" className="block bg-surface-elevated border border-border rounded-xl p-5 hover:border-primary/50 transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2"><span className="font-bold text-text-primary">{project.partner}</span><RankBadge tier={project.rank} size="sm" showLabel={false} /></div>
-                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.field}</span>
+                      <span className="font-bold text-text-primary">{project.partnerName}</span>
+                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.field ?? '프로젝트'}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${project.status === 'active' ? 'bg-amber-500/10 text-amber-500' : 'bg-primary/10 text-primary'}`}>
-                        {project.status === 'active' ? <Clock size={12} /> : <Check size={12} />}{project.progress}
+                      <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${project.status === 'WORKING' ? 'bg-amber-500/10 text-amber-500' : 'bg-primary/10 text-primary'}`}>
+                        {project.status === 'WORKING' ? <Clock size={12} /> : <Check size={12} />}{project.status === 'COMPLETED' ? '작업완료' : '작업 중'}
                       </span>
                       <ChevronRight size={16} className="text-text-muted" />
                     </div>
@@ -300,6 +592,262 @@ function ProjectsSection() {
           )}
         </section>
       </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function PortfolioManagementSection() {
+  const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
+  const [selectedOrders, setSelectedOrders] = useState<Record<PortfolioType, string[]>>({ video: [], image: [] });
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const saved = loadPortfolios();
+    setPortfolios(saved);
+    setSelectedOrders({
+      video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
+      image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
+    });
+  }, []);
+
+  const updatePortfolio = (id: string, patch: Partial<PortfolioDraft>) => {
+    setPortfolios((prev) => {
+      const next = prev.map((portfolio) => portfolio.id === id ? { ...portfolio, ...patch } : portfolio);
+      savePortfolios(next);
+      return next;
+    });
+  };
+
+  const toggleOrder = (type: PortfolioType, id: string) => {
+    setSelectedOrders((prev) => {
+      const current = prev[type];
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+      return { ...prev, [type]: next };
+    });
+  };
+
+  const saveOrder = () => {
+    setPortfolios((prev) => {
+      const next = prev.map((portfolio) => {
+        const selectedIds = selectedOrders[portfolio.type];
+        const index = selectedIds.indexOf(portfolio.id);
+        if (index === -1) {
+          return { ...portfolio, order: 999, isRepresentative: false };
+        }
+        return { ...portfolio, order: index + 1, isRepresentative: index === 0 };
+      });
+      savePortfolios(next);
+      return next;
+    });
+    setMessage('순번이 저장되었습니다.');
+  };
+
+  const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.order - b.order);
+  const imagePortfolios = portfolios.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.order - b.order);
+
+  return (
+    <SectionCard title="포트폴리오 관리" description="영상 포트폴리오와 이미지 포트폴리오를 클릭해 노출 순번을 지정합니다. 각 목록의 1번이 대표 포트폴리오입니다.">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <PortfolioManageColumn title="영상 포트폴리오" type="video" portfolios={videoPortfolios} selectedIds={selectedOrders.video} onToggleOrder={toggleOrder} onUpdate={updatePortfolio} />
+        <PortfolioManageColumn title="이미지 포트폴리오" type="image" portfolios={imagePortfolios} selectedIds={selectedOrders.image} onToggleOrder={toggleOrder} onUpdate={updatePortfolio} />
+      </div>
+      <div className="mt-6 flex items-center gap-3">
+        <button type="button" onClick={saveOrder} className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors">
+          순번 저장
+        </button>
+        {message && <p className="text-sm font-bold text-primary">{message}</p>}
+      </div>
+    </SectionCard>
+  );
+}
+
+function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleOrder, onUpdate }: { title: string; type: PortfolioType; portfolios: PortfolioDraft[]; selectedIds: string[]; onToggleOrder: (type: PortfolioType, id: string) => void; onUpdate: (id: string, patch: Partial<PortfolioDraft>) => void }) {
+  return (
+    <section>
+      <h3 className="text-sm font-bold text-text-primary mb-3">{title}</h3>
+      {portfolios.length > 0 ? (
+        <div className="space-y-3">
+          {portfolios.map((portfolio) => {
+            const selectedOrder = selectedIds.indexOf(portfolio.id) + 1;
+            const selected = selectedOrder > 0;
+            return (
+            <div key={portfolio.id} className={`rounded-xl border p-4 transition-colors ${selected ? 'bg-primary/10 border-primary' : 'bg-surface-elevated border-border'}`}>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {portfolio.type === 'image' ? (
+                    <img src={portfolio.dataUrl} alt={portfolio.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <Film size={24} className="text-text-muted" />
+                  )}
+                  {selected && (
+                    <span className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-primary text-white text-sm font-bold flex items-center justify-center">
+                      {selectedOrder}
+                    </span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-text-primary truncate">{portfolio.title}</div>
+                  <div className="text-xs text-text-muted truncate mt-1">{portfolio.fileName}</div>
+                  <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="text-xs font-bold text-primary mt-2">
+                    {selected ? '순번 해제' : '순번 지정'}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                <ToggleButton active={portfolio.isPublic} onClick={() => onUpdate(portfolio.id, { isPublic: !portfolio.isPublic })} label={portfolio.isPublic ? '공개' : '비공개'} />
+                {selectedOrder === 1 && <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>}
+              </div>
+            </div>
+          )})}
+        </div>
+      ) : (
+        <EmptyState message={`${title}가 없습니다`} />
+      )}
+    </section>
+  );
+}
+
+function PricingSection() {
+  const [matchEnabled, setMatchEnabled] = useState(false);
+  const [matchPrice, setMatchPrice] = useState('');
+  const [matchPriceUnit, setMatchPriceUnit] = useState<MatchPriceUnit>('MIN');
+  const [representativePortfolioConfigured, setRepresentativePortfolioConfigured] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchMyPageData<MatchingPrice>('/api/users/me/matching-price')
+      .then((data) => {
+        setMatchEnabled(data.matchEnabled);
+        setMatchPrice(data.matchPrice ? String(data.matchPrice) : '');
+        setMatchPriceUnit(data.matchPriceUnit ?? 'MIN');
+        setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio());
+      })
+      .catch(() => {
+        setMatchEnabled(false);
+        setMatchPrice('');
+        setMatchPriceUnit('MIN');
+        setRepresentativePortfolioConfigured(hasLocalRepresentativePortfolio());
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const validateEnable = () => {
+    if (!matchPrice || Number(matchPrice) <= 0) {
+      setError('단가를 먼저 설정해주세요');
+      return false;
+    }
+    if (!representativePortfolioConfigured && !hasLocalRepresentativePortfolio()) {
+      setError('대표 포트폴리오를 먼저 설정해주세요');
+      return false;
+    }
+    return true;
+  };
+
+  const toggleMatchEnabled = () => {
+    setMessage('');
+    setError('');
+    if (!matchEnabled && !validateEnable()) {
+      return;
+    }
+    setMatchEnabled((prev) => !prev);
+  };
+
+  const savePricing = async () => {
+    setMessage('');
+    setError('');
+
+    if (matchEnabled && !validateEnable()) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const saved = await patchMyPageData<MatchingPrice>('/api/users/me/matching-price', {
+        matchEnabled,
+        matchPrice: matchPrice ? Number(matchPrice) : null,
+        matchPriceUnit,
+        representativePortfolioConfigured: representativePortfolioConfigured || hasLocalRepresentativePortfolio(),
+      });
+      setMatchEnabled(saved.matchEnabled);
+      setMatchPrice(saved.matchPrice ? String(saved.matchPrice) : '');
+      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
+      const hasRepresentative = saved.representativePortfolioConfigured || hasLocalRepresentativePortfolio();
+      setRepresentativePortfolioConfigured(hasRepresentative);
+      window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
+        detail: {
+          matchEnabled: saved.matchEnabled,
+          matchPrice: saved.matchPrice,
+          matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
+          representativePortfolioConfigured: hasRepresentative,
+        },
+      }));
+      setMessage('맞춤매칭 단가 설정이 저장되었습니다.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard title="맞춤매칭 단가 설정" description="맞춤매칭 ON 시 공개 프로필과 매칭 화면에 노출할 단가를 지정합니다.">
+      {isLoading ? (
+        <EmptyState message="맞춤매칭 설정을 불러오는 중입니다" />
+      ) : (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-surface-elevated border border-border p-5">
+            <div>
+              <div className="font-bold text-text-primary">맞춤매칭</div>
+              <div className="text-sm text-text-secondary mt-1">단가와 대표 포트폴리오가 설정되어야 ON 할 수 있습니다.</div>
+            </div>
+            <button type="button" onClick={toggleMatchEnabled} className={`relative w-14 h-8 rounded-full transition-colors ${matchEnabled ? 'bg-primary' : 'bg-surface border border-border'}`}>
+              <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white transition-transform ${matchEnabled ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
+            <Field label="노출 단가">
+              <input
+                type="number"
+                min="1"
+                value={matchPrice}
+                onChange={(event) => {
+                  setMatchPrice(event.target.value);
+                  setError('');
+                }}
+                placeholder="단가를 입력해주세요"
+                className="form-input"
+              />
+            </Field>
+            <div>
+              <span className="block text-sm font-bold text-text-primary mb-2">단위</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setMatchPriceUnit('MIN')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'MIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
+                  분(min)
+                </button>
+                <button type="button" onClick={() => setMatchPriceUnit('CASE')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'CASE' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
+                  건
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className={`rounded-xl border p-4 text-sm ${representativePortfolioConfigured ? 'border-primary/40 bg-primary/10 text-primary' : 'border-accent/40 bg-accent/10 text-accent'}`}>
+            {representativePortfolioConfigured ? '대표 포트폴리오가 설정되어 있습니다.' : '대표 포트폴리오를 먼저 설정해주세요'}
+          </div>
+
+          {error && <p className="text-sm font-bold text-accent">{error}</p>}
+          {message && <p className="text-sm font-bold text-primary">{message}</p>}
+
+          <button type="button" onClick={savePricing} disabled={isSaving} className={`px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isSaving ? 'bg-surface-elevated text-text-muted' : 'bg-primary text-white hover:bg-primary/90'}`}>
+            저장
+          </button>
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -348,7 +896,6 @@ function MypageContent() {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const defaultSection: Section = userRole === 'EDITOR' ? 'editor-profile' : 'posts';
   const activeSection = sectionParam && sectionIds.includes(sectionParam) ? sectionParam : defaultSection;
-  const [likedPosts, setLikedPosts] = useState(initialLikedPosts);
   const [isEditorProfileRegistered, setIsEditorProfileRegistered] = useState(false);
 
   useEffect(() => {
@@ -388,8 +935,6 @@ function MypageContent() {
     router.push(`/mypage?tab=${section}`);
   };
 
-  const handleUnlike = (id: string) => setLikedPosts((prev) => prev.filter((post) => post.id !== id));
-
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -415,11 +960,11 @@ function MypageContent() {
           <div>
             {activeSection === 'editor-profile' && <EditorProfileSection onSaved={() => setIsEditorProfileRegistered(true)} />}
             {activeSection === 'posts' && <PostsSection />}
-            {activeSection === 'liked' && <LikedSection likedPosts={likedPosts} onUnlike={handleUnlike} />}
+            {activeSection === 'liked' && <LikedSection />}
             {activeSection === 'chats' && <ChatsSection />}
-            {activeSection === 'portfolio' && <PlaceholderSection title="포트폴리오 관리" description="포트폴리오 순번, 공개/비공개, 대표 설정을 관리할 화면입니다." />}
+            {activeSection === 'portfolio' && <PortfolioManagementSection />}
             {activeSection === 'projects' && <ProjectsSection />}
-            {activeSection === 'pricing' && <PlaceholderSection title="맞춤매칭 단가 설정" description="맞춤매칭 노출 단가와 단위를 설정할 화면입니다." />}
+            {activeSection === 'pricing' && <PricingSection />}
           </div>
         </div>
       </div>
