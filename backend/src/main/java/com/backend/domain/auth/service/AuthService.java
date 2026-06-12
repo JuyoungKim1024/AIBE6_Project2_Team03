@@ -67,7 +67,7 @@ public class AuthService {
                         provider,
                         userInfo.socialId(),
                         userInfo.email(),
-                        userInfo.nickname(),
+                        createRandomNickname(),
                         userInfo.profileImage()
                 )));
 
@@ -180,6 +180,16 @@ public class AuthService {
         for (int i = 0; i < 10; i++) {
             String nickname = "크크킄" + (100000 + secureRandom.nextInt(900000));
             if (!userRepository.existsByNicknameAndIdNot(nickname, userId)) {
+                return nickname;
+            }
+        }
+        return "크크킄" + System.currentTimeMillis();
+    }
+
+    private String createRandomNickname() {
+        for (int i = 0; i < 10; i++) {
+            String nickname = "크크킄" + (100000 + secureRandom.nextInt(900000));
+            if (!userRepository.existsByNickname(nickname)) {
                 return nickname;
             }
         }

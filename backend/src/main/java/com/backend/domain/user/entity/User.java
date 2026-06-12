@@ -72,9 +72,6 @@ public class User {
 
     public void updateSocialProfile(String providerEmail, String nickname, String profileImage) {
         this.providerEmail = providerEmail;
-        if (nickname != null && !nickname.isBlank()) {
-            this.nickname = nickname;
-        }
         if (profileImage != null && !profileImage.isBlank()) {
             this.profileImage = profileImage;
         }
