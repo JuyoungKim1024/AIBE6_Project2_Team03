@@ -167,6 +167,7 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
 
 export function NavBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -197,12 +198,22 @@ export function NavBar() {
       .finally(() => setIsAuthChecked(true));
   }, []);
 
-  const navLinks = [
+  type NavLink = { name: string; path: string; requireAuth?: boolean };
+
+  const navLinks: NavLink[] = [
     { name: '구인구직', path: '/jobs' },
     { name: '커뮤니티', path: '/community' },
-    { name: '맞춤매칭', path: '/matching' },
+    { name: '맞춤매칭', path: '/matching', requireAuth: true },
     { name: '마이페이지', path: '/mypage' },
   ];
+
+  const handleNavClick = (e: React.MouseEvent, link: NavLink, closeMobile?: () => void) => {
+    if (link.requireAuth && !user) {
+      e.preventDefault();
+      router.push('/login');
+    }
+    closeMobile?.();
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -221,7 +232,7 @@ export function NavBar() {
               {navLinks.map((link) => {
                 const isActive = pathname === link.path || (link.path !== '/' && pathname.startsWith(link.path));
                 return (
-                  <Link key={link.path} href={link.path} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
+                  <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
                     {link.name}
                   </Link>
                 );
@@ -257,7 +268,7 @@ export function NavBar() {
             {navLinks.map((link) => {
               const isActive = pathname.startsWith(link.path);
               return (
-                <Link key={link.path} href={link.path} onClick={() => setMobileOpen(false)} className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
+                <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link, () => setMobileOpen(false))} className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
                   {link.name}
                 </Link>
               );
