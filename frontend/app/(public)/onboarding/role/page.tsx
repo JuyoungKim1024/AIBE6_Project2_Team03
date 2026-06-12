@@ -4,6 +4,7 @@ import React, { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Scissors, Video, Youtube } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 type Role = 'YOUTUBER' | 'EDITOR';
 
@@ -11,8 +12,6 @@ const roles: { id: Role; label: string; desc: string; icon: typeof Youtube }[] =
   { id: 'YOUTUBER', label: '유튜버', desc: '내 채널 영상 작업을 맡길 에디터를 찾고 있어요', icon: Youtube },
   { id: 'EDITOR', label: '에디터', desc: '편집 실력으로 의뢰를 찾고 수익을 만들고 싶어요', icon: Scissors },
 ];
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export default function OnboardingRolePage() {
   const router = useRouter();

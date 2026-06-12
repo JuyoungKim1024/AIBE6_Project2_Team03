@@ -4,8 +4,7 @@ import React, { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Camera, User, Video } from 'lucide-react';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/api';
 
 async function readErrorMessage(response: Response) {
   try {
