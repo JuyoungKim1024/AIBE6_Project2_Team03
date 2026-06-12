@@ -56,6 +56,8 @@ class AuthControllerTest {
                 "kakao-user",
                 "https://example.com/profile.png",
                 null,
+                null,
+                null,
                 true
         );
         when(authService.login(SocialProvider.KAKAO, "auth-code"))
@@ -79,6 +81,8 @@ class AuthControllerTest {
                 "google@example.com",
                 "google-user",
                 null,
+                null,
+                null,
                 UserRole.YOUTUBER,
                 false
         ));
@@ -100,6 +104,8 @@ class AuthControllerTest {
                 SocialProvider.GOOGLE,
                 "google@example.com",
                 "google-user",
+                null,
+                null,
                 null,
                 UserRole.EDITOR,
                 false

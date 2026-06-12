@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Settings,
   User,
   UserCircle,
   Video,
@@ -90,6 +91,7 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
   const accountItems = [
     { label: '공개 프로필 보기', icon: UserCircle, to: `/profile/${user.id}` },
     { label: '프로필 관리', icon: Edit2, to: '/profile/edit' },
+    { label: '설정', icon: Settings, to: '/mypage/settings' },
   ];
   const activityItems = [
     { label: '내가 쓴 글', icon: FileText, to: '/mypage?tab=posts' },
@@ -268,6 +270,9 @@ export function NavBar() {
                 </Link>
                 <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
                   프로필 관리
+                </Link>
+                <Link href="/mypage/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                  설정
                 </Link>
               </>
             ) : (
