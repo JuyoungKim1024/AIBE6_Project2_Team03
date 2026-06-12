@@ -12,6 +12,7 @@ type Portfolio = {
   id: string;
   title: string;
   thumbnailUrl: string | null;
+  type?: 'video' | 'image';
   order: number;
 };
 
@@ -30,6 +31,18 @@ type Deal = {
   date: string;
 };
 
+type ProfilePost = {
+  id: string;
+  boardType: 'JOB' | 'COMMUNITY';
+  postType: string | null;
+  title: string;
+  authorName: string;
+  likes: number;
+  comments: number;
+  views: number;
+  date: string;
+};
+
 type PublicProfile = {
   id: string;
   nickname: string;
@@ -41,6 +54,10 @@ type PublicProfile = {
   portfolios: Portfolio[];
   reviews: Review[];
   recentDeals: Deal[];
+  publicPostsVisible: boolean;
+  publicLikedPostsVisible: boolean;
+  posts?: ProfilePost[];
+  likedPosts?: ProfilePost[];
 };
 
 const reviewsPerPage = 5;
@@ -52,6 +69,37 @@ const projectStatusLabel: Record<string, string> = {
   REJECTED: '거절',
   CANCELED: '취소',
 };
+
+function ProfilePostSection({ title, posts, emptyMessage }: { title: string; posts: ProfilePost[]; emptyMessage: string }) {
+  return (
+    <section className="bg-surface border border-border rounded-xl p-6">
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <h2 className="text-xl font-bold text-text-primary">{title}</h2>
+        <span className="text-sm text-text-muted">{posts.length}개</span>
+      </div>
+      {posts.length > 0 ? <div className="space-y-3">
+        {posts.map((post) => (
+          <Link key={post.id} href={post.boardType === 'JOB' ? `/jobs/${post.id}` : `/community/${post.id}`} className="block rounded-xl bg-surface-elevated border border-border p-4 hover:border-primary/50 transition-colors">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.boardType === 'JOB' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>
+                {post.boardType === 'JOB' ? '구인구직' : '커뮤니티'}
+              </span>
+              <span className="text-xs text-text-muted">{post.authorName}</span>
+              <span className="text-xs text-text-muted">·</span>
+              <span className="text-xs text-text-muted">{post.date}</span>
+            </div>
+            <h3 className="font-bold text-text-primary">{post.title}</h3>
+            <div className="flex items-center gap-4 text-xs text-text-muted mt-2">
+              <span>좋아요 {post.likes}</span>
+              <span>조회 {post.views}</span>
+              <span>댓글 {post.comments}</span>
+            </div>
+          </Link>
+        ))}
+      </div> : <p className="text-sm text-text-muted">{emptyMessage}</p>}
+    </section>
+  );
+}
 
 export default function PublicProfilePage() {
   const params = useParams<{ userId: string }>();
@@ -79,7 +127,34 @@ export default function PublicProfilePage() {
         }
         return response.json();
       })
-      .then((profile: PublicProfile | null) => setData(profile))
+      .then((profile: PublicProfile | null) => {
+        if (!profile) {
+          setData(null);
+          return;
+        }
+
+        let localPortfolios: Portfolio[] = [];
+        try {
+          localPortfolios = JSON.parse(localStorage.getItem('editorPortfolios') ?? '[]')
+            .filter((portfolio: { isPublic: boolean }) => portfolio.isPublic)
+            .map((portfolio: { id: string; title: string; dataUrl: string; type: 'video' | 'image'; order: number }) => ({
+              id: portfolio.id,
+              title: portfolio.title,
+              thumbnailUrl: portfolio.dataUrl,
+              type: portfolio.type,
+              order: portfolio.order,
+            }));
+        } catch {
+          localPortfolios = [];
+        }
+
+        setData({
+          ...profile,
+          portfolios: profile.portfolios.length > 0 ? profile.portfolios : localPortfolios,
+          posts: profile.posts ?? [],
+          likedPosts: profile.likedPosts ?? [],
+        });
+      })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
   }, [userId]);
@@ -177,7 +252,9 @@ export default function PublicProfilePage() {
             {activePortfolio ? (
               <div>
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-surface-elevated border border-border">
-                  {activePortfolio.thumbnailUrl ? (
+                  {activePortfolio.thumbnailUrl && activePortfolio.type === 'video' ? (
+                    <video src={activePortfolio.thumbnailUrl} className="w-full h-full object-cover" controls />
+                  ) : activePortfolio.thumbnailUrl ? (
                     <img src={activePortfolio.thumbnailUrl} alt={activePortfolio.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-text-muted">이미지가 없습니다</div>
@@ -254,6 +331,14 @@ export default function PublicProfilePage() {
             </div>
           )}
         </section>}
+
+        {data.publicPostsVisible && (
+          <ProfilePostSection title="작성한 글" posts={data.posts ?? []} emptyMessage="아직 작성한 글이 없습니다" />
+        )}
+
+        {data.publicLikedPostsVisible && (
+          <ProfilePostSection title="좋아요한 글" posts={data.likedPosts ?? []} emptyMessage="좋아요한 게시글이 없습니다" />
+        )}
       </div>
     </div>
   );
