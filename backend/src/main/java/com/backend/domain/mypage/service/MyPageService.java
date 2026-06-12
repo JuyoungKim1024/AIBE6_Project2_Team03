@@ -8,6 +8,8 @@ import com.backend.domain.mypage.dto.MyProjectResponse;
 import com.backend.domain.mypage.dto.MyProjectsResponse;
 import com.backend.domain.mypage.dto.MatchingPriceRequest;
 import com.backend.domain.mypage.dto.MatchingPriceResponse;
+import com.backend.domain.mypage.dto.PublicContentVisibilityRequest;
+import com.backend.domain.mypage.dto.PublicContentVisibilityResponse;
 import com.backend.domain.mypage.entity.ChatRoomUser;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
@@ -21,6 +23,7 @@ import com.backend.domain.mypage.repository.MyPagePostLikeRepository;
 import com.backend.domain.mypage.repository.MyPagePostRepository;
 import com.backend.domain.mypage.repository.MyPageProjectRepository;
 import com.backend.domain.profile.entity.Project;
+import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
@@ -139,6 +142,33 @@ public class MyPageService {
 
         user.updateMatchingPrice(request.matchEnabled(), request.matchPrice(), request.matchPriceUnit());
         return getMatchingPrice(userId);
+    }
+
+    public PublicContentVisibilityResponse getPublicContentVisibility(String userId) {
+        return profileRepository.findByUser_Id(userId)
+                .map(profile -> new PublicContentVisibilityResponse(
+                        profile.isPublicPostsVisible(),
+                        profile.isPublicLikedPostsVisible()
+                ))
+                .orElseGet(() -> new PublicContentVisibilityResponse(false, false));
+    }
+
+    @Transactional
+    public PublicContentVisibilityResponse updatePublicContentVisibility(String userId, PublicContentVisibilityRequest request) {
+        User user = getUser(userId);
+        Profile profile = profileRepository.findByUser_Id(userId)
+                .orElseGet(() -> profileRepository.save(new Profile(user, null, null)));
+        boolean publicPostsVisible = request.publicPostsVisible() == null
+                ? profile.isPublicPostsVisible()
+                : request.publicPostsVisible();
+        boolean publicLikedPostsVisible = request.publicLikedPostsVisible() == null
+                ? profile.isPublicLikedPostsVisible()
+                : request.publicLikedPostsVisible();
+        profile.updatePublicContentVisibility(publicPostsVisible, publicLikedPostsVisible);
+        return new PublicContentVisibilityResponse(
+                profile.isPublicPostsVisible(),
+                profile.isPublicLikedPostsVisible()
+        );
     }
 
     private User getUser(String userId) {
