@@ -7,6 +7,7 @@ import { Menu, MessageSquare, Video, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileDropdown } from '@/components/common/ProfileDropdown';
 import { NotificationDropdown } from '@/components/common/NotificationDropdown';
+import { SearchBar } from '@/components/common/SearchBar';
 
 type NavLink = { name: string; path: string; requireAuth?: boolean };
 
@@ -70,6 +71,12 @@ export function NavBar() {
               })}
             </div>
           </div>
+
+          {pathname !== '/' && (
+            <div className="hidden md:block">
+              <SearchBar />
+            </div>
+          )}
 
           <div className="hidden md:flex items-center gap-4">
             {user && (
