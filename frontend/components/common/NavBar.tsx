@@ -73,8 +73,16 @@ export function NavBar() {
           <div className="hidden md:flex items-center gap-4">
             {user && (
               <>
-                <Link href="/chat" className="p-2 text-text-secondary hover:text-text-primary transition-colors">
+                {/* TODO: 백엔드 연동 후 읽지 않은 메시지 수 API 호출로 교체
+                    - GET /api/chat/unread-count 또는 유사 엔드포인트
+                    - 응답값 > 0 이면 hasUnread = true로 세팅
+                    - const [hasUnread, setHasUnread] = useState(false);
+                    - useEffect로 폴링 or 웹소켓 이벤트 수신 */}
+                <Link href="/chat" className="relative p-2 text-text-secondary hover:text-text-primary transition-colors">
                   <MessageSquare size={20} />
+                  {/* TODO: hasUnread && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
+                  ) */}
                 </Link>
                 <button className="p-2 text-text-secondary hover:text-text-primary transition-colors relative">
                   <Bell size={20} />
