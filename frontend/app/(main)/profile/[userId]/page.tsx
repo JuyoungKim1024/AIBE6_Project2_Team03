@@ -109,6 +109,24 @@ export default function PublicProfilePage() {
   const [notFound, setNotFound] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
   const [reviewPage, setReviewPage] = useState(1);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      setCurrentUserId(null);
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((user) => setCurrentUserId(user?.id ?? null))
+      .catch(() => setCurrentUserId(null));
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -135,15 +153,17 @@ export default function PublicProfilePage() {
 
         let localPortfolios: Portfolio[] = [];
         try {
-          localPortfolios = JSON.parse(localStorage.getItem('editorPortfolios') ?? '[]')
-            .filter((portfolio: { isPublic: boolean }) => portfolio.isPublic)
-            .map((portfolio: { id: string; title: string; dataUrl: string; type: 'video' | 'image'; order: number }) => ({
-              id: portfolio.id,
-              title: portfolio.title,
-              thumbnailUrl: portfolio.dataUrl,
-              type: portfolio.type,
-              order: portfolio.order,
-            }));
+          if (currentUserId === userId) {
+            localPortfolios = JSON.parse(localStorage.getItem(`editorPortfolios:${userId}`) ?? '[]')
+              .filter((portfolio: { isPublic: boolean }) => portfolio.isPublic)
+              .map((portfolio: { id: string; title: string; dataUrl: string; type: 'video' | 'image'; order: number }) => ({
+                id: portfolio.id,
+                title: portfolio.title,
+                thumbnailUrl: portfolio.dataUrl,
+                type: portfolio.type,
+                order: portfolio.order,
+              }));
+          }
         } catch {
           localPortfolios = [];
         }
@@ -157,7 +177,7 @@ export default function PublicProfilePage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
-  }, [userId]);
+  }, [currentUserId, userId]);
 
   const sortedPortfolios = useMemo(() => {
     return data?.portfolios.slice().sort((a, b) => a.order - b.order) ?? [];

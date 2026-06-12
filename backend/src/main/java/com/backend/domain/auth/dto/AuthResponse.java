@@ -8,7 +8,7 @@ public record AuthResponse(
         boolean onboardingRequired,
         UserResponse user
 ) {
-    public static AuthResponse of(String accessToken, String refreshToken, User user) {
-        return new AuthResponse(accessToken, refreshToken, user.getRole() == null, UserResponse.from(user));
+    public static AuthResponse of(String accessToken, String refreshToken, User user, boolean onboardingRequired) {
+        return new AuthResponse(accessToken, refreshToken, onboardingRequired, UserResponse.from(user));
     }
 }
