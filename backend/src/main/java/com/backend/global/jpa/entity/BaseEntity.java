@@ -11,15 +11,18 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 @MappedSuperclass
 @Getter
-public class BaseEntity {
+public abstract class BaseEntity {
+
     @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
-    Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "CHAR(36)")
+    private String id;
 
     @CreatedDate
-    LocalDateTime createDate;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @LastModifiedDate
-    LocalDateTime modifyDate;
-
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 }
