@@ -90,8 +90,9 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
 
   const accountItems = [
     { label: '공개 프로필 보기', icon: UserCircle, to: `/profile/${user.id}` },
-    { label: '프로필 관리', icon: Edit2, to: '/profile/edit' },
-    { label: '설정', icon: Settings, to: '/mypage/settings' },
+    { label: '마이페이지', icon: Edit2, to: '/mypage' },
+    { label: '사용자 정보변경', icon: User, to: '/settings' },
+    { label: '설정', icon: Settings, to: '/settings' },
   ];
   const activityItems = [
     { label: '내가 쓴 글', icon: FileText, to: '/mypage?tab=posts' },
@@ -99,8 +100,8 @@ function ProfileDropdown({ user, onLogout }: { user: AuthUser; onLogout: () => v
     { label: '채팅 목록', icon: MessageSquare, to: '/mypage?tab=chats' },
   ];
   const editorItems = [
-    { label: '포트폴리오 관리', icon: FolderOpen, to: '/profile/edit' },
-    { label: '가격 설정', icon: DollarSign, to: '/profile/edit' },
+    { label: '포트폴리오 관리', icon: FolderOpen, to: '/mypage?tab=portfolio' },
+    { label: '가격 설정', icon: DollarSign, to: '/mypage?tab=pricing' },
   ];
 
   return (
@@ -268,10 +269,13 @@ export function NavBar() {
                 <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
                   공개 프로필
                 </Link>
-                <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
-                  프로필 관리
+                <Link href="/mypage" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                  마이페이지
                 </Link>
-                <Link href="/mypage/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                <Link href="/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                  사용자 정보변경
+                </Link>
+                <Link href="/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
                   설정
                 </Link>
               </>
