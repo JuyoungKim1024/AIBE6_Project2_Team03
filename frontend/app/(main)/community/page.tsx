@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, TrendingUp, ChevronRight, Activity } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { RankBadge } from '@/components/common/RankBadge';
@@ -22,11 +23,24 @@ const mockPosts = [
   { id: '3', type: 'info' as PostType, author: { name: '쇼츠공장장', rank: 'gold' as RankTier, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80' }, title: '클라이언트가 자꾸 무료 수정을 요구할 때 대처법', categoryTags: ['협업팁', '계약'], toolTags: [], likes: 156, comments: 31, views: 890, timeAgo: '하루 전' },
 ];
 
-export default function CommunityPage() {
+function CommunityContent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+
   const [activeCategory, setActiveCategory] = useState('all');
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const filteredPosts = mockPosts.filter((post) => activeCategory === 'all' || post.type === activeCategory);
+
+  const filteredPosts = mockPosts.filter((post) => {
+    const matchesCategory = activeCategory === 'all' || post.type === activeCategory;
+    const matchesQuery = query === '' || (
+      post.title.includes(query) ||
+      post.categoryTags.some((t) => t.includes(query)) ||
+      post.toolTags.some((t) => t.includes(query)) ||
+      post.author.name.includes(query)
+    );
+    return matchesCategory && matchesQuery;
+  });
 
   return (
     <div className="min-h-screen">
@@ -34,7 +48,13 @@ export default function CommunityPage() {
         <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-text-primary mb-1">커뮤니티</h1>
-            <p className="text-text-secondary text-sm">에디터와 유튜버가 함께하는 정보 공유 공간</p>
+            {query ? (
+              <p className="text-text-secondary text-sm">
+                <span className="text-primary font-medium">"{query}"</span> 검색 결과 {filteredPosts.length}건
+              </p>
+            ) : (
+              <p className="text-text-secondary text-sm">에디터와 유튜버가 함께하는 정보 공유 공간</p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <div className="flex bg-surface-elevated p-1 rounded-lg border border-border">
@@ -138,5 +158,13 @@ export default function CommunityPage() {
       </div>
       <WritePostModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-text-muted text-sm">불러오는 중...</div>}>
+      <CommunityContent />
+    </Suspense>
   );
 }
