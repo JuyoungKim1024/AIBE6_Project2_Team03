@@ -39,4 +39,12 @@ public class MatchRequest {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void accept() {
+        this.status = MatchRequestStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        this.status = MatchRequestStatus.REJECTED;
+    }
 }
