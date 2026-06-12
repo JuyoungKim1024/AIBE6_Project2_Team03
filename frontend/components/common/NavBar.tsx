@@ -200,7 +200,7 @@ export function NavBar() {
   const navLinks = [
     { name: '구인구직', path: '/jobs' },
     { name: '커뮤니티', path: '/community' },
-    { name: '매칭', path: '/matching' },
+    { name: '맞춤매칭', path: '/matching' },
     { name: '마이페이지', path: '/mypage' },
   ];
 
@@ -221,7 +221,7 @@ export function NavBar() {
               {navLinks.map((link) => {
                 const isActive = pathname === link.path || (link.path !== '/' && pathname.startsWith(link.path));
                 return (
-                  <Link key={link.path} href={link.path} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-surface-elevated text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
+                  <Link key={link.path} href={link.path} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
                     {link.name}
                   </Link>
                 );
@@ -257,7 +257,7 @@ export function NavBar() {
             {navLinks.map((link) => {
               const isActive = pathname.startsWith(link.path);
               return (
-                <Link key={link.path} href={link.path} onClick={() => setMobileOpen(false)} className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-surface-elevated text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
+                <Link key={link.path} href={link.path} onClick={() => setMobileOpen(false)} className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface'}`}>
                   {link.name}
                 </Link>
               );
