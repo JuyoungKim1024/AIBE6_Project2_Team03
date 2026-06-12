@@ -56,8 +56,8 @@ type PublicProfile = {
   recentDeals: Deal[];
   publicPostsVisible: boolean;
   publicLikedPostsVisible: boolean;
-  posts: ProfilePost[];
-  likedPosts: ProfilePost[];
+  posts?: ProfilePost[];
+  likedPosts?: ProfilePost[];
 };
 
 const reviewsPerPage = 5;
@@ -151,6 +151,8 @@ export default function PublicProfilePage() {
         setData({
           ...profile,
           portfolios: profile.portfolios.length > 0 ? profile.portfolios : localPortfolios,
+          posts: profile.posts ?? [],
+          likedPosts: profile.likedPosts ?? [],
         });
       })
       .catch(() => setNotFound(true))
@@ -331,11 +333,11 @@ export default function PublicProfilePage() {
         </section>}
 
         {data.publicPostsVisible && (
-          <ProfilePostSection title="작성한 글" posts={data.posts} emptyMessage="아직 작성한 글이 없습니다" />
+          <ProfilePostSection title="작성한 글" posts={data.posts ?? []} emptyMessage="아직 작성한 글이 없습니다" />
         )}
 
         {data.publicLikedPostsVisible && (
-          <ProfilePostSection title="좋아요한 글" posts={data.likedPosts} emptyMessage="좋아요한 게시글이 없습니다" />
+          <ProfilePostSection title="좋아요한 글" posts={data.likedPosts ?? []} emptyMessage="좋아요한 게시글이 없습니다" />
         )}
       </div>
     </div>

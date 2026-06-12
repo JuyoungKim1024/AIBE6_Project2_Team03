@@ -1,14 +1,9 @@
 package com.backend.domain.profile.service;
 
 import com.backend.domain.profile.dto.PortfolioResponse;
-import com.backend.domain.profile.dto.PublicProfilePostResponse;
 import com.backend.domain.profile.dto.PublicProfileResponse;
 import com.backend.domain.profile.dto.RecentDealResponse;
 import com.backend.domain.profile.dto.ReviewResponse;
-import com.backend.domain.mypage.entity.Post;
-import com.backend.domain.mypage.entity.PostLike;
-import com.backend.domain.mypage.repository.MyPagePostLikeRepository;
-import com.backend.domain.mypage.repository.MyPagePostRepository;
 import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.profile.entity.Project;
 import com.backend.domain.profile.entity.Review;
@@ -23,7 +18,6 @@ import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -41,8 +35,6 @@ public class PublicProfileService {
     private final ReviewRepository reviewRepository;
     private final ProjectRepository projectRepository;
     private final ProfileRepository profileRepository;
-    private final MyPagePostRepository postRepository;
-    private final MyPagePostLikeRepository postLikeRepository;
 
     public PublicProfileService(
             UserRepository userRepository,
@@ -50,9 +42,7 @@ public class PublicProfileService {
             UserTagRepository userTagRepository,
             ReviewRepository reviewRepository,
             ProjectRepository projectRepository,
-            ProfileRepository profileRepository,
-            MyPagePostRepository postRepository,
-            MyPagePostLikeRepository postLikeRepository
+            ProfileRepository profileRepository
     ) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
@@ -60,8 +50,6 @@ public class PublicProfileService {
         this.reviewRepository = reviewRepository;
         this.projectRepository = projectRepository;
         this.profileRepository = profileRepository;
-        this.postRepository = postRepository;
-        this.postLikeRepository = postLikeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -83,9 +71,7 @@ public class PublicProfileService {
                 getReviews(userId),
                 getRecentDeals(userId),
                 profile != null && profile.isPublicPostsVisible(),
-                profile != null && profile.isPublicLikedPostsVisible(),
-                profile != null && profile.isPublicPostsVisible() ? getPublicPosts(userId) : Collections.emptyList(),
-                profile != null && profile.isPublicLikedPostsVisible() ? getPublicLikedPosts(userId) : Collections.emptyList()
+                profile != null && profile.isPublicLikedPostsVisible()
         );
     }
 
@@ -150,34 +136,6 @@ public class PublicProfileService {
                 title,
                 project.getStatus().name(),
                 project.getUpdatedAt() == null ? "" : project.getUpdatedAt().format(DATE_FORMATTER)
-        );
-    }
-    private List<PublicProfilePostResponse> getPublicPosts(String userId) {
-        return postRepository.findByAuthor_IdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::toPublicProfilePostResponse)
-                .toList();
-    }
-
-    private List<PublicProfilePostResponse> getPublicLikedPosts(String userId) {
-        return postLikeRepository.findByUser_IdOrderByPost_CreatedAtDesc(userId)
-                .stream()
-                .map(PostLike::getPost)
-                .map(this::toPublicProfilePostResponse)
-                .toList();
-    }
-
-    private PublicProfilePostResponse toPublicProfilePostResponse(Post post) {
-        return new PublicProfilePostResponse(
-                post.getId(),
-                post.getBoardType().name(),
-                post.getPostType() == null ? null : post.getPostType().name(),
-                post.getTitle(),
-                post.getAuthor().getNickname(),
-                post.getLikeCount(),
-                post.getChatCount(),
-                post.getViewCount(),
-                post.getCreatedAt() == null ? "" : post.getCreatedAt().format(DATE_FORMATTER)
         );
     }
 }

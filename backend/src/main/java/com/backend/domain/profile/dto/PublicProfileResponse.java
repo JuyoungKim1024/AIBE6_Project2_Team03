@@ -14,8 +14,6 @@ public record PublicProfileResponse(
         List<ReviewResponse> reviews,
         List<RecentDealResponse> recentDeals,
         boolean publicPostsVisible,
-        boolean publicLikedPostsVisible,
-        List<PublicProfilePostResponse> posts,
-        List<PublicProfilePostResponse> likedPosts
+        boolean publicLikedPostsVisible
 ) {
 }
