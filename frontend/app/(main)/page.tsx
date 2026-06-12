@@ -1,11 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight } from 'lucide-react';
-import { PriceTicker } from '@/components/home/PriceTicker';
+import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown } from 'lucide-react';
 import { EditorCard } from '@/components/profile/EditorCard';
+
+type SearchCategory = 'jobs' | 'community';
+
+const categoryOptions: { value: SearchCategory; label: string }[] = [
+  { value: 'jobs', label: '구인구직' },
+  { value: 'community', label: '커뮤니티' },
+];
 
 const popularTags = ['롱폼', '숏폼', '게임', '프리미어프로', '파이널컷', '썸네일'];
 
@@ -22,10 +29,39 @@ const quickAccessCards = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<SearchCategory>('jobs');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
+  const canSearch = query.trim().length > 1;
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSearch) return;
+    router.push(`/${category}?q=${encodeURIComponent(query.trim())}`);
+  };
+
+  const handleTagClick = (tag: string) => {
+    setQuery(tag);
+    router.push(`/${category}?q=${encodeURIComponent(tag)}`);
+  };
+
+  const selectedLabel = categoryOptions.find((o) => o.value === category)?.label ?? '구인구직';
+
   return (
     <div className="min-h-screen">
-      <PriceTicker />
       <section className="relative pt-24 pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent -z-10" />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -37,23 +73,77 @@ export default function HomePage() {
             <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-12 leading-relaxed">
               투명한 분당 단가, 검증된 포트폴리오. 스트레스 없는 영상 제작 파트너를 만나보세요.
             </p>
+
+            {/* 검색바 */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.15 }} className="max-w-2xl mx-auto mb-6">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl group-focus-within:blur-2xl transition-all opacity-50" />
-                <div className="relative flex items-center bg-surface border-2 border-border group-focus-within:border-primary rounded-2xl transition-colors shadow-2xl">
-                  <Search size={22} className="text-text-muted ml-5" />
-                  <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="편집자, 작업 스타일, 툴로 검색해보세요" className="flex-1 bg-transparent px-4 py-5 text-base text-text-primary placeholder:text-text-muted focus:outline-none" />
-                  <button className="m-2 px-6 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">검색</button>
+              <form onSubmit={handleSearch}>
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl group-focus-within:blur-2xl transition-all opacity-50" />
+                  <div className="relative flex items-center bg-surface border-2 border-border group-focus-within:border-primary rounded-2xl transition-colors shadow-2xl">
+
+                    {/* 카테고리 드롭다운 */}
+                    <div className="relative shrink-0" ref={dropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="flex items-center gap-1 pl-4 pr-3 py-5 text-sm text-text-secondary border-r border-border hover:text-text-primary transition-colors whitespace-nowrap"
+                      >
+                        {selectedLabel}
+                        <ChevronDown size={13} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {dropdownOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-28 bg-surface border border-border rounded-lg shadow-lg overflow-hidden z-50">
+                          {categoryOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => { setCategory(option.value); setDropdownOpen(false); }}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                category === option.value ? 'text-primary bg-primary/10' : 'text-text-secondary hover:bg-surface-elevated'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <Search size={20} className="text-text-muted ml-4 shrink-0" />
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="편집자, 작업 스타일, 툴로 검색해보세요"
+                      className="flex-1 bg-transparent px-3 py-5 text-base text-text-primary placeholder:text-text-muted focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!canSearch}
+                      className="m-2 px-6 py-3 rounded-xl bg-primary text-white font-bold text-sm transition-colors shadow-lg shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 disabled:hover:bg-primary"
+                    >
+                      검색
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </form>
             </motion.div>
+
+            {/* 인기 검색어 */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="flex flex-wrap gap-2 justify-center items-center">
               <span className="text-sm text-text-muted mr-2">인기 검색어:</span>
               {popularTags.map((tag) => (
-                <button key={tag} onClick={() => setQuery(tag)} className="px-3 py-1.5 rounded-full bg-surface border border-border text-sm text-text-secondary hover:border-primary/50 hover:text-text-primary transition-all">{tag}</button>
+                <button
+                  key={tag}
+                  onClick={() => handleTagClick(tag)}
+                  className="px-3 py-1.5 rounded-full bg-surface border border-border text-sm text-text-secondary hover:border-primary/50 hover:text-text-primary transition-all"
+                >
+                  {tag}
+                </button>
               ))}
             </motion.div>
           </motion.div>
+
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
             {[
               { icon: TrendingUp, label: '누적 거래액', value: '₩12.4억+' },
@@ -70,6 +160,7 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
       <section className="py-20 border-y border-border bg-surface/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
@@ -94,6 +185,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-10">
