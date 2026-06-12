@@ -53,7 +53,7 @@ export default function SettingsPage() {
 
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    router.push('/');
+    window.location.href = '/';
   };
 
   return (
