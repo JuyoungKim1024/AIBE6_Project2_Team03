@@ -18,8 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { type AuthUser, clearTokens } from '@/hooks/useAuth';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/api';
 
 const roleLabel: Record<NonNullable<AuthUser['role']>, string> = {
   YOUTUBER: '유튜버',
@@ -29,6 +28,20 @@ const roleLabel: Record<NonNullable<AuthUser['role']>, string> = {
 function getRoleLabel(role: AuthUser['role']) {
   return role ? roleLabel[role] : '역할 미선택';
 }
+
+const dropdownLinkClass =
+  'flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors';
+
+const activityItems = [
+  { label: '내가 쓴 글', icon: FileText, to: '/mypage?tab=posts' },
+  { label: '받은 프로젝트 요청', icon: Inbox, to: '/mypage?tab=projects' },
+  { label: '채팅 목록', icon: MessageSquare, to: '/mypage?tab=chats' },
+];
+
+const editorItems = [
+  { label: '포트폴리오 관리', icon: FolderOpen, to: '/profile/edit' },
+  { label: '가격 설정', icon: DollarSign, to: '/profile/edit' },
+];
 
 interface Props {
   user: AuthUser;
@@ -79,15 +92,6 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     { label: '프로필 관리', icon: Edit2, to: '/profile/edit' },
     { label: '설정', icon: Settings, to: '/mypage/settings' },
   ];
-  const activityItems = [
-    { label: '내가 쓴 글', icon: FileText, to: '/mypage?tab=posts' },
-    { label: '받은 프로젝트 요청', icon: Inbox, to: '/mypage?tab=projects' },
-    { label: '채팅 목록', icon: MessageSquare, to: '/mypage?tab=chats' },
-  ];
-  const editorItems = [
-    { label: '포트폴리오 관리', icon: FolderOpen, to: '/profile/edit' },
-    { label: '가격 설정', icon: DollarSign, to: '/profile/edit' },
-  ];
 
   return (
     <div className="relative" ref={ref}>
@@ -109,7 +113,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
           <div className="px-2 py-1">
             <div className="px-2 py-1 text-xs font-bold text-text-muted uppercase tracking-wider">계정</div>
             {accountItems.map((item) => (
-              <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
+              <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className={dropdownLinkClass}>
                 <item.icon size={16} />{item.label}
               </Link>
             ))}
@@ -123,7 +127,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
           <div className="px-2 py-1">
             <div className="px-2 py-1 text-xs font-bold text-text-muted uppercase tracking-wider">활동</div>
             {activityItems.map((item) => (
-              <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
+              <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className={dropdownLinkClass}>
                 <item.icon size={16} />{item.label}
               </Link>
             ))}
@@ -135,7 +139,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
               <div className="px-2 py-1">
                 <div className="px-2 py-1 text-xs font-bold text-primary uppercase tracking-wider">에디터 전용</div>
                 {editorItems.map((item) => (
-                  <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className="flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary transition-colors">
+                  <Link key={item.label} href={item.to} onClick={() => setOpen(false)} className={dropdownLinkClass}>
                     <item.icon size={16} />{item.label}
                   </Link>
                 ))}

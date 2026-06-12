@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Menu, Video, X } from 'lucide-react';
+import { Bell, Menu, MessageSquare, Video, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileDropdown } from '@/components/common/ProfileDropdown';
 
@@ -72,12 +72,17 @@ export function NavBar() {
 
           <div className="hidden md:flex items-center gap-4">
             {user && (
-              <button className="p-2 text-text-secondary hover:text-text-primary transition-colors relative">
-                <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-              </button>
+              <>
+                <Link href="/chat" className="p-2 text-text-secondary hover:text-text-primary transition-colors">
+                  <MessageSquare size={20} />
+                </Link>
+                <button className="p-2 text-text-secondary hover:text-text-primary transition-colors relative">
+                  <Bell size={20} />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
+                </button>
+                <div className="h-6 w-px bg-border" />
+              </>
             )}
-            {user && <div className="h-6 w-px bg-border" />}
             {!isAuthChecked ? (
               <div className="w-20 h-8 rounded-lg bg-surface-elevated animate-pulse" />
             ) : user ? (
