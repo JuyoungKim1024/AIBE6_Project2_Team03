@@ -12,7 +12,8 @@ import com.backend.domain.mypage.entity.ChatRoomUser;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.entity.Message;
-import com.backend.domain.mypage.entity.Post;
+import com.backend.domain.post.entity.JobPost;
+import com.backend.domain.post.entity.Post;
 import com.backend.domain.mypage.entity.PostLike;
 import com.backend.domain.mypage.repository.MyPageChatRoomUserRepository;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
@@ -153,10 +154,13 @@ public class MyPageService {
     }
 
     private MyPostResponse toMyPostResponse(Post post) {
+        String boardType = post instanceof JobPost ? "JOB" : "COMMUNITY";
+        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
+                ? jobPost.getPostType().name() : null;
         return new MyPostResponse(
                 post.getId(),
-                post.getBoardType().name(),
-                post.getPostType() == null ? null : post.getPostType().name(),
+                boardType,
+                postType,
                 post.getTitle(),
                 formatDate(post.getCreatedAt()),
                 post.getViewCount(),
@@ -165,10 +169,13 @@ public class MyPageService {
     }
 
     private MyLikedPostResponse toLikedPostResponse(Post post) {
+        String boardType = post instanceof JobPost ? "JOB" : "COMMUNITY";
+        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
+                ? jobPost.getPostType().name() : null;
         return new MyLikedPostResponse(
                 post.getId(),
-                post.getBoardType().name(),
-                post.getPostType() == null ? null : post.getPostType().name(),
+                boardType,
+                postType,
                 post.getTitle(),
                 post.getAuthor().getNickname(),
                 post.getLikeCount(),

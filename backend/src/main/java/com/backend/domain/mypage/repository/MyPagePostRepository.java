@@ -1,6 +1,6 @@
 package com.backend.domain.mypage.repository;
 
-import com.backend.domain.mypage.entity.Post;
+import com.backend.domain.post.entity.Post;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,5 +1,6 @@
 package com.backend.domain.mypage.entity;
 
+import com.backend.domain.post.entity.Post;
 import com.backend.domain.user.entity.User;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
