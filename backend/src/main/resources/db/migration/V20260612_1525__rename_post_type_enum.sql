@@ -1,0 +1,3 @@
+-- alter: posts.post_type ENUM 값 변경 (REQUEST → RECRUITING, JOB_OFFER → JOB_SEARCH)
+ALTER TABLE posts
+    MODIFY COLUMN post_type ENUM('RECRUITING', 'JOB_SEARCH') NULL;
