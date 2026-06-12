@@ -63,7 +63,8 @@ export default function OnboardingProfilePage() {
       return;
     }
 
-    router.push('/');
+    const user = await response.json();
+    router.push(user.role === 'EDITOR' ? '/onboarding/editor-profile' : '/');
   };
 
   return (

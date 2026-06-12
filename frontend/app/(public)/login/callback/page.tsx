@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/api';
 
 function LoginCallbackContent() {
   const router = useRouter();
@@ -19,7 +20,22 @@ function LoginCallbackContent() {
 
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
-    router.replace(onboardingRequired ? '/onboarding/role' : '/');
+
+    if (!onboardingRequired) {
+      router.replace('/');
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((user) => {
+        router.replace(user?.role ? '/onboarding/profile' : '/onboarding/role');
+      })
+      .catch(() => router.replace('/onboarding/role'));
   }, [router, searchParams]);
 
   return (

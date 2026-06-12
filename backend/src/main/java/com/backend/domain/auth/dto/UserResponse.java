@@ -29,7 +29,7 @@ public record UserResponse(
                 name,
                 phone,
                 user.getRole(),
-                user.getRole() == null
+                user.getRole() == null || name == null || name.isBlank() || phone == null || phone.isBlank()
         );
     }
 }
