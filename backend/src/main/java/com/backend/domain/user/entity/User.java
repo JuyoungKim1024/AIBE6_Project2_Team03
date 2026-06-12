@@ -83,4 +83,8 @@ public class User {
     public void updateRole(UserRole role) {
         this.role = role;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }
