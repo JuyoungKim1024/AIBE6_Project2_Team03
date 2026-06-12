@@ -130,10 +130,10 @@ export function NavBar() {
                 <Link href={`/profile/${user.id}`} onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
                   공개 프로필
                 </Link>
-                <Link href="/profile/edit" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
-                  프로필 관리
+                <Link href="/mypage" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                  마이페이지
                 </Link>
-                <Link href="/mypage/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
+                <Link href="/settings" onClick={() => setMobileOpen(false)} className="block px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface">
                   설정
                 </Link>
               </>

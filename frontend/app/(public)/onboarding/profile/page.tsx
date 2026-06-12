@@ -15,6 +15,18 @@ async function readErrorMessage(response: Response) {
   }
 }
 
+function formatPhoneNumber(value: string) {
+  const numbers = value.replace(/\D/g, '').slice(0, 11);
+
+  if (numbers.length <= 3) {
+    return numbers;
+  }
+  if (numbers.length <= 7) {
+    return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+  }
+  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
+}
+
 export default function OnboardingProfilePage() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -91,7 +103,7 @@ export default function OnboardingProfilePage() {
             </div>
             <div>
               <label className="block text-sm font-bold text-text-primary mb-2">전화번호</label>
-              <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-1234-5678" className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary transition-colors" />
+              <input type="tel" value={phone} onChange={(event) => setPhone(formatPhoneNumber(event.target.value))} placeholder="010-1234-5678" className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary transition-colors" />
             </div>
             <div>
               <label className="block text-sm font-bold text-text-primary mb-2">닉네임</label>

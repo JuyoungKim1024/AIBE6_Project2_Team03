@@ -51,7 +51,7 @@ export default function OnboardingRolePage() {
       return;
     }
 
-    router.push('/onboarding/profile');
+    router.push(selectedRole === 'EDITOR' ? '/onboarding/editor-profile' : '/onboarding/profile');
   };
 
   return (
