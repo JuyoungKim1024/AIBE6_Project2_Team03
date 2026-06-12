@@ -195,9 +195,13 @@ export default function HomePage() {
             </div>
             <Link href="/jobs" className="text-primary font-medium hover:underline hidden sm:block">전체보기 &rarr;</Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mockFeaturedEditors.map((editor) => <EditorCard key={editor.id} {...editor} />)}
-          </div>
+          {mockFeaturedEditors.length === 0 ? (
+            <div className="text-center py-20 text-text-muted">이달의 탑 에디터를 선정 중입니다.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {mockFeaturedEditors.map((editor) => <EditorCard key={editor.id} {...editor} />)}
+            </div>
+          )}
         </div>
       </section>
     </div>
