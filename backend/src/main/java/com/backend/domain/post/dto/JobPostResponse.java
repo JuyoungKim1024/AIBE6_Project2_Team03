@@ -10,7 +10,9 @@ public record JobPostResponse(
         String id,
         AuthorResponse author,
         String title,
-        Integer price,
+        Integer minPrice,
+        Integer maxPrice,
+        boolean priceVisible,
         JobPost.PostType postType,
         List<String> fieldTags,
         List<String> toolTags,
@@ -25,7 +27,9 @@ public record JobPostResponse(
                 post.getId(),
                 AuthorResponse.from(post.getAuthor()),
                 post.getTitle(),
-                post.getPrice(),
+                post.getMinPrice(),
+                post.getMaxPrice(),
+                post.isPriceVisible(),
                 post.getPostType(),
                 post.getTags().stream()
                         .filter(t -> t.getTagType() == PostTag.TagType.FIELD)
