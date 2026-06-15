@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PortfolioRepository extends JpaRepository<Portfolio, String> {
     List<Portfolio> findByUser_IdOrderByDisplayOrderAsc(String userId);
+
+    java.util.Optional<Portfolio> findByUser_IdAndRepresentativeTrue(String userId);
 }
