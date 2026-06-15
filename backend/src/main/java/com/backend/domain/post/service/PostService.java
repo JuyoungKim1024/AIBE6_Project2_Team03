@@ -29,7 +29,7 @@ public class PostService {
     }
 
     public JobPostDetailResponse getJobPost(String id) {
-        JobPost post = jobPostRepository.findById(id)
+        JobPost post = jobPostRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
         return JobPostDetailResponse.from(post);
     }
@@ -41,7 +41,7 @@ public class PostService {
     }
 
     public CommunityPostDetailResponse getCommunityPost(String id) {
-        CommunityPost post = communityPostRepository.findById(id)
+        CommunityPost post = communityPostRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
         return CommunityPostDetailResponse.from(post);
     }
