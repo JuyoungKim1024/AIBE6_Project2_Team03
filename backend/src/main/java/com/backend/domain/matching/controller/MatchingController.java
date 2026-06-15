@@ -31,8 +31,9 @@ public class MatchingController {
     public List<BlindEditorResponse> searchEditors(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String tool,
+            @RequestParam(required = false) String videoLength,
             @RequestParam(required = false) Integer maxPrice) {
-        return matchingService.searchEditors(category, tool, maxPrice);
+        return matchingService.searchEditors(category, tool, videoLength, maxPrice);
     }
 
     // GET /api/matching/editors/{editorId}

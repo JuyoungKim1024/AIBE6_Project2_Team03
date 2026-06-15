@@ -24,6 +24,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("SELECT u FROM User u WHERE u.role = 'EDITOR' AND u.matchEnabled = true AND u.createdAt >= :since")
     List<User> findEligibleEditors(@Param("since") LocalDateTime since);
 
-    @Query("SELECT u FROM User u WHERE u.role = 'EDITOR' AND u.matchEnabled = true AND u.matchPrice IS NOT NULL AND (:maxPrice IS NULL OR u.matchPrice <= :maxPrice)")
+    @Query("SELECT DISTINCT u FROM User u JOIN Portfolio p ON p.user.id = u.id AND p.representative = true WHERE u.role = 'EDITOR' AND u.matchEnabled = true AND u.matchPrice IS NOT NULL AND (:maxPrice IS NULL OR u.matchPrice <= :maxPrice)")
     List<User> findMatchableEditors(@Param("maxPrice") Integer maxPrice);
 }

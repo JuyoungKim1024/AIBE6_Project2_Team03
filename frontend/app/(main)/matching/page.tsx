@@ -42,6 +42,7 @@ export default function MatchingPage() {
       const params = new URLSearchParams();
       if (category) params.set('category', category);
       if (tool && tool !== '상관없음') params.set('tool', tool);
+      if (videoLength && videoLength !== '상관없음') params.set('videoLength', videoLength);
       params.set('maxPrice', String(maxPrice));
 
       const res = await fetch(`${API_BASE_URL}/api/matching/editors?${params}`);

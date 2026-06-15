@@ -31,12 +31,12 @@ public class MatchingService {
     private final MyPageMatchRequestRepository matchRequestRepository;
 
     // GET /api/matching/editors
-    public List<BlindEditorResponse> searchEditors(String category, String tool, Integer maxPrice) {
+    public List<BlindEditorResponse> searchEditors(String category, String tool, String videoLength, Integer maxPrice) {
         List<BlindEditorResponse> results = new ArrayList<>();
         for (User user : userRepository.findMatchableEditors(maxPrice)) {
             if (results.size() >= MAX_RESULTS) break;
             List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(user.getId());
-            if (matchesFilters(tags, category, tool)) {
+            if (matchesFilters(tags, category, tool, videoLength)) {
                 List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(user.getId());
                 results.add(BlindEditorResponse.of(user, tags, portfolios));
             }
@@ -44,7 +44,7 @@ public class MatchingService {
         return results;
     }
 
-    private boolean matchesFilters(List<UserTag> tags, String category, String tool) {
+    private boolean matchesFilters(List<UserTag> tags, String category, String tool, String videoLength) {
         if (category != null && !category.isBlank()) {
             boolean hasCategory = tags.stream()
                     .filter(t -> t.getTagType() == UserTagType.FIELD)
@@ -56,6 +56,12 @@ public class MatchingService {
                     .filter(t -> t.getTagType() == UserTagType.TOOL)
                     .anyMatch(t -> t.getTagName().equalsIgnoreCase(tool));
             if (!hasTool) return false;
+        }
+        if (videoLength != null && !videoLength.isBlank() && !videoLength.equals("상관없음")) {
+            boolean hasVideoLength = tags.stream()
+                    .filter(t -> t.getTagType() == UserTagType.CONTENT_TYPE)
+                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(videoLength));
+            if (!hasVideoLength) return false;
         }
         return true;
     }
