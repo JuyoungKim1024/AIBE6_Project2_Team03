@@ -12,9 +12,10 @@ export interface MatchingCardProps {
   videoLength: string;
   minPrice: number;
   maxPrice: number;
+  priceUnit?: string;
 }
 
-export function MatchingCard({ id, thumbnails, categories, tools, videoLength, minPrice, maxPrice }: MatchingCardProps) {
+export function MatchingCard({ id, thumbnails, categories, tools, videoLength, minPrice, maxPrice, priceUnit = '원/분' }: MatchingCardProps) {
   return (
     <div className="group bg-surface rounded-xl border border-border overflow-hidden hover:border-primary/50 transition-colors flex flex-col h-full">
       <Link href={`/matching/editor/${id}`} className="relative grid grid-cols-2 gap-0.5 bg-border aspect-video overflow-hidden">
@@ -48,8 +49,8 @@ export function MatchingCard({ id, thumbnails, categories, tools, videoLength, m
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-text-secondary font-medium">예상 단가</span>
             <div className="font-mono text-sm font-bold text-text-primary">
-              ₩{new Intl.NumberFormat('ko-KR').format(minPrice)} ~ ₩{new Intl.NumberFormat('ko-KR').format(maxPrice)}
-              <span className="font-sans text-xs text-text-muted font-normal">/분</span>
+              ₩{new Intl.NumberFormat('ko-KR').format(minPrice)}
+              <span className="font-sans text-xs text-text-muted font-normal ml-0.5">{priceUnit}</span>
             </div>
           </div>
           <Link href={`/matching/editor/${id}`} className="block w-full py-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white text-center rounded-lg text-sm font-bold transition-colors">
