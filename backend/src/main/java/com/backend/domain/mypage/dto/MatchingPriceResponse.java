@@ -4,8 +4,8 @@ import com.backend.domain.user.entity.MatchPriceUnit;
 
 public record MatchingPriceResponse(
         boolean matchEnabled,
-        Integer matchPrice,
+        Integer matchPriceMin,
+        Integer matchPriceMax,
         MatchPriceUnit matchPriceUnit,
         boolean representativePortfolioConfigured
-) {
-}
+) {}
