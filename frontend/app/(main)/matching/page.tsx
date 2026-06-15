@@ -7,7 +7,7 @@ import { MatchingCard } from '@/components/matching/MatchingCard';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-const CATEGORIES = ['게임', '뷰티', '브이로그', 'IT/테크', '예능', '정보전달', '음악', '기타'];
+const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
 const TOOLS = ['상관없음', 'Premiere Pro', 'Final Cut', 'After Effects', 'DaVinci Resolve'];
 const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
 
