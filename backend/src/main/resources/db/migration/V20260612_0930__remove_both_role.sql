@@ -1,0 +1,6 @@
+UPDATE users
+SET role = NULL
+WHERE role = 'BOTH';
+
+ALTER TABLE users
+    MODIFY role ENUM('YOUTUBER', 'EDITOR') NULL;

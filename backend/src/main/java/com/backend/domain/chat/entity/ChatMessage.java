@@ -22,7 +22,7 @@ public class ChatMessage extends BaseEntity {
     private User sender;
 
     @Column(columnDefinition="TEXT")
-    String content;
+    private String content;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

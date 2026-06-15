@@ -8,5 +8,16 @@
 # Editor
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
+
+# Local secrets
+SOCIAL_LOGIN_KEYS.md
+*.md
+*.local.md
+frontend/.env.local
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.properties
+
+.claude/

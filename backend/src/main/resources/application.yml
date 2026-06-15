@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: dev
+    active: dev,local
 
   jpa:
     hibernate:
@@ -13,3 +13,6 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.flywaydb: debug
+
+server:
+  port: 8080

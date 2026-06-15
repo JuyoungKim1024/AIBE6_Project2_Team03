@@ -1,0 +1,185 @@
+package com.backend.domain.mypage.service;
+
+import com.backend.domain.chat.dto.MyChatRoomResponseDTO;
+import com.backend.domain.chat.entity.ChatMessage;
+import com.backend.domain.chat.entity.ChatParticipant;
+import com.backend.domain.chat.repository.ChatMessageRepository;
+import com.backend.domain.chat.repository.ChatParticipantRepository;
+import com.backend.domain.mypage.dto.*;
+import com.backend.domain.mypage.entity.MatchRequest;
+import com.backend.domain.mypage.entity.MatchRequestStatus;
+import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
+import com.backend.domain.mypage.repository.MyPageProjectRepository;
+import com.backend.domain.profile.entity.Project;
+import com.backend.domain.user.entity.Profile;
+import com.backend.domain.user.entity.User;
+import com.backend.domain.user.repository.ProfileRepository;
+import com.backend.domain.user.repository.UserRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Service
+public class MyPageService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+
+    private final ChatParticipantRepository chatParticipantRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final MyPageMatchRequestRepository matchRequestRepository;
+    private final MyPageProjectRepository projectRepository;
+    private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
+
+    public MyPageService(
+            ChatParticipantRepository chatParticipantRepository,
+            ChatMessageRepository chatMessageRepository,
+            MyPageMatchRequestRepository matchRequestRepository,
+            MyPageProjectRepository projectRepository,
+            UserRepository userRepository,
+            ProfileRepository profileRepository
+    ) {
+        this.chatParticipantRepository = chatParticipantRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.matchRequestRepository = matchRequestRepository;
+        this.projectRepository = projectRepository;
+        this.userRepository = userRepository;
+        this.profileRepository = profileRepository;
+    }
+
+    public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
+        return chatParticipantRepository.findByUser_Id(userId)
+                .stream()
+                .map(roomUser -> toChatRoomResponse(userId, roomUser))
+                .toList();
+    }
+
+    public MyProjectsResponse getProjects(String userId) {
+        List<MyMatchRequestResponse> received = matchRequestRepository
+                .findByEditor_IdAndStatusOrderByCreatedAtDesc(userId, MatchRequestStatus.WAITING)
+                .stream()
+                .map(this::toMatchRequestResponse)
+                .toList();
+
+        List<MyProjectResponse> ongoing = projectRepository
+                .findByRequester_IdOrEditor_IdOrderByUpdatedAtDesc(userId, userId)
+                .stream()
+                .map(project -> toProjectResponse(userId, project))
+                .toList();
+
+        return new MyProjectsResponse(received, ongoing);
+    }
+
+    public MatchingPriceResponse getMatchingPrice(String userId) {
+        User user = getUser(userId);
+        return new MatchingPriceResponse(
+                user.isMatchEnabled(),
+                user.getMatchPrice(),
+                user.getMatchPriceUnit(),
+                hasRepresentativePortfolio(userId)
+        );
+    }
+
+    @Transactional
+    public MatchingPriceResponse updateMatchingPrice(String userId, MatchingPriceRequest request) {
+        User user = getUser(userId);
+
+        if (request.matchEnabled()) {
+            if (request.matchPrice() == null || request.matchPrice() <= 0) {
+                throw new IllegalArgumentException("단가를 먼저 설정해주세요");
+            }
+            if (!request.representativePortfolioConfigured() && !hasRepresentativePortfolio(userId)) {
+                throw new IllegalArgumentException("대표 포트폴리오를 먼저 설정해주세요");
+            }
+        }
+
+        user.updateMatchingPrice(request.matchEnabled(), request.matchPrice(), request.matchPriceUnit());
+        return getMatchingPrice(userId);
+    }
+
+    public PublicContentVisibilityResponse getPublicContentVisibility(String userId) {
+        return profileRepository.findByUser_Id(userId)
+                .map(profile -> new PublicContentVisibilityResponse(
+                        profile.isPublicPostsVisible(),
+                        profile.isPublicLikedPostsVisible()
+                ))
+                .orElseGet(() -> new PublicContentVisibilityResponse(false, false));
+    }
+
+    @Transactional
+    public PublicContentVisibilityResponse updatePublicContentVisibility(String userId, PublicContentVisibilityRequest request) {
+        User user = getUser(userId);
+        Profile profile = profileRepository.findByUser_Id(userId)
+                .orElseGet(() -> profileRepository.save(new Profile(user, null, null)));
+        boolean publicPostsVisible = request.publicPostsVisible() == null
+                ? profile.isPublicPostsVisible()
+                : request.publicPostsVisible();
+        boolean publicLikedPostsVisible = request.publicLikedPostsVisible() == null
+                ? profile.isPublicLikedPostsVisible()
+                : request.publicLikedPostsVisible();
+        profile.updatePublicContentVisibility(publicPostsVisible, publicLikedPostsVisible);
+        return new PublicContentVisibilityResponse(
+                profile.isPublicPostsVisible(),
+                profile.isPublicLikedPostsVisible()
+        );
+    }
+
+    private User getUser(String userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
+    private boolean hasRepresentativePortfolio(String userId) {
+        return profileRepository.findByUser_Id(userId)
+                .map(profile -> profile.getRepresentativePortfolioId() != null && !profile.getRepresentativePortfolioId().isBlank())
+                .orElse(false);
+    }
+
+    private MyChatRoomResponseDTO toChatRoomResponse(String userId, ChatParticipant roomUser) {
+        String roomId = roomUser.getChatRoom().getId();
+        String partnerName = chatParticipantRepository.findByChatRoom_Id(roomId)
+                .stream()
+                .map(ChatParticipant::getUser)
+                .filter(user -> !user.getId().equals(userId))
+                .map(User::getNickname)
+                .findFirst()
+                .orElse("알 수 없음");
+
+        ChatMessage lastMessage = chatMessageRepository.findTopByChatRoom_IdOrderByCreatedAtDesc(roomId);
+
+        return new MyChatRoomResponseDTO(
+                roomId,
+                partnerName,
+                lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),
+                formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
+                roomUser.getUnreadCount()
+        );
+    }
+
+    private MyMatchRequestResponse toMatchRequestResponse(MatchRequest request) {
+        return new MyMatchRequestResponse(
+                request.getId(),
+                request.getRequester().getNickname(),
+                request.getStatus().name(),
+                formatDate(request.getCreatedAt())
+        );
+    }
+
+    private MyProjectResponse toProjectResponse(String userId, Project project) {
+        User partner = project.getRequester().getId().equals(userId) ? project.getEditor() : project.getRequester();
+        return new MyProjectResponse(
+                project.getId(),
+                partner.getNickname(),
+                project.getField(),
+                project.getStatus().name(),
+                formatDate(project.getUpdatedAt())
+        );
+    }
+
+    private String formatDate(LocalDateTime dateTime) {
+        return dateTime == null ? "" : dateTime.format(DATE_FORMATTER);
+    }
+}
