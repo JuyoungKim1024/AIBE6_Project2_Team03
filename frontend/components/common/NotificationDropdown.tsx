@@ -63,8 +63,11 @@ export function NotificationDropdown() {
         prev.map((n) => (n.id === notification.id ? { ...n, status: 'ACCEPTED' } : n)),
       );
       setOpen(false);
-      const chatRoomId = data.chatRoomId;
-      router.push(chatRoomId ? `/chat/${chatRoomId}` : '/chat');
+      // TODO: 채팅 페이지 구현 후 아래 주석으로 교체
+      // const chatRoomId = data.chatRoomId;
+      // router.push(chatRoomId ? `/chat/${chatRoomId}` : '/chat');
+      // 현재는 채팅 페이지(/chat/[id])가 없어 마이페이지로 임시 이동
+      router.push('/mypage');
     } catch {
       // 에러 무시
     }
