@@ -5,12 +5,18 @@ import com.backend.domain.mypage.dto.MyChatRoomResponse;
 import com.backend.domain.mypage.dto.MyProjectsResponse;
 import com.backend.domain.mypage.dto.MatchingPriceRequest;
 import com.backend.domain.mypage.dto.MatchingPriceResponse;
+import com.backend.domain.mypage.dto.PortfolioItemRequest;
+import com.backend.domain.mypage.dto.PortfolioItemResponse;
 import com.backend.domain.mypage.dto.PublicContentVisibilityRequest;
 import com.backend.domain.mypage.dto.PublicContentVisibilityResponse;
+import com.backend.domain.mypage.dto.TagsResponse;
+import com.backend.domain.mypage.dto.UpdateTagsRequest;
 import com.backend.domain.mypage.service.MyPageService;
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,5 +68,33 @@ public class MyPageController {
             @RequestBody PublicContentVisibilityRequest request
     ) {
         return myPageService.updatePublicContentVisibility(authService.resolveUserId(authorizationHeader), request);
+    }
+
+    @GetMapping("/portfolios")
+    public List<PortfolioItemResponse> getPortfolios(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getPortfolios(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PutMapping("/portfolios")
+    public ResponseEntity<Void> savePortfolios(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody List<PortfolioItemRequest> items
+    ) {
+        myPageService.savePortfolios(authService.resolveUserId(authorizationHeader), items);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/tags")
+    public TagsResponse getTags(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getTags(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PutMapping("/tags")
+    public ResponseEntity<Void> updateTags(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody UpdateTagsRequest request
+    ) {
+        myPageService.updateTags(authService.resolveUserId(authorizationHeader), request);
+        return ResponseEntity.ok().build();
     }
 }

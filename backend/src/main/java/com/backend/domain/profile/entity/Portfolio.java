@@ -13,6 +13,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Getter
 @Entity
 @Table(name = "portfolios")
@@ -47,4 +49,14 @@ public class Portfolio {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public Portfolio(User user, String title, String thumbnailUrl, String imageUrl, int displayOrder, boolean representative) {
+        this.id = UUID.randomUUID().toString();
+        this.user = user;
+        this.title = title;
+        this.thumbnailUrl = thumbnailUrl;
+        this.imageUrl = imageUrl;
+        this.displayOrder = displayOrder;
+        this.representative = representative;
+    }
 }
