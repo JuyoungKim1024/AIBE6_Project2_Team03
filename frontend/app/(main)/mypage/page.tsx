@@ -1010,6 +1010,7 @@ function MypageContent() {
   const sectionParam = searchParams.get('tab') as Section | null;
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const defaultSection: Section = userRole === 'EDITOR' ? 'editor-profile' : 'posts';
   const activeSection = sectionParam && sectionIds.includes(sectionParam) ? sectionParam : defaultSection;
   const [isEditorProfileRegistered, setIsEditorProfileRegistered] = useState(false);
@@ -1017,19 +1018,34 @@ function MypageContent() {
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
+      router.replace('/login');
+      setIsAuthChecking(false);
       return;
     }
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}/api/auth/me`, {
+    fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
-      .then((response) => response.ok ? response.json() : null)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Login required');
+        }
+        return response.json();
+      })
       .then((data) => {
         setUserRole(data?.role ?? null);
         setUserId(data?.id ?? null);
+      })
+      .catch(() => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        router.replace('/login');
+      })
+      .finally(() => {
+        setIsAuthChecking(false);
       });
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (sectionParam && !sectionIds.includes(sectionParam)) {
@@ -1054,6 +1070,14 @@ function MypageContent() {
     }
     router.push(`/mypage?tab=${section}`);
   };
+
+  if (isAuthChecking) {
+    return <div className="min-h-screen flex items-center justify-center text-text-muted">로딩 중...</div>;
+  }
+
+  if (!userId) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen py-8">

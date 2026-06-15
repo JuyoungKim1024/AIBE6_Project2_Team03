@@ -214,9 +214,13 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-        <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
-          <User size={16} className="text-text-secondary" />
-        </div>
+        {user.profileImage ? (
+          <img src={user.profileImage} alt={user.nickname} className="w-8 h-8 rounded-full object-cover bg-surface-elevated border border-border" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+            <User size={16} className="text-text-secondary" />
+          </div>
+        )}
         <span className="text-sm font-medium text-text-primary">{user.nickname}</span>
         <ChevronDown size={14} className={`text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>

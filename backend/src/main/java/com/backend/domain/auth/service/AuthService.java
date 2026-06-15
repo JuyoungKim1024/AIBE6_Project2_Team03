@@ -113,6 +113,7 @@ public class AuthService {
         }
 
         user.updateNickname(nickname);
+        user.updateProfileImage(request.profileImage());
         Profile profile = profileRepository.findByUser_Id(userId)
                 .orElseGet(() -> profileRepository.save(new Profile(user, name, phone)));
         profile.update(name, phone);
