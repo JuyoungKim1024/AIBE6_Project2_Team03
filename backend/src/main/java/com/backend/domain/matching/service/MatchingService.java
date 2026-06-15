@@ -31,9 +31,9 @@ public class MatchingService {
     private final MyPageMatchRequestRepository matchRequestRepository;
 
     // GET /api/matching/editors
-    public List<BlindEditorResponse> searchEditors(String category, String tool, String videoLength, Integer maxPrice) {
+    public List<BlindEditorResponse> searchEditors(String category, String tool, String videoLength, Integer minPrice, Integer maxPrice) {
         List<BlindEditorResponse> results = new ArrayList<>();
-        for (User user : userRepository.findMatchableEditors(maxPrice)) {
+        for (User user : userRepository.findMatchableEditors(maxPrice, minPrice)) {
             if (results.size() >= MAX_RESULTS) break;
             List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(user.getId());
             if (matchesFilters(tags, category, tool, videoLength)) {

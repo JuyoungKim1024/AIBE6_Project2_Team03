@@ -17,7 +17,8 @@ type BlindEditor = {
   thumbnails: string[];
   categories: string[];
   tools: string[];
-  matchPrice: number | null;
+  matchPriceMin: number | null;
+  matchPriceMax: number | null;
   matchPriceUnit: string;
 };
 
@@ -26,7 +27,8 @@ export default function MatchingPage() {
   const [category, setCategory] = useState('');
   const [tool, setTool] = useState('상관없음');
   const [videoLength, setVideoLength] = useState('롱폼');
-  const [maxPrice, setMaxPrice] = useState(15000);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [editors, setEditors] = useState<BlindEditor[]>([]);
   const [error, setError] = useState('');
 
@@ -44,7 +46,8 @@ export default function MatchingPage() {
       if (category) params.set('category', category);
       if (tool && tool !== '상관없음') params.set('tool', tool);
       if (videoLength && videoLength !== '상관없음') params.set('videoLength', videoLength);
-      params.set('maxPrice', String(maxPrice));
+      if (minPrice !== '') params.set('minPrice', minPrice);
+      if (maxPrice !== '') params.set('maxPrice', maxPrice);
 
       const res = await fetch(`${API_BASE_URL}/api/matching/editors?${params}`);
       if (!res.ok) throw new Error();
@@ -164,22 +167,33 @@ export default function MatchingPage() {
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-end mb-3">
-                    <label className="block text-sm font-bold text-text-primary">희망 단가 (분당 최대)</label>
-                    <span className="font-mono text-primary font-bold">₩{new Intl.NumberFormat('ko-KR').format(maxPrice)}</span>
+                  <label className="block text-sm font-bold text-text-primary mb-3">희망 단가 범위 (원)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="최소"
+                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-text-secondary font-bold">~</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="최대"
+                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="3000"
-                    max="30000"
-                    step="1000"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(Number(e.target.value))}
-                    className="w-full accent-primary h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-text-muted mt-2 font-mono">
-                    <span>₩3,000</span><span>₩30,000+</span>
-                  </div>
+                  {minPrice && maxPrice && (
+                    <p className="text-xs text-text-secondary mt-2">
+                      {Number(minPrice).toLocaleString()}원 ~ {Number(maxPrice).toLocaleString()}원
+                    </p>
+                  )}
                 </div>
 
                 <button
@@ -244,8 +258,8 @@ export default function MatchingPage() {
                         categories={editor.categories}
                         tools={editor.tools}
                         videoLength={videoLength}
-                        minPrice={editor.matchPrice ?? 0}
-                        maxPrice={(editor.matchPrice ?? 0) + 3000}
+                        minPrice={editor.matchPriceMin ?? 0}
+                        maxPrice={editor.matchPriceMax ?? 0}
                         priceUnit={editor.matchPriceUnit}
                       />
                     </div>
