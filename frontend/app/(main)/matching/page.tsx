@@ -8,7 +8,8 @@ import { MatchingCard } from '@/components/matching/MatchingCard';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
-const TOOLS = ['상관없음', 'Premiere Pro', 'Final Cut', 'After Effects', 'DaVinci Resolve'];
+const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
+const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
 
 type BlindEditor = {
@@ -94,14 +95,43 @@ export default function MatchingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-text-primary mb-3">선호하는 편집 툴</label>
-                  <div className="flex flex-wrap gap-3">
-                    {TOOLS.map((t) => (
+                  <label className="block text-sm font-bold text-text-primary mb-3">선호하는 툴</label>
+                  <button
+                    type="button"
+                    onClick={() => setTool('상관없음')}
+                    className={`mb-3 px-4 py-2 rounded-xl border text-sm transition-all ${
+                      tool === '상관없음'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-surface-elevated text-text-secondary'
+                    }`}
+                  >
+                    상관없음
+                  </button>
+                  <p className="text-xs text-text-muted mb-2">영상편집 툴</p>
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {VIDEO_TOOLS.map((t) => (
                       <button
                         key={t}
                         type="button"
                         onClick={() => setTool(t)}
-                        className={`flex-1 min-w-[120px] px-4 py-3 rounded-xl border text-sm transition-all ${
+                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+                          tool === t
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface-elevated text-text-secondary'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-text-muted mb-2">디자인 툴</p>
+                  <div className="flex flex-wrap gap-3">
+                    {DESIGN_TOOLS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTool(t)}
+                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
                           tool === t
                             ? 'border-primary bg-primary/10 text-primary'
                             : 'border-border bg-surface-elevated text-text-secondary'
