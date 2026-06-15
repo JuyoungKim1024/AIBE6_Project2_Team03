@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown } from 'lucide-react';
 import { EditorCard } from '@/components/profile/EditorCard';
+import { useAuth } from '@/hooks/useAuth';
+import { useModal } from '@/store/modalStore';
 
 type SearchCategory = 'jobs' | 'community';
 
@@ -30,10 +32,22 @@ const quickAccessCards = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { openModal } = useModal();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('jobs');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleQuickCardClick = (e: React.MouseEvent, path: string) => {
+    if (path === '/matching' && user?.role === 'EDITOR') {
+      e.preventDefault();
+      openModal({
+        title: '유튜버 전용 서비스',
+        message: '맞춤매칭은 유튜버 계정에서만 이용할 수 있습니다.\n에디터로 로그인된 상태에서는 접근할 수 없어요.',
+      });
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -170,7 +184,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {quickAccessCards.map((card, i) => (
               <motion.div key={card.path} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.1 }}>
-                <Link href={card.path} className="group block bg-surface border border-border rounded-2xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all">
+                <Link href={card.path} onClick={(e) => handleQuickCardClick(e, card.path)} className="group block bg-surface border border-border rounded-2xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all">
                   <div className={`inline-flex p-3 rounded-xl bg-surface-elevated ${card.color} mb-5`}>
                     <card.icon size={28} />
                   </div>
