@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Camera, Trash2, User } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const DELETE_CONFIRMATION = '탈퇴하겠습니다';
@@ -24,11 +24,21 @@ function formatPhoneNumber(value: string) {
   return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
 }
 
+function readImageAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [nickname, setNickname] = useState('');
+  const [profileImage, setProfileImage] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileError, setProfileError] = useState('');
   const [isProfileSubmitting, setIsProfileSubmitting] = useState(false);
@@ -41,6 +51,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
+      router.replace('/login');
       return;
     }
 
@@ -57,8 +68,23 @@ export default function SettingsPage() {
         setName(data.name ?? '');
         setPhone(data.phone ?? '');
         setNickname(data.nickname ?? '');
+        setProfileImage(data.profileImage ?? '');
       });
-  }, []);
+  }, [router]);
+
+  const changeProfileImage = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setProfileError('이미지 파일만 등록할 수 있습니다');
+      return;
+    }
+
+    setProfileImage(await readImageAsDataUrl(file));
+    setProfileError('');
+    setProfileMessage('');
+  };
 
   const saveProfile = async () => {
     if (!canSaveProfile) {
@@ -84,7 +110,7 @@ export default function SettingsPage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ name, phone, nickname }),
+      body: JSON.stringify({ name, phone, nickname, profileImage }),
     });
     setIsProfileSubmitting(false);
 
@@ -92,6 +118,9 @@ export default function SettingsPage() {
       setProfileError(await readErrorMessage(response));
       return;
     }
+    const savedUser = await response.json();
+    setProfileImage(savedUser.profileImage ?? profileImage);
+    window.dispatchEvent(new CustomEvent('authUserUpdated', { detail: savedUser }));
     setProfileMessage('사용자 정보가 저장되었습니다.');
   };
 
@@ -134,8 +163,22 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-text-primary mb-8">설정</h1>
         <section className="bg-surface border border-border rounded-xl p-6 mb-6">
           <h2 className="text-lg font-bold text-text-primary mb-1">사용자 정보변경</h2>
-          <p className="text-sm text-text-secondary mb-6">이름, 전화번호, 닉네임을 변경합니다.</p>
+          <p className="text-sm text-text-secondary mb-6">프로필 이미지, 이름, 전화번호, 닉네임을 변경합니다.</p>
           <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              {profileImage ? (
+                <img src={profileImage} alt="프로필 이미지" className="w-20 h-20 rounded-full object-cover bg-surface-elevated border border-border" />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-surface-elevated border border-border flex items-center justify-center text-text-muted">
+                  <User size={30} />
+                </div>
+              )}
+              <label className="inline-flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-surface-elevated border border-border text-text-primary hover:border-primary cursor-pointer transition-colors">
+                <Camera size={16} />
+                이미지 등록
+                <input type="file" accept="image/*" className="hidden" onChange={(event) => changeProfileImage(event.target.files?.[0])} />
+              </label>
+            </div>
             <label className="block">
               <span className="block text-sm font-bold text-text-primary mb-2">이름</span>
               <input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름을 입력해주세요" className="form-input" />

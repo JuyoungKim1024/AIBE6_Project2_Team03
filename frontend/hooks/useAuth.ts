@@ -6,6 +6,7 @@ import { API_BASE_URL } from '@/lib/api';
 export type AuthUser = {
   id: string;
   nickname: string;
+  profileImage?: string | null;
   role: 'YOUTUBER' | 'EDITOR' | null;
   onboardingRequired: boolean;
 };
@@ -39,6 +40,19 @@ export function useAuth() {
         setUser(null);
       })
       .finally(() => setIsAuthChecked(true));
+  }, []);
+
+  useEffect(() => {
+    const handleUserUpdated = (event: Event) => {
+      const updatedUser = (event as CustomEvent<Partial<AuthUser>>).detail;
+      if (!updatedUser) {
+        return;
+      }
+      setUser((current) => current ? { ...current, ...updatedUser } : current);
+    };
+
+    window.addEventListener('authUserUpdated', handleUserUpdated);
+    return () => window.removeEventListener('authUserUpdated', handleUserUpdated);
   }, []);
 
   return { user, setUser, isAuthChecked };
