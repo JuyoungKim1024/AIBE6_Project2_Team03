@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -31,34 +32,40 @@ public class MatchingService {
 
     // GET /api/matching/editors
     public List<BlindEditorResponse> searchEditors(String category, String tool, Integer maxPrice) {
-        return userRepository.findMatchableEditors(maxPrice).stream()
-                .filter(user -> {
-                    if (category == null || category.isBlank()) return true;
-                    return userTagRepository.findByUser_IdAndTagTypeOrderByTagNameAsc(user.getId(), UserTagType.FIELD)
-                            .stream().anyMatch(t -> t.getTagName().equalsIgnoreCase(category));
-                })
-                .filter(user -> {
-                    if (tool == null || tool.isBlank() || tool.equals("상관없음")) return true;
-                    return userTagRepository.findByUser_IdAndTagTypeOrderByTagNameAsc(user.getId(), UserTagType.TOOL)
-                            .stream().anyMatch(t -> t.getTagName().equalsIgnoreCase(tool));
-                })
-                .limit(MAX_RESULTS)
-                .map(this::toBlindResponse)
-                .toList();
+        List<BlindEditorResponse> results = new ArrayList<>();
+        for (User user : userRepository.findMatchableEditors(maxPrice)) {
+            if (results.size() >= MAX_RESULTS) break;
+            List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(user.getId());
+            if (matchesFilters(tags, category, tool)) {
+                List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(user.getId());
+                results.add(BlindEditorResponse.of(user, tags, portfolios));
+            }
+        }
+        return results;
+    }
+
+    private boolean matchesFilters(List<UserTag> tags, String category, String tool) {
+        if (category != null && !category.isBlank()) {
+            boolean hasCategory = tags.stream()
+                    .filter(t -> t.getTagType() == UserTagType.FIELD)
+                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(category));
+            if (!hasCategory) return false;
+        }
+        if (tool != null && !tool.isBlank() && !tool.equals("상관없음")) {
+            boolean hasTool = tags.stream()
+                    .filter(t -> t.getTagType() == UserTagType.TOOL)
+                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(tool));
+            if (!hasTool) return false;
+        }
+        return true;
     }
 
     // GET /api/matching/editors/{editorId}
     public BlindEditorResponse getEditorDetail(String editorId) {
         User user = userRepository.findById(editorId)
                 .orElseThrow(() -> new IllegalArgumentException("에디터를 찾을 수 없습니다."));
-        return toBlindResponse(user);
-    }
-
-    private BlindEditorResponse toBlindResponse(User user) {
-        List<UserTag> tags = new java.util.ArrayList<>();
-        tags.addAll(userTagRepository.findByUser_IdAndTagTypeOrderByTagNameAsc(user.getId(), UserTagType.FIELD));
-        tags.addAll(userTagRepository.findByUser_IdAndTagTypeOrderByTagNameAsc(user.getId(), UserTagType.TOOL));
-        List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(user.getId());
+        List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(editorId);
+        List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(editorId);
         return BlindEditorResponse.of(user, tags, portfolios);
     }
 

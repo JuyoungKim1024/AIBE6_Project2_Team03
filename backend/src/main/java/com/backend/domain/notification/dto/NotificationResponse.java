@@ -11,7 +11,6 @@ public record NotificationResponse(
         String status,
         String senderName,
         String senderAvatar,
-        String matchingId,
         String chatRoomId,
         String createdAt
 ) {
@@ -28,7 +27,6 @@ public record NotificationResponse(
                 toFrontendStatus(request.getStatus()),
                 request.getRequester().getNickname(),
                 request.getRequester().getProfileImage(),
-                request.getId(),
                 chatRoomId,
                 request.getCreatedAt() != null ? request.getCreatedAt().format(FORMATTER) : null
         );

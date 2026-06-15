@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserTagRepository extends JpaRepository<UserTag, String> {
     List<UserTag> findByUser_IdAndTagTypeOrderByTagNameAsc(String userId, UserTagType tagType);
+    List<UserTag> findByUser_IdOrderByTagNameAsc(String userId);
 }

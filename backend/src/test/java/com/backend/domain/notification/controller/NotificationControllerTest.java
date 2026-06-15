@@ -85,7 +85,6 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
                 .andExpect(jsonPath("$[0].senderName").value(requester.getNickname()))
                 .andExpect(jsonPath("$[0].senderAvatar").isEmpty())
-                .andExpect(jsonPath("$[0].matchingId").value(matchRequest.getId()))
                 .andExpect(jsonPath("$[0].chatRoomId").doesNotExist());
     }
 
@@ -117,7 +116,6 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.type").value("MATCHING_REQUEST"))
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
                 .andExpect(jsonPath("$.senderName").value(requester.getNickname()))
-                .andExpect(jsonPath("$.matchingId").value(matchRequest.getId()))
                 .andExpect(jsonPath("$.chatRoomId").isString());
 
         MatchRequest updated = matchRequestRepository.findById(matchRequest.getId()).orElseThrow();
@@ -138,7 +136,6 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.type").value("MATCHING_REQUEST"))
                 .andExpect(jsonPath("$.status").value("REJECTED"))
                 .andExpect(jsonPath("$.senderName").value(requester.getNickname()))
-                .andExpect(jsonPath("$.matchingId").value(matchRequest.getId()))
                 .andExpect(jsonPath("$.chatRoomId").doesNotExist());
 
         MatchRequest updated = matchRequestRepository.findById(matchRequest.getId()).orElseThrow();
