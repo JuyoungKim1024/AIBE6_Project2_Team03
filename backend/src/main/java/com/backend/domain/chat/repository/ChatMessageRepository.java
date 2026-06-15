@@ -4,9 +4,9 @@ import com.backend.domain.chat.entity.ChatMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, String> {
-    Optional<ChatMessage> findByChatRoomIdOrderByCreatedAtAsc(String roomId);
+    List<ChatMessage> findByChatRoom_IdOrderByCreatedAtAsc(String roomId);
 }

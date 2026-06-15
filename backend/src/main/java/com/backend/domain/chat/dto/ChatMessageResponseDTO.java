@@ -1,10 +1,9 @@
 package com.backend.domain.chat.dto;
 
-import com.backend.domain.chat.type.ChatRoomType;
+import com.backend.domain.chat.entity.ChatMessage;
 import com.backend.domain.chat.type.MessageType;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record ChatMessageResponseDTO (
         String messageId,
@@ -12,7 +11,17 @@ public record ChatMessageResponseDTO (
         String senderId,
         String content,
         MessageType messageType,
-        LocalDateTime createAt
+        LocalDateTime createdAt
 ){
+    public ChatMessageResponseDTO(ChatMessage chatMessage) {
+        this (
+                chatMessage.getId(),
+                chatMessage.getChatRoom().getId(),
+                chatMessage.getSender().getId(),
+                chatMessage.getContent(),
+                chatMessage.getMessageType(),
+                chatMessage.getCreatedAt()
+        );
+    }
 
 }

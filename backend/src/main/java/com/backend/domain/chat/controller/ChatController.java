@@ -1,13 +1,15 @@
 package com.backend.domain.chat.controller;
 
+import com.backend.domain.chat.dto.ChatMessageResponseDTO;
+import com.backend.domain.chat.dto.ChatMessageSendRequestDTO;
+import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomResponseDTO;
-import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.service.ChatService;
-import com.backend.domain.post.entity.Post;
-import com.backend.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.stereotype.Controller;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,16 +20,16 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
-
-    @PostMapping
-    public void saveRoom() {
-
-    }
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping
     public List<ChatRoomResponseDTO> findRoomsByUserId (@RequestParam String userId) {
         return chatService.findRoomsByUserId(userId);
+    }
 
+    @PostMapping
+    public ChatRoomResponseDTO createRoom(@RequestBody ChatRoomCreateRequestDTO dto) {
+        return chatService.createRoom(dto);
     }
 
     @GetMapping("/{roomId}")
@@ -35,5 +37,19 @@ public class ChatController {
         return chatService.findByChatRoomId(roomId);
     }
 
+    @GetMapping("/{roomId}/messages")
+    public List<ChatMessageResponseDTO> findByChatRoomMessage(@PathVariable String roomId) {
+        return chatService.getMessageList(roomId);
+    }
 
+    @PostMapping("/{roomId}/messages")
+    public ChatMessageResponseDTO saveMessage(@PathVariable String roomId, @RequestBody ChatMessageSendRequestDTO dto) {
+        return chatService.saveMessage(roomId, dto);
+    }
+
+    @MessageMapping("/chat/rooms/{roomId}/messages")
+    public void sendMessage(@DestinationVariable String roomId, @Payload ChatMessageSendRequestDTO dto) {
+        ChatMessageResponseDTO response = chatService.saveMessage(roomId, dto);
+        messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId, response);
+    }
 }
