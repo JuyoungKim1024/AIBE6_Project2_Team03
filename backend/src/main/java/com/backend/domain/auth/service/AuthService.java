@@ -79,7 +79,7 @@ public class AuthService {
                 LocalDateTime.now().plusSeconds(refreshTokenValiditySeconds)
         ));
 
-        return AuthResponse.of(accessToken, refreshToken, user);
+        return AuthResponse.of(accessToken, refreshToken, user, isOnboardingRequired(user));
     }
 
     @Transactional
@@ -113,6 +113,7 @@ public class AuthService {
         }
 
         user.updateNickname(nickname);
+        user.updateProfileImage(request.profileImage());
         Profile profile = profileRepository.findByUser_Id(userId)
                 .orElseGet(() -> profileRepository.save(new Profile(user, name, phone)));
         profile.update(name, phone);
@@ -161,6 +162,16 @@ public class AuthService {
         return profileRepository.findByUser_Id(user.getId())
                 .map(profile -> UserResponse.from(user, profile.getName(), profile.getPhone()))
                 .orElseGet(() -> UserResponse.from(user));
+    }
+
+    private boolean isOnboardingRequired(User user) {
+        if (user.getRole() == null) {
+            return true;
+        }
+        return profileRepository.findByUser_Id(user.getId())
+                .map(profile -> profile.getName() == null || profile.getName().isBlank()
+                        || profile.getPhone() == null || profile.getPhone().isBlank())
+                .orElse(true);
     }
 
     private String extractAccessToken(String authorizationHeader) {

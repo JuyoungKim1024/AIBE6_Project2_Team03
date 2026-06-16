@@ -50,6 +50,18 @@ type MatchingPrice = {
   representativePortfolioConfigured: boolean;
 };
 
+function hasLocalRepresentativePortfolio(userId: string) {
+  try {
+    const portfolios = JSON.parse(localStorage.getItem(`editorPortfolios:${userId}`) ?? '[]') as Array<{
+      isPublic: boolean;
+      order: number;
+    }>;
+    return portfolios.some((portfolio) => portfolio.isPublic && portfolio.order === 1);
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   user: AuthUser;
   onLogout: () => void;
@@ -92,21 +104,29 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       },
     })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: MatchingPrice | null) => setMatchingPrice(data))
+      .then((data: MatchingPrice | null) => {
+        setMatchingPrice(data ? {
+          ...data,
+          representativePortfolioConfigured: data.representativePortfolioConfigured || hasLocalRepresentativePortfolio(user.id),
+        } : null);
+      })
       .catch(() => setMatchingPrice(null));
-  }, [isEditor]);
+  }, [isEditor, user.id]);
 
   useEffect(() => {
     const handleUpdated = (event: Event) => {
       const detail = (event as CustomEvent<MatchingPrice>).detail;
       if (detail) {
-        setMatchingPrice(detail);
+        setMatchingPrice({
+          ...detail,
+          representativePortfolioConfigured: detail.representativePortfolioConfigured || hasLocalRepresentativePortfolio(user.id),
+        });
       }
     };
 
     window.addEventListener('matchingPriceUpdated', handleUpdated);
     return () => window.removeEventListener('matchingPriceUpdated', handleUpdated);
-  }, []);
+  }, [user.id]);
 
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');
@@ -136,11 +156,12 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     }
 
     const nextEnabled = !matchingPrice.matchEnabled;
+    const representativePortfolioConfigured = matchingPrice.representativePortfolioConfigured || hasLocalRepresentativePortfolio(user.id);
     if (nextEnabled && (!matchingPrice.matchPrice || matchingPrice.matchPrice <= 0)) {
       alert('단가를 먼저 설정해주세요');
       return;
     }
-    if (nextEnabled && !matchingPrice.representativePortfolioConfigured) {
+    if (nextEnabled && !representativePortfolioConfigured) {
       alert('대표 포트폴리오를 먼저 설정해주세요');
       return;
     }
@@ -162,6 +183,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
           ...matchingPrice,
           matchEnabled: nextEnabled,
           matchPriceUnit: matchingPrice.matchPriceUnit ?? 'MIN',
+          representativePortfolioConfigured,
         }),
       });
 
@@ -172,8 +194,12 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       }
 
       const saved = await response.json();
-      setMatchingPrice(saved);
-      window.dispatchEvent(new CustomEvent('matchingPriceUpdated', { detail: saved }));
+      const nextMatchingPrice = {
+        ...saved,
+        representativePortfolioConfigured: saved.representativePortfolioConfigured || representativePortfolioConfigured,
+      };
+      setMatchingPrice(nextMatchingPrice);
+      window.dispatchEvent(new CustomEvent('matchingPriceUpdated', { detail: nextMatchingPrice }));
     } finally {
       setIsMatchSaving(false);
     }
@@ -188,9 +214,13 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-        <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
-          <User size={16} className="text-text-secondary" />
-        </div>
+        {user.profileImage ? (
+          <img src={user.profileImage} alt={user.nickname} className="w-8 h-8 rounded-full object-cover bg-surface-elevated border border-border" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+            <User size={16} className="text-text-secondary" />
+          </div>
+        )}
         <span className="text-sm font-medium text-text-primary">{user.nickname}</span>
         <ChevronDown size={14} className={`text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>

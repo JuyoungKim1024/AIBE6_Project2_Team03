@@ -22,8 +22,9 @@ public class PostService {
     private final JobPostRepository jobPostRepository;
     private final CommunityPostRepository communityPostRepository;
 
-    public List<JobPostResponse> getJobPosts(JobPost.PostType postType) {
-        return jobPostRepository.findByPostType(postType).stream()
+    public List<JobPostResponse> getJobPosts(JobPost.PostType postType, String q) {
+        String keyword = (q == null || q.isBlank()) ? null : q;
+        return jobPostRepository.search(postType, keyword).stream()
                 .map(JobPostResponse::from)
                 .toList();
     }
@@ -34,8 +35,9 @@ public class PostService {
         return JobPostDetailResponse.from(post);
     }
 
-    public List<CommunityPostResponse> getCommunityPosts(CommunityPost.Category category) {
-        return communityPostRepository.findByCategory(category).stream()
+    public List<CommunityPostResponse> getCommunityPosts(CommunityPost.Category category, String q) {
+        String keyword = (q == null || q.isBlank()) ? null : q;
+        return communityPostRepository.search(category, keyword).stream()
                 .map(CommunityPostResponse::from)
                 .toList();
     }

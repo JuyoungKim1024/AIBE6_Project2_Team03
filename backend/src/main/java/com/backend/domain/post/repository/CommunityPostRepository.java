@@ -15,4 +15,6 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, St
 
     @Query("SELECT p FROM CommunityPost p JOIN FETCH p.author WHERE p.id = :id")
     Optional<CommunityPost> findByIdWithAuthor(@Param("id") String id);
+    @Query("SELECT c FROM CommunityPost c WHERE (:category IS NULL OR c.category = :category) AND (:q IS NULL OR c.title LIKE %:q% OR c.content LIKE %:q%)")
+    List<CommunityPost> search(@Param("category") CommunityPost.Category category, @Param("q") String q);
 }

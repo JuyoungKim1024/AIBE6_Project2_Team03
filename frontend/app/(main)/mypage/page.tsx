@@ -121,20 +121,31 @@ type PortfolioDraft = {
   isRepresentative: boolean;
 };
 
-function loadPortfolios() {
+function getUserStorageKey(userId: string | null | undefined, key: string) {
+  return userId ? `${key}:${userId}` : null;
+}
+
+function loadPortfolios(userId?: string | null) {
+  const storageKey = getUserStorageKey(userId, 'editorPortfolios');
+  if (!storageKey) {
+    return [];
+  }
   try {
-    return JSON.parse(localStorage.getItem('editorPortfolios') ?? '[]') as PortfolioDraft[];
+    return JSON.parse(localStorage.getItem(storageKey) ?? '[]') as PortfolioDraft[];
   } catch {
     return [];
   }
 }
 
-function savePortfolios(portfolios: PortfolioDraft[]) {
-  localStorage.setItem('editorPortfolios', JSON.stringify(portfolios));
+function savePortfolios(userId: string | null | undefined, portfolios: PortfolioDraft[]) {
+  const storageKey = getUserStorageKey(userId, 'editorPortfolios');
+  if (storageKey) {
+    localStorage.setItem(storageKey, JSON.stringify(portfolios));
+  }
 }
 
-function hasLocalRepresentativePortfolio() {
-  return loadPortfolios().some((portfolio) => portfolio.isPublic && portfolio.order === 1);
+function hasLocalRepresentativePortfolio(userId?: string | null) {
+  return loadPortfolios(userId).some((portfolio) => portfolio.isPublic && portfolio.order === 1);
 }
 
 function readFileAsDataUrl(file: File) {
@@ -213,7 +224,7 @@ async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
   return response.json();
 }
 
-function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
+function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSaved: () => void }) {
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [selectedDetails, setSelectedDetails] = useState<string[]>([]);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
@@ -222,17 +233,20 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('editorProfileDraft');
+    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
+    const saved = storageKey ? localStorage.getItem(storageKey) : null;
     if (!saved) {
+      setPortfolios(loadPortfolios(userId));
+      setIsRegistered(false);
       return;
     }
     const profile = JSON.parse(saved);
     setSelectedFields(profile.selectedFields ?? []);
     setSelectedDetails(profile.selectedDetails ?? []);
     setSelectedTools(profile.selectedTools ?? []);
-    setPortfolios(loadPortfolios());
+    setPortfolios(loadPortfolios(userId));
     setIsRegistered(true);
-  }, []);
+  }, [userId]);
 
   const toggleValue = (value: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
     setter((prev) => prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]);
@@ -255,7 +269,7 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
           isRepresentative: sameTypeCount === 0,
         },
       ];
-      savePortfolios(next);
+      savePortfolios(userId, next);
       return next;
     });
   };
@@ -263,18 +277,22 @@ function EditorProfileSection({ onSaved }: { onSaved: () => void }) {
   const removePortfolio = (id: string) => {
     setPortfolios((prev) => {
       const next = prev.filter((portfolio) => portfolio.id !== id);
-      savePortfolios(next);
+      savePortfolios(userId, next);
       return next;
     });
   };
 
   const saveEditorProfile = () => {
-    localStorage.setItem('editorProfileDraft', JSON.stringify({
+    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
+    if (!storageKey) {
+      return;
+    }
+    localStorage.setItem(storageKey, JSON.stringify({
       selectedFields,
       selectedDetails,
       selectedTools,
     }));
-    savePortfolios(portfolios);
+    savePortfolios(userId, portfolios);
     setIsRegistered(true);
     onSaved();
     setMessage('에디터 프로필이 저장되었습니다.');
@@ -643,24 +661,24 @@ function ProjectsSection() {
   );
 }
 
-function PortfolioManagementSection() {
+function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
   const [selectedOrders, setSelectedOrders] = useState<Record<PortfolioType, string[]>>({ video: [], image: [] });
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const saved = loadPortfolios();
+    const saved = loadPortfolios(userId);
     setPortfolios(saved);
     setSelectedOrders({
       video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
       image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
     });
-  }, []);
+  }, [userId]);
 
   const updatePortfolio = (id: string, patch: Partial<PortfolioDraft>) => {
     setPortfolios((prev) => {
       const next = prev.map((portfolio) => portfolio.id === id ? { ...portfolio, ...patch } : portfolio);
-      savePortfolios(next);
+      savePortfolios(userId, next);
       return next;
     });
   };
@@ -683,7 +701,7 @@ function PortfolioManagementSection() {
         }
         return { ...portfolio, order: index + 1, isRepresentative: index === 0 };
       });
-      savePortfolios(next);
+      savePortfolios(userId, next);
       return next;
     });
     setMessage('순번이 저장되었습니다.');
@@ -754,7 +772,7 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
   );
 }
 
-function PricingSection() {
+function PricingSection({ userId }: { userId: string | null }) {
   const [matchEnabled, setMatchEnabled] = useState(false);
   const [matchPrice, setMatchPrice] = useState('');
   const [matchPriceUnit, setMatchPriceUnit] = useState<MatchPriceUnit>('MIN');
@@ -770,67 +788,109 @@ function PricingSection() {
         setMatchEnabled(data.matchEnabled);
         setMatchPrice(data.matchPrice ? String(data.matchPrice) : '');
         setMatchPriceUnit(data.matchPriceUnit ?? 'MIN');
-        setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio());
+        setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId));
       })
       .catch(() => {
         setMatchEnabled(false);
         setMatchPrice('');
         setMatchPriceUnit('MIN');
-        setRepresentativePortfolioConfigured(hasLocalRepresentativePortfolio());
+        setRepresentativePortfolioConfigured(hasLocalRepresentativePortfolio(userId));
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [userId]);
+
+  useEffect(() => {
+    const handleUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<MatchingPrice>).detail;
+      if (!detail) {
+        return;
+      }
+
+      const hasRepresentative = detail.representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
+      setMatchEnabled(detail.matchEnabled);
+      setMatchPrice(detail.matchPrice ? String(detail.matchPrice) : '');
+      setMatchPriceUnit(detail.matchPriceUnit ?? 'MIN');
+      setRepresentativePortfolioConfigured(hasRepresentative);
+    };
+
+    window.addEventListener('matchingPriceUpdated', handleUpdated);
+    return () => window.removeEventListener('matchingPriceUpdated', handleUpdated);
+  }, [userId]);
+
+  const hasRepresentativeConfigured = () => representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
 
   const validateEnable = () => {
     if (!matchPrice || Number(matchPrice) <= 0) {
       setError('단가를 먼저 설정해주세요');
       return false;
     }
-    if (!representativePortfolioConfigured && !hasLocalRepresentativePortfolio()) {
+    if (!hasRepresentativeConfigured()) {
       setError('대표 포트폴리오를 먼저 설정해주세요');
       return false;
     }
     return true;
   };
 
-  const toggleMatchEnabled = () => {
+  const publishMatchingPriceUpdate = (saved: MatchingPrice, representativeConfigured: boolean) => {
+    window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
+      detail: {
+        matchEnabled: saved.matchEnabled,
+        matchPrice: saved.matchPrice,
+        matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
+        representativePortfolioConfigured: representativeConfigured,
+      },
+    }));
+  };
+
+  const toggleMatchEnabled = async () => {
     setMessage('');
     setError('');
-    if (!matchEnabled && !validateEnable()) {
+    const nextEnabled = !matchEnabled;
+    if (nextEnabled && !validateEnable()) {
       return;
     }
-    setMatchEnabled((prev) => !prev);
+
+    const previousEnabled = matchEnabled;
+    setMatchEnabled(nextEnabled);
+    try {
+      const representativeConfigured = hasRepresentativeConfigured();
+      const saved = await patchMyPageData<MatchingPrice>('/api/users/me/matching-price', {
+        matchEnabled: nextEnabled,
+        matchPrice: matchPrice ? Number(matchPrice) : null,
+        matchPriceUnit,
+        representativePortfolioConfigured: representativeConfigured,
+      });
+      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
+      setMatchEnabled(saved.matchEnabled);
+      setMatchPrice(saved.matchPrice ? String(saved.matchPrice) : '');
+      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
+      setRepresentativePortfolioConfigured(hasRepresentative);
+      publishMatchingPriceUpdate(saved, hasRepresentative);
+    } catch (saveError) {
+      setMatchEnabled(previousEnabled);
+      setError(saveError instanceof Error ? saveError.message : '??μ뿉 ?ㅽ뙣?덉뒿?덈떎.');
+    }
   };
 
   const savePricing = async () => {
     setMessage('');
     setError('');
 
-    if (matchEnabled && !validateEnable()) {
-      return;
-    }
-
     setIsSaving(true);
     try {
+      const representativeConfigured = representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
       const saved = await patchMyPageData<MatchingPrice>('/api/users/me/matching-price', {
         matchEnabled,
         matchPrice: matchPrice ? Number(matchPrice) : null,
         matchPriceUnit,
-        representativePortfolioConfigured: representativePortfolioConfigured || hasLocalRepresentativePortfolio(),
+        representativePortfolioConfigured: representativeConfigured,
       });
       setMatchEnabled(saved.matchEnabled);
       setMatchPrice(saved.matchPrice ? String(saved.matchPrice) : '');
       setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
-      const hasRepresentative = saved.representativePortfolioConfigured || hasLocalRepresentativePortfolio();
+      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
       setRepresentativePortfolioConfigured(hasRepresentative);
-      window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
-        detail: {
-          matchEnabled: saved.matchEnabled,
-          matchPrice: saved.matchPrice,
-          matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
-          representativePortfolioConfigured: hasRepresentative,
-        },
-      }));
+      publishMatchingPriceUpdate(saved, hasRepresentative);
       setMessage('맞춤매칭 단가 설정이 저장되었습니다.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
@@ -844,7 +904,7 @@ function PricingSection() {
       {isLoading ? (
         <EmptyState message="맞춤매칭 설정을 불러오는 중입니다" />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl bg-surface-elevated border border-border p-5">
             <div>
               <div className="font-bold text-text-primary">맞춤매칭</div>
@@ -855,7 +915,12 @@ function PricingSection() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
+          <div className="rounded-xl bg-surface-elevated border border-border p-5">
+            <div className="mb-4">
+              <div className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Pricing</div>
+              <div className="font-bold text-text-primary">노출 단가</div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
             <Field label="노출 단가">
               <input
                 type="number"
@@ -880,6 +945,10 @@ function PricingSection() {
                 </button>
               </div>
             </div>
+            </div>
+            <button type="button" onClick={savePricing} disabled={isSaving} className={`mt-5 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isSaving ? 'bg-surface text-text-muted' : 'bg-primary text-white hover:bg-primary/90'}`}>
+              저장
+            </button>
           </div>
 
           <div className={`rounded-xl border p-4 text-sm ${representativePortfolioConfigured ? 'border-primary/40 bg-primary/10 text-primary' : 'border-accent/40 bg-accent/10 text-accent'}`}>
@@ -889,7 +958,7 @@ function PricingSection() {
           {error && <p className="text-sm font-bold text-accent">{error}</p>}
           {message && <p className="text-sm font-bold text-primary">{message}</p>}
 
-          <button type="button" onClick={savePricing} disabled={isSaving} className={`px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isSaving ? 'bg-surface-elevated text-text-muted' : 'bg-primary text-white hover:bg-primary/90'}`}>
+          <button type="button" onClick={savePricing} disabled={isSaving} className="hidden">
             저장
           </button>
         </div>
@@ -940,6 +1009,8 @@ function MypageContent() {
   const router = useRouter();
   const sectionParam = searchParams.get('tab') as Section | null;
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const defaultSection: Section = userRole === 'EDITOR' ? 'editor-profile' : 'posts';
   const activeSection = sectionParam && sectionIds.includes(sectionParam) ? sectionParam : defaultSection;
   const [isEditorProfileRegistered, setIsEditorProfileRegistered] = useState(false);
@@ -947,16 +1018,34 @@ function MypageContent() {
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
+      router.replace('/login');
+      setIsAuthChecking(false);
       return;
     }
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}/api/auth/me`, {
+    fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => setUserRole(data?.role ?? null));
-  }, []);
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Login required');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setUserRole(data?.role ?? null);
+        setUserId(data?.id ?? null);
+      })
+      .catch(() => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        router.replace('/login');
+      })
+      .finally(() => {
+        setIsAuthChecking(false);
+      });
+  }, [router]);
 
   useEffect(() => {
     if (sectionParam && !sectionIds.includes(sectionParam)) {
@@ -968,8 +1057,9 @@ function MypageContent() {
   }, [activeSection, defaultSection, router, sectionParam, userRole]);
 
   useEffect(() => {
-    setIsEditorProfileRegistered(Boolean(localStorage.getItem('editorProfileDraft')));
-  }, [activeSection]);
+    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
+    setIsEditorProfileRegistered(Boolean(storageKey && localStorage.getItem(storageKey)));
+  }, [activeSection, userId]);
 
   const visibleSidebarItems = sidebarItems.filter((item) => !item.editorOnly || userRole === 'EDITOR');
 
@@ -980,6 +1070,14 @@ function MypageContent() {
     }
     router.push(`/mypage?tab=${section}`);
   };
+
+  if (isAuthChecking) {
+    return <div className="min-h-screen flex items-center justify-center text-text-muted">로딩 중...</div>;
+  }
+
+  if (!userId) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen py-8">
@@ -1004,13 +1102,13 @@ function MypageContent() {
             </nav>
           </aside>
           <div>
-            {activeSection === 'editor-profile' && <EditorProfileSection onSaved={() => setIsEditorProfileRegistered(true)} />}
+            {activeSection === 'editor-profile' && <EditorProfileSection userId={userId} onSaved={() => setIsEditorProfileRegistered(true)} />}
             {activeSection === 'posts' && <PostsSection />}
             {activeSection === 'liked' && <LikedSection />}
             {activeSection === 'chats' && <ChatsSection />}
-            {activeSection === 'portfolio' && <PortfolioManagementSection />}
+            {activeSection === 'portfolio' && <PortfolioManagementSection userId={userId} />}
             {activeSection === 'projects' && <ProjectsSection />}
-            {activeSection === 'pricing' && <PricingSection />}
+            {activeSection === 'pricing' && <PricingSection userId={userId} />}
           </div>
         </div>
       </div>

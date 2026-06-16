@@ -1,6 +1,6 @@
-package com.backend.domain.mypage.dto;
+package com.backend.domain.chat.dto;
 
-public record MyChatRoomResponse(
+public record MyChatRoomResponseDTO(
         String id,
         String partnerName,
         String lastMessage,

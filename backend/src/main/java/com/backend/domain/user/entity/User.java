@@ -36,7 +36,7 @@ public class User {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    @Column(name = "profile_image", length = 500)
+    @Column(name = "profile_image", columnDefinition = "LONGTEXT")
     private String profileImage;
 
     @Enumerated(EnumType.STRING)
@@ -79,7 +79,7 @@ public class User {
 
     public void updateSocialProfile(String providerEmail, String nickname, String profileImage) {
         this.providerEmail = providerEmail;
-        if (profileImage != null && !profileImage.isBlank()) {
+        if ((this.profileImage == null || this.profileImage.isBlank()) && profileImage != null && !profileImage.isBlank()) {
             this.profileImage = profileImage;
         }
     }
@@ -90,6 +90,12 @@ public class User {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateProfileImage(String profileImage) {
+        if (profileImage != null && !profileImage.isBlank()) {
+            this.profileImage = profileImage;
+        }
     }
 
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPrice, MatchPriceUnit matchPriceUnit) {
