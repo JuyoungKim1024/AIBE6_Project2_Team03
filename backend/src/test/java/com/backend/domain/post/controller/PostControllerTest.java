@@ -47,7 +47,7 @@ class PostControllerTest {
                 List.of("숏폼"), List.of("After Effects"),
                 null, 215, 31, 0, LocalDateTime.now()
         );
-        when(postService.getJobPosts(JobPost.PostType.RECRUITING)).thenReturn(List.of(post));
+        when(postService.getJobPosts(JobPost.PostType.RECRUITING, null)).thenReturn(List.of(post));
 
         mockMvc.perform(get("/api/posts/job").param("postType", "RECRUITING"))
                 .andExpect(status().isOk())
@@ -71,7 +71,7 @@ class PostControllerTest {
                 List.of("브이로그"), List.of("Final Cut"),
                 null, 87, 12, 0, LocalDateTime.now()
         );
-        when(postService.getJobPosts(JobPost.PostType.JOB_SEARCH)).thenReturn(List.of(post1, post2));
+        when(postService.getJobPosts(JobPost.PostType.JOB_SEARCH, null)).thenReturn(List.of(post1, post2));
 
         mockMvc.perform(get("/api/posts/job").param("postType", "JOB_SEARCH"))
                 .andExpect(status().isOk())
@@ -81,10 +81,11 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("t3 postType 파라미터 없이 구인구직 목록 조회 시 400을 반환한다")
+    @DisplayName("t3 postType 파라미터 없이 구인구직 목록 조회 시 200을 반환한다")
     void t3_getJobPosts_missingPostType_returns400() throws Exception {
+        when(postService.getJobPosts(null, null)).thenReturn(List.of());
         mockMvc.perform(get("/api/posts/job"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -95,7 +96,7 @@ class PostControllerTest {
                 CommunityPost.Category.FREE, List.of("편집"),
                 null, 63, 0, 0, LocalDateTime.now()
         );
-        when(postService.getCommunityPosts(CommunityPost.Category.FREE)).thenReturn(List.of(post));
+        when(postService.getCommunityPosts(CommunityPost.Category.FREE, null)).thenReturn(List.of(post));
 
         mockMvc.perform(get("/api/posts/community").param("category", "FREE"))
                 .andExpect(status().isOk())
@@ -112,7 +113,7 @@ class PostControllerTest {
                 CommunityPost.Category.INFO, List.of("숏폼"),
                 null, 290, 0, 0, LocalDateTime.now()
         );
-        when(postService.getCommunityPosts(CommunityPost.Category.INFO)).thenReturn(List.of(post));
+        when(postService.getCommunityPosts(CommunityPost.Category.INFO, null)).thenReturn(List.of(post));
 
         mockMvc.perform(get("/api/posts/community").param("category", "INFO"))
                 .andExpect(status().isOk())
@@ -122,9 +123,10 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("t6 category 파라미터 없이 커뮤니티 목록 조회 시 400을 반환한다")
+    @DisplayName("t6 category 파라미터 없이 커뮤니티 목록 조회 시 200을 반환한다")
     void t6_getCommunityPosts_missingCategory_returns400() throws Exception {
+        when(postService.getCommunityPosts(null, null)).thenReturn(List.of());
         mockMvc.perform(get("/api/posts/community"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 }
