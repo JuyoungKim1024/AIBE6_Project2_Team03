@@ -150,6 +150,14 @@ function hasLocalRepresentativePortfolio(userId?: string | null) {
   return loadPortfolios(userId).some((portfolio) => portfolio.isRepresentative && portfolio.displayOrder === 1);
 }
 
+function isAcceptedPortfolioFile(type: PortfolioType, file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (type === 'image') {
+    return ['png', 'jpg', 'jpeg'].includes(extension) || ['image/png', 'image/jpeg'].includes(file.type);
+  }
+  return ['mp4', 'webm', 'mov'].includes(extension) || file.type.startsWith('video/');
+}
+
 function getAccessToken(): string {
   const token = localStorage.getItem('accessToken');
   if (!token) throw new Error('Login required');
@@ -279,8 +287,12 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
   };
 
   const addPortfolio = async (type: PortfolioType, file: File) => {
-    const tempId = `${type}-${Date.now()}`;
-    const sameTypeCount = portfolios.filter((p) => p.type === type).length;
+    if (!isAcceptedPortfolioFile(type, file)) {
+      setMessage(type === 'image' ? 'PNG, JPG, JPEG 이미지만 업로드할 수 있습니다.' : '지원하지 않는 영상 파일입니다.');
+      return;
+    }
+
+    const tempId = `${type}-${Date.now()}-${crypto.randomUUID()}`;
 
     // 업로드 중 임시 항목 추가
     setPortfolios((prev) => [
@@ -291,7 +303,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         title: file.name.replace(/\.[^/.]+$/, ''),
         fileName: file.name,
         url: '',
-        isRepresentative: sameTypeCount === 0,
+        isRepresentative: !prev.some((p) => p.isRepresentative),
         displayOrder: prev.length + 1,
         uploading: true,
       },
@@ -345,6 +357,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           displayOrder: i + 1,
         }))),
       ]);
+      savePortfolios(userId, portfolios);
       setIsRegistered(true);
       onSaved();
       setMessage('에디터 프로필이 저장되었습니다.');
@@ -363,8 +376,8 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         <TagGroup title="영상편집 툴" options={videoTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
         <TagGroup title="디자인 툴" options={designTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PortfolioDropzone type="video" title="영상 포트폴리오 등록" accept="video/*" onAdd={addPortfolio} />
-          <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/*" onAdd={addPortfolio} />
+          <PortfolioDropzone type="video" title="영상 포트폴리오 등록" accept="video/*,.mp4,.webm,.mov" onAdd={addPortfolio} />
+          <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/png,image/jpeg,.png,.jpg,.jpeg" onAdd={addPortfolio} />
         </div>
         <PortfolioPreviewList portfolios={portfolios} onRemove={removePortfolio} />
         {message && (
@@ -386,10 +399,7 @@ function PortfolioDropzone({ type, title, accept, onAdd }: { type: PortfolioType
   const inputId = `${type}-portfolio-input`;
 
   const addFiles = (files: FileList | null) => {
-    const file = files?.[0];
-    if (file) {
-      onAdd(type, file);
-    }
+    Array.from(files ?? []).forEach((file) => onAdd(type, file));
   };
 
   return (
@@ -402,7 +412,10 @@ function PortfolioDropzone({ type, title, accept, onAdd }: { type: PortfolioType
       }}
       className="min-h-44 cursor-pointer rounded-xl border border-dashed border-border bg-surface-elevated p-5 flex flex-col items-center justify-center text-center hover:border-primary/60 transition-colors"
     >
-      <input id={inputId} type="file" accept={accept} className="hidden" onChange={(event) => addFiles(event.target.files)} />
+      <input id={inputId} type="file" accept={accept} multiple className="hidden" onChange={(event) => {
+        addFiles(event.target.files);
+        event.currentTarget.value = '';
+      }} />
       <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
         {type === 'video' ? <Film size={20} /> : <ImageIcon size={20} />}
       </div>
@@ -733,12 +746,28 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const saved = loadPortfolios(userId);
-    setPortfolios(saved);
-    setSelectedOrders({
-      video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
-      image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
-    });
+    if (!userId) return;
+
+    const applyPortfolios = (saved: PortfolioDraft[]) => {
+      setPortfolios(saved);
+      savePortfolios(userId, saved);
+      setSelectedOrders({
+        video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+        image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+      });
+    };
+
+    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number }[]>('/api/users/me/portfolios')
+      .then((data) => applyPortfolios(data.map((item) => ({
+        id: item.id,
+        type: item.type as PortfolioType,
+        title: item.title,
+        fileName: item.title,
+        url: item.url,
+        isRepresentative: item.representative,
+        displayOrder: item.displayOrder,
+      }))))
+      .catch(() => applyPortfolios(loadPortfolios(userId)));
   }, [userId]);
 
   const updatePortfolio = (id: string, patch: Partial<PortfolioDraft>) => {
@@ -757,9 +786,8 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
     });
   };
 
-  const saveOrder = () => {
-    setPortfolios((prev) => {
-      const next = prev.map((portfolio) => {
+  const saveOrder = async () => {
+    const next = portfolios.map((portfolio) => {
         const selectedIds = selectedOrders[portfolio.type];
         const index = selectedIds.indexOf(portfolio.id);
         if (index === -1) {
@@ -767,9 +795,15 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         }
         return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
       });
-      savePortfolios(userId, next);
-      return next;
-    });
+    await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
+      title: p.title,
+      url: p.url,
+      type: p.type,
+      representative: p.isRepresentative,
+      displayOrder: p.displayOrder,
+    })));
+    savePortfolios(userId, next);
+    setPortfolios(next);
     setMessage('순번이 저장되었습니다.');
   };
 
@@ -805,8 +839,10 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
             <div key={portfolio.id} className={`rounded-xl border p-4 transition-colors ${selected ? 'bg-primary/10 border-primary' : 'bg-surface-elevated border-border'}`}>
               <div className="flex gap-3">
                 <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-                  {portfolio.type === 'image' ? (
-                    <img src={portfolio.dataUrl} alt={portfolio.title} className="w-full h-full object-cover" />
+                  {portfolio.type === 'image' && portfolio.url ? (
+                    <img src={portfolio.url} alt={portfolio.title} className="w-full h-full object-cover" />
+                  ) : portfolio.type === 'video' && portfolio.url ? (
+                    <video src={portfolio.url} className="w-full h-full object-cover" muted />
                   ) : (
                     <Film size={24} className="text-text-muted" />
                   )}
