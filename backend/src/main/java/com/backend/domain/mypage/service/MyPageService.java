@@ -165,6 +165,7 @@ public class MyPageService {
     public void savePortfolios(String userId, List<PortfolioItemRequest> items) {
         User user = getUser(userId);
         portfolioRepository.deleteByUser_Id(userId);
+        portfolioRepository.flush();
 
         List<Portfolio> portfolios = new java.util.ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
@@ -194,6 +195,7 @@ public class MyPageService {
     public void updateTags(String userId, UpdateTagsRequest request) {
         User user = getUser(userId);
         userTagRepository.deleteByUser_Id(userId);
+        userTagRepository.flush();
 
         List<UserTag> newTags = new java.util.ArrayList<>();
         if (request.fields() != null) {
