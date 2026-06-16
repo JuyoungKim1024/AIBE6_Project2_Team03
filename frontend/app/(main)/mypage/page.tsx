@@ -878,16 +878,20 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         }
         return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
       });
-    await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
-      title: p.title,
-      url: p.url,
-      type: p.type,
-      representative: p.isRepresentative,
-      displayOrder: p.displayOrder,
-    })));
-    savePortfolios(userId, next);
-    setPortfolios(next);
-    setMessage('순번이 저장되었습니다.');
+    try {
+      await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
+        title: p.title,
+        url: p.url,
+        type: p.type,
+        representative: p.isRepresentative,
+        displayOrder: p.displayOrder,
+      })));
+      savePortfolios(userId, next);
+      setPortfolios(next);
+      setMessage('순번이 저장되었습니다.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : '저장에 실패했습니다.');
+    }
   };
 
   const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder);
@@ -1075,7 +1079,6 @@ function PricingSection({ userId }: { userId: string | null }) {
   const savePricing = async () => {
     setMessage('');
     setError('');
-
     setIsSaving(true);
     try {
       const representativeConfigured = representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
