@@ -1,11 +1,12 @@
 package com.backend.domain.notification.service;
 
-import com.backend.domain.mypage.entity.ChatRoom;
-import com.backend.domain.mypage.entity.ChatRoomUser;
+import com.backend.domain.chat.entity.ChatParticipant;
+import com.backend.domain.chat.entity.ChatRoom;
+import com.backend.domain.chat.repository.ChatParticipantRepository;
+import com.backend.domain.chat.repository.ChatRoomRepository;
+import com.backend.domain.chat.type.ChatRoomType;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
-import com.backend.domain.mypage.repository.ChatRoomRepository;
-import com.backend.domain.mypage.repository.MyPageChatRoomUserRepository;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.notification.dto.NotificationResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import java.util.List;
 public class NotificationService {
 
     private final MyPageMatchRequestRepository matchRequestRepository;
-    private final MyPageChatRoomUserRepository chatRoomUserRepository;
+    private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
 
     // 로그인한 에디터에게 온 WAITING 상태 매칭 요청 목록 반환
@@ -41,9 +42,9 @@ public class NotificationService {
         request.accept();
 
         // 채팅방 생성 및 양측 유저 추가
-        ChatRoom room = chatRoomRepository.save(new ChatRoom(ChatRoom.RoomType.DIRECT));
-        chatRoomUserRepository.save(new ChatRoomUser(room, request.getRequester()));
-        chatRoomUserRepository.save(new ChatRoomUser(room, request.getEditor()));
+        ChatRoom room = chatRoomRepository.save(new ChatRoom(ChatRoomType.DIRECT));
+        chatParticipantRepository.save(new ChatParticipant(room, request.getRequester()));
+        chatParticipantRepository.save(new ChatParticipant(room, request.getEditor()));
 
         return NotificationResponse.from(request, room.getId());
     }
