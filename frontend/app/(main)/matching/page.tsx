@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
+import type { BlindEditor } from '@/types/matching';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -11,16 +12,6 @@ const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악'
 const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
 const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
-
-type BlindEditor = {
-  id: string;
-  thumbnails: string[];
-  categories: string[];
-  tools: string[];
-  matchPriceMin: number | null;
-  matchPriceMax: number | null;
-  matchPriceUnit: string;
-};
 
 export default function MatchingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);

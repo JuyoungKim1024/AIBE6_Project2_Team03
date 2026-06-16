@@ -4,18 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
+import type { BlindEditor } from '@/types/matching';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
-
-type BlindEditor = {
-  id: string;
-  thumbnails: string[];
-  categories: string[];
-  tools: string[];
-  matchPriceMin: number | null;
-  matchPriceMax: number | null;
-  matchPriceUnit: string;
-};
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
 
