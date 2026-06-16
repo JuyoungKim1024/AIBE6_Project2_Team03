@@ -34,7 +34,7 @@ public record BlindEditorResponse(
                 .limit(2)
                 .toList();
 
-        String unitLabel = user.getMatchPriceUnit() == MatchPriceUnit.MIN ? "원/분" : "원/건";
+        String unitLabel = user.getMatchPriceUnit() == MatchPriceUnit.MIN ? "분" : "건";
 
         return new BlindEditorResponse(
                 user.getId(),

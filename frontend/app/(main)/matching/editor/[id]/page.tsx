@@ -4,18 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
+import type { BlindEditor } from '@/types/matching';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
-
-type BlindEditor = {
-  id: string;
-  thumbnails: string[];
-  categories: string[];
-  tools: string[];
-  matchPriceMin: number | null;
-  matchPriceMax: number | null;
-  matchPriceUnit: string;
-};
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -158,7 +149,7 @@ export default function EditorDetailPage() {
               <span className="text-sm font-bold text-text-primary">예상 단가</span>
               <span className="font-bold text-text-primary">
                 ₩{new Intl.NumberFormat('ko-KR').format(editor.matchPriceMin ?? 0)} ~ ₩{new Intl.NumberFormat('ko-KR').format(editor.matchPriceMax ?? 0)}
-                <span className="text-xs text-text-muted font-normal ml-1">{editor.matchPriceUnit}</span>
+                <span className="text-xs text-text-muted font-normal ml-1">원/{editor.matchPriceUnit}</span>
               </span>
             </div>
 

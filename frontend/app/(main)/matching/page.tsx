@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
+import type { BlindEditor } from '@/types/matching';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -11,16 +12,6 @@ const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악'
 const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
 const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
-
-type BlindEditor = {
-  id: string;
-  thumbnails: string[];
-  categories: string[];
-  tools: string[];
-  matchPriceMin: number | null;
-  matchPriceMax: number | null;
-  matchPriceUnit: string;
-};
 
 export default function MatchingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -32,7 +23,8 @@ export default function MatchingPage() {
   const [editors, setEditors] = useState<BlindEditor[]>([]);
   const [error, setError] = useState('');
 
-  const canSearch = category !== '';
+  const isPriceInvalid = minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice);
+  const canSearch = category !== '' && !isPriceInvalid;
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,7 +181,10 @@ export default function MatchingPage() {
                       className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
                     />
                   </div>
-                  {minPrice && maxPrice && (
+                  {isPriceInvalid && (
+                    <p className="text-xs text-accent mt-2">최소 단가는 최대 단가보다 클 수 없습니다.</p>
+                  )}
+                  {!isPriceInvalid && minPrice && maxPrice && (
                     <p className="text-xs text-text-secondary mt-2">
                       {Number(minPrice).toLocaleString()}원 ~ {Number(maxPrice).toLocaleString()}원
                     </p>
