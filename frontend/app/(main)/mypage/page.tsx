@@ -951,7 +951,7 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
                 {selectedOrder === 1 ? (
                   <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>
                 ) : (
-                  <ToggleButton active={false} onClick={() => onUpdate(portfolio.id, { isRepresentative: !portfolio.isRepresentative })} label="일반" />
+                  <span className="px-3 py-2 rounded-lg text-sm font-bold border border-border bg-surface-elevated text-text-secondary">일반</span>
                 )}
               </div>
             </div>
