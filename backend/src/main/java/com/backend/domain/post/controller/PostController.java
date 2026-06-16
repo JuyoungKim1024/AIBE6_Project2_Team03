@@ -36,6 +36,7 @@ public class PostController {
     // GET /api/posts/job/{id}
     @GetMapping("/job/{id}")
     public ResponseEntity<JobPostDetailResponse> getJobPost(@PathVariable String id) {
+
         return ResponseEntity.ok(postService.getJobPost(id));
     }
 
