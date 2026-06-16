@@ -948,8 +948,11 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4">
-                <ToggleButton active={portfolio.isRepresentative} onClick={() => onUpdate(portfolio.id, { isRepresentative: !portfolio.isRepresentative })} label={portfolio.isRepresentative ? '대표' : '일반'} />
-                {selectedOrder === 1 && <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>}
+                {selectedOrder === 1 ? (
+                  <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>
+                ) : (
+                  <span className="px-3 py-2 rounded-lg text-sm font-bold border border-border bg-surface-elevated text-text-secondary">일반</span>
+                )}
               </div>
             </div>
           )})}
@@ -1122,7 +1125,7 @@ function PricingSection({ userId }: { userId: string | null }) {
             <div className="space-y-4">
               <div>
                 <span className="block text-sm font-bold text-text-primary mb-2">단가 범위 (원)</span>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="number"
                     min="1"
@@ -1130,9 +1133,9 @@ function PricingSection({ userId }: { userId: string | null }) {
                     onChange={(event) => { setMatchPriceMin(event.target.value); setError(''); }}
                     onWheel={(e) => e.currentTarget.blur()}
                     placeholder="최소"
-                    className="form-input flex-1"
+                    className="form-input flex-1 min-w-0"
                   />
-                  <span className="text-text-secondary font-bold">~</span>
+                  <span className="text-text-secondary font-bold shrink-0">~</span>
                   <input
                     type="number"
                     min="1"
@@ -1140,7 +1143,7 @@ function PricingSection({ userId }: { userId: string | null }) {
                     onChange={(event) => { setMatchPriceMax(event.target.value); setError(''); }}
                     onWheel={(e) => e.currentTarget.blur()}
                     placeholder="최대"
-                    className="form-input flex-1"
+                    className="form-input flex-1 min-w-0"
                   />
                 </div>
                 {matchPriceMin && matchPriceMax && (
@@ -1318,9 +1321,26 @@ function MypageContent() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-text-primary mb-8">마이페이지</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-8">마이페이지</h1>
+
+        {/* 모바일: 가로 스크롤 탭 */}
+        <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 border-b border-border">
+          {visibleSidebarItems.map((item) => {
+            const isActive = activeSection === item.id;
+            const label = item.id === 'editor-profile' && isEditorProfileRegistered ? '에디터 프로필 수정' : item.label;
+            return (
+              <button key={item.id} type="button" onClick={() => changeSection(item.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors shrink-0 ${isActive ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary bg-surface-elevated'}`}>
+                <item.icon size={14} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-          <aside className="bg-surface border border-border rounded-xl p-3 h-fit lg:sticky lg:top-24">
+          {/* 데스크탑: 사이드바 */}
+          <aside className="hidden lg:block bg-surface border border-border rounded-xl p-3 h-fit lg:sticky lg:top-24">
             <nav className="space-y-1">
               {visibleSidebarItems.map((item) => {
                 const isActive = activeSection === item.id;
