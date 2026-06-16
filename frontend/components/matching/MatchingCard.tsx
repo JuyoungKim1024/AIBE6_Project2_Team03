@@ -16,19 +16,27 @@ export interface MatchingCardProps {
 }
 
 export function MatchingCard({ id, thumbnails, categories, tools, videoLength, minPrice, maxPrice, priceUnit = '원/분' }: MatchingCardProps) {
+  const validThumbs = thumbnails.slice(0, 2);
+  const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
+
   return (
     <div className="group bg-surface rounded-xl border border-border overflow-hidden hover:border-primary/50 transition-colors flex flex-col h-full">
-      <Link href={`/matching/editor/${id}`} className="relative grid grid-cols-2 gap-0.5 bg-border aspect-video overflow-hidden">
-        {thumbnails.slice(0, 2).map((thumb, idx) => (
-          <div key={idx} className="relative w-full h-full">
-            <img src={thumb} alt="Portfolio preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-            {idx === 0 && (
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <PlayCircle size={32} className="text-white opacity-80" />
+      <Link href={`/matching/editor/${id}`} className="relative aspect-video overflow-hidden bg-surface-elevated">
+        {validThumbs.length === 0 && (
+          <div className="w-full h-full flex items-center justify-center text-text-muted text-sm">포트폴리오 없음</div>
+        )}
+        {validThumbs.length === 1 && (
+          <img src={validThumbs[0]} alt="Portfolio preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        )}
+        {validThumbs.length === 2 && (
+          <div className="grid grid-cols-2 gap-0.5 w-full h-full bg-border">
+            {validThumbs.map((thumb, idx) => (
+              <div key={idx} className="relative w-full h-full overflow-hidden">
+                <img src={thumb} alt="Portfolio preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-            )}
+            ))}
           </div>
-        ))}
+        )}
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-md border border-white/10">
           블라인드 프로필
         </div>
@@ -48,9 +56,11 @@ export function MatchingCard({ id, thumbnails, categories, tools, videoLength, m
         <div className="mt-auto pt-3 border-t border-border/50">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-text-secondary font-medium">예상 단가</span>
-            <div className="font-mono text-sm font-bold text-text-primary">
-              ₩{new Intl.NumberFormat('ko-KR').format(minPrice)}
-              <span className="font-sans text-xs text-text-muted font-normal ml-0.5">{priceUnit}</span>
+            <div className="text-sm font-bold text-text-primary">
+              {minPrice > 0 && maxPrice > 0
+                ? <span>₩{fmt(minPrice)} ~ ₩{fmt(maxPrice)}<span className="text-xs text-text-muted font-normal ml-0.5">/{priceUnit === '원/분' ? '분' : '건'}</span></span>
+                : <span className="text-text-muted text-xs">단가 미설정</span>
+              }
             </div>
           </div>
           <Link href={`/matching/editor/${id}`} className="block w-full py-2.5 bg-primary/10 text-primary hover:bg-primary hover:text-white text-center rounded-lg text-sm font-bold transition-colors">
