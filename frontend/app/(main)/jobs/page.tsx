@@ -55,9 +55,11 @@ function JobsContent() {
       return matchesFilter && matchesQuery;
     })
     .sort((a, b) => {
+      // 단가 미공개는 항상 하위
+      if (a.priceVisible !== b.priceVisible) return a.priceVisible ? -1 : 1;
       if (sort === "popular") return b.viewCount - a.viewCount;
       if (sort === "price") return (b.minPrice ?? 0) - (a.minPrice ?? 0);
-      return 0;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
   return (
