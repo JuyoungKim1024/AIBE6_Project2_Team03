@@ -6,6 +6,11 @@ import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.mypage.dto.*;
+import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.profile.entity.UserTag;
+import com.backend.domain.profile.entity.UserTagType;
+import com.backend.domain.profile.repository.PortfolioRepository;
+import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
@@ -33,6 +38,8 @@ public class MyPageService {
     private final MyPageProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
+    private final UserTagRepository userTagRepository;
+    private final PortfolioRepository portfolioRepository;
 
     public MyPageService(
             ChatParticipantRepository chatParticipantRepository,
@@ -40,7 +47,9 @@ public class MyPageService {
             MyPageMatchRequestRepository matchRequestRepository,
             MyPageProjectRepository projectRepository,
             UserRepository userRepository,
-            ProfileRepository profileRepository
+            ProfileRepository profileRepository,
+            UserTagRepository userTagRepository,
+            PortfolioRepository portfolioRepository
     ) {
         this.chatParticipantRepository = chatParticipantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -48,6 +57,8 @@ public class MyPageService {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
+        this.userTagRepository = userTagRepository;
+        this.portfolioRepository = portfolioRepository;
     }
 
     public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
@@ -77,7 +88,8 @@ public class MyPageService {
         User user = getUser(userId);
         return new MatchingPriceResponse(
                 user.isMatchEnabled(),
-                user.getMatchPrice(),
+                user.getMatchPriceMin(),
+                user.getMatchPriceMax(),
                 user.getMatchPriceUnit(),
                 hasRepresentativePortfolio(userId)
         );
@@ -88,15 +100,21 @@ public class MyPageService {
         User user = getUser(userId);
 
         if (request.matchEnabled()) {
-            if (request.matchPrice() == null || request.matchPrice() <= 0) {
-                throw new IllegalArgumentException("단가를 먼저 설정해주세요");
+            if (request.matchPriceMin() == null || request.matchPriceMin() <= 0) {
+                throw new IllegalArgumentException("최소 단가를 설정해주세요");
+            }
+            if (request.matchPriceMax() == null || request.matchPriceMax() <= 0) {
+                throw new IllegalArgumentException("최대 단가를 설정해주세요");
+            }
+            if (request.matchPriceMin() > request.matchPriceMax()) {
+                throw new IllegalArgumentException("최소 단가는 최대 단가보다 클 수 없습니다");
             }
             if (!request.representativePortfolioConfigured() && !hasRepresentativePortfolio(userId)) {
                 throw new IllegalArgumentException("대표 포트폴리오를 먼저 설정해주세요");
             }
         }
 
-        user.updateMatchingPrice(request.matchEnabled(), request.matchPrice(), request.matchPriceUnit());
+        user.updateMatchingPrice(request.matchEnabled(), request.matchPriceMin(), request.matchPriceMax(), request.matchPriceUnit());
         return getMatchingPrice(userId);
     }
 
@@ -127,15 +145,71 @@ public class MyPageService {
         );
     }
 
+    public List<PortfolioItemResponse> getPortfolios(String userId) {
+        return portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(userId)
+                .stream()
+                .map(PortfolioItemResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void savePortfolios(String userId, List<PortfolioItemRequest> items) {
+        User user = getUser(userId);
+        portfolioRepository.deleteByUser_Id(userId);
+        portfolioRepository.flush();
+
+        List<Portfolio> portfolios = new java.util.ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            PortfolioItemRequest item = items.get(i);
+            String thumbnailUrl = "video".equals(item.type()) ? item.url() : null;
+            String imageUrl = "image".equals(item.type()) ? item.url() : null;
+            portfolios.add(new Portfolio(user, item.title(), thumbnailUrl, imageUrl, i + 1, item.representative()));
+        }
+        portfolioRepository.saveAll(portfolios);
+    }
+
+    public TagsResponse getTags(String userId) {
+        List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(userId);
+        List<String> fields = tags.stream()
+                .filter(t -> t.getTagType() == UserTagType.FIELD)
+                .map(UserTag::getTagName).toList();
+        List<String> tools = tags.stream()
+                .filter(t -> t.getTagType() == UserTagType.TOOL)
+                .map(UserTag::getTagName).toList();
+        List<String> contentTypes = tags.stream()
+                .filter(t -> t.getTagType() == UserTagType.CONTENT_TYPE)
+                .map(UserTag::getTagName).toList();
+        return new TagsResponse(fields, tools, contentTypes);
+    }
+
+    @Transactional
+    public void updateTags(String userId, UpdateTagsRequest request) {
+        User user = getUser(userId);
+        userTagRepository.deleteByUser_Id(userId);
+        userTagRepository.flush();
+
+        List<UserTag> newTags = new java.util.ArrayList<>();
+        if (request.fields() != null) {
+            request.fields().forEach(name -> newTags.add(new UserTag(user, UserTagType.FIELD, name)));
+        }
+        if (request.tools() != null) {
+            request.tools().forEach(name -> newTags.add(new UserTag(user, UserTagType.TOOL, name)));
+        }
+        if (request.contentTypes() != null) {
+            request.contentTypes().forEach(name -> newTags.add(new UserTag(user, UserTagType.CONTENT_TYPE, name)));
+        }
+        userTagRepository.saveAll(newTags);
+    }
+
     private User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
     }
 
     private boolean hasRepresentativePortfolio(String userId) {
-        return profileRepository.findByUser_Id(userId)
-                .map(profile -> profile.getRepresentativePortfolioId() != null && !profile.getRepresentativePortfolioId().isBlank())
-                .orElse(false);
+        return portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(userId)
+                .stream()
+                .anyMatch(Portfolio::isRepresentative);
     }
 
     private MyChatRoomResponseDTO toChatRoomResponse(String userId, ChatParticipant roomUser) {

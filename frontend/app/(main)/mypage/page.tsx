@@ -20,6 +20,7 @@ import {
   Upload,
   Wallet,
 } from 'lucide-react';
+import { useModal } from '@/store/modalStore';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing';
 type SidebarItemId = Section | 'settings';
@@ -93,7 +94,8 @@ type MatchPriceUnit = 'MIN' | 'CASE';
 
 type MatchingPrice = {
   matchEnabled: boolean;
-  matchPrice: number | null;
+  matchPriceMin: number | null;
+  matchPriceMax: number | null;
   matchPriceUnit: MatchPriceUnit | null;
   representativePortfolioConfigured: boolean;
 };
@@ -115,10 +117,10 @@ type PortfolioDraft = {
   type: PortfolioType;
   title: string;
   fileName: string;
-  dataUrl: string;
-  order: number;
-  isPublic: boolean;
+  url: string;          // 서버 업로드 후 받은 URL (또는 로컬 미리보기용 objectUrl)
   isRepresentative: boolean;
+  displayOrder: number;
+  uploading?: boolean;  // 업로드 진행 중 여부
 };
 
 function getUserStorageKey(userId: string | null | undefined, key: string) {
@@ -145,66 +147,54 @@ function savePortfolios(userId: string | null | undefined, portfolios: Portfolio
 }
 
 function hasLocalRepresentativePortfolio(userId?: string | null) {
-  return loadPortfolios(userId).some((portfolio) => portfolio.isPublic && portfolio.order === 1);
+  return loadPortfolios(userId).some((portfolio) => portfolio.isRepresentative && portfolio.displayOrder === 1);
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+function getAccessToken(): string {
+  const token = localStorage.getItem('accessToken');
+  if (!token) throw new Error('Login required');
+  return token;
+}
+
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${API_BASE_URL}/api/files/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+    body: formData,
   });
+
+  if (!res.ok) throw new Error('파일 업로드에 실패했습니다.');
+  const data = await res.json();
+  return data.url as string;
 }
 
 async function fetchMyPageData<T>(path: string): Promise<T> {
-  const accessToken = localStorage.getItem('accessToken');
-  if (!accessToken) {
-    throw new Error('Login required');
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to load data');
-  }
-
+  if (!response.ok) throw new Error('Failed to load data');
   return response.json();
 }
 
 async function deleteMyPageData(path: string) {
-  const accessToken = localStorage.getItem('accessToken');
-  if (!accessToken) {
-    throw new Error('Login required');
-  }
-
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to delete data');
-  }
+  if (!response.ok) throw new Error('Failed to delete data');
 }
 
-async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
-  const accessToken = localStorage.getItem('accessToken');
-  if (!accessToken) {
-    throw new Error('Login required');
-  }
-
+async function putMyPageData(path: string, body: unknown): Promise<void> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${getAccessToken()}`,
     },
     body: JSON.stringify(body),
   });
@@ -214,9 +204,28 @@ async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
       const data = await response.json();
       throw new Error(data.message ?? '저장에 실패했습니다.');
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      if (error instanceof Error) throw error;
+      throw new Error('저장에 실패했습니다.');
+    }
+  }
+}
+
+async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    try {
+      const data = await response.json();
+      throw new Error(data.message ?? '저장에 실패했습니다.');
+    } catch (error) {
+      if (error instanceof Error) throw error;
       throw new Error('저장에 실패했습니다.');
     }
   }
@@ -225,27 +234,44 @@ async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
 }
 
 function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSaved: () => void }) {
+  const { openModal } = useModal();
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [selectedDetails, setSelectedDetails] = useState<string[]>([]);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
-    const saved = storageKey ? localStorage.getItem(storageKey) : null;
-    if (!saved) {
-      setPortfolios(loadPortfolios(userId));
-      setIsRegistered(false);
-      return;
-    }
-    const profile = JSON.parse(saved);
-    setSelectedFields(profile.selectedFields ?? []);
-    setSelectedDetails(profile.selectedDetails ?? []);
-    setSelectedTools(profile.selectedTools ?? []);
-    setPortfolios(loadPortfolios(userId));
-    setIsRegistered(true);
+    if (!userId) return;
+
+    fetchMyPageData<{ fields: string[]; tools: string[]; contentTypes: string[] }>('/api/users/me/tags')
+      .then((data) => {
+        setSelectedDetails(data.fields ?? []);
+        setSelectedTools(data.tools ?? []);
+        setSelectedFields(data.contentTypes ?? []);
+        if (data.fields.length > 0 || data.tools.length > 0 || data.contentTypes.length > 0) {
+          setIsRegistered(true);
+        }
+      })
+      .catch(() => {});
+
+    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number }[]>('/api/users/me/portfolios')
+      .then((data) => {
+        const loaded: PortfolioDraft[] = data.map((item) => ({
+          id: item.id,
+          type: item.type as PortfolioType,
+          title: item.title,
+          fileName: item.title,
+          url: item.url,
+          isRepresentative: item.representative,
+          displayOrder: item.displayOrder,
+        }));
+        setPortfolios(loaded);
+        if (loaded.length > 0) setIsRegistered(true);
+      })
+      .catch(() => {});
   }, [userId]);
 
   const toggleValue = (value: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -253,49 +279,80 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
   };
 
   const addPortfolio = async (type: PortfolioType, file: File) => {
-    const dataUrl = await readFileAsDataUrl(file);
-    setPortfolios((prev) => {
-      const sameTypeCount = prev.filter((portfolio) => portfolio.type === type).length;
-      const next = [
-        ...prev,
-        {
-          id: `${type}-${Date.now()}`,
-          type,
-          title: file.name.replace(/\.[^/.]+$/, ''),
-          fileName: file.name,
-          dataUrl,
-          order: sameTypeCount + 1,
-          isPublic: true,
-          isRepresentative: sameTypeCount === 0,
-        },
-      ];
-      savePortfolios(userId, next);
-      return next;
-    });
+    const tempId = `${type}-${Date.now()}`;
+    const sameTypeCount = portfolios.filter((p) => p.type === type).length;
+
+    // 업로드 중 임시 항목 추가
+    setPortfolios((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        type,
+        title: file.name.replace(/\.[^/.]+$/, ''),
+        fileName: file.name,
+        url: '',
+        isRepresentative: sameTypeCount === 0,
+        displayOrder: prev.length + 1,
+        uploading: true,
+      },
+    ]);
+
+    try {
+      const url = await uploadFile(file);
+      setPortfolios((prev) =>
+        prev.map((p) => p.id === tempId ? { ...p, url, uploading: false } : p)
+      );
+    } catch {
+      setPortfolios((prev) => prev.filter((p) => p.id !== tempId));
+      setMessage('파일 업로드에 실패했습니다.');
+    }
   };
 
   const removePortfolio = (id: string) => {
-    setPortfolios((prev) => {
-      const next = prev.filter((portfolio) => portfolio.id !== id);
-      savePortfolios(userId, next);
-      return next;
-    });
+    setPortfolios((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const saveEditorProfile = () => {
-    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
-    if (!storageKey) {
+  const saveEditorProfile = async () => {
+    if (!userId) return;
+
+    if (portfolios.length === 0) {
+      openModal({
+        title: '포트폴리오를 등록해주세요',
+        message: '영상 포트폴리오 또는 이미지 포트폴리오 중 하나 이상을 등록해야 프로필을 저장할 수 있습니다.',
+      });
       return;
     }
-    localStorage.setItem(storageKey, JSON.stringify({
-      selectedFields,
-      selectedDetails,
-      selectedTools,
-    }));
-    savePortfolios(userId, portfolios);
-    setIsRegistered(true);
-    onSaved();
-    setMessage('에디터 프로필이 저장되었습니다.');
+
+    if (portfolios.some((p) => p.uploading)) {
+      openModal({ title: '잠시만요', message: '파일 업로드가 진행 중입니다. 완료 후 저장해주세요.' });
+      return;
+    }
+
+    setIsSaving(true);
+    setMessage('');
+    try {
+      await Promise.all([
+        putMyPageData('/api/users/me/tags', {
+          fields: selectedDetails,
+          tools: selectedTools,
+          contentTypes: selectedFields,
+        }),
+        putMyPageData('/api/users/me/portfolios', portfolios.map((p, i) => ({
+          title: p.title,
+          url: p.url,
+          type: p.type,
+          representative: p.isRepresentative,
+          displayOrder: i + 1,
+        }))),
+      ]);
+      setIsRegistered(true);
+      onSaved();
+      setMessage('에디터 프로필이 저장되었습니다.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : '저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -310,9 +367,15 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/*" onAdd={addPortfolio} />
         </div>
         <PortfolioPreviewList portfolios={portfolios} onRemove={removePortfolio} />
-        {message && <p className="text-sm font-bold text-primary">{message}</p>}
-        <button onClick={saveEditorProfile} className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors">
-          {isRegistered ? '수정' : '등록'}
+        {message && (
+          <p className={`text-sm font-bold ${message.includes('실패') ? 'text-accent' : 'text-primary'}`}>{message}</p>
+        )}
+        <button
+          onClick={saveEditorProfile}
+          disabled={isSaving}
+          className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSaving ? '저장 중...' : isRegistered ? '수정' : '등록'}
         </button>
       </div>
     </SectionCard>
@@ -362,8 +425,10 @@ function PortfolioPreviewList({ portfolios, onRemove }: { portfolios: PortfolioD
       {portfolios.map((portfolio) => (
         <div key={portfolio.id} className="rounded-xl bg-surface-elevated border border-border p-4 flex gap-3">
           <div className="w-20 h-14 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-            {portfolio.type === 'image' ? (
-              <img src={portfolio.dataUrl} alt={portfolio.title} className="w-full h-full object-cover" />
+            {portfolio.uploading ? (
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : portfolio.type === 'image' && portfolio.url ? (
+              <img src={portfolio.url} alt={portfolio.title} className="w-full h-full object-cover" />
             ) : (
               <Film size={22} className="text-text-muted" />
             )}
@@ -371,11 +436,12 @@ function PortfolioPreviewList({ portfolios, onRemove }: { portfolios: PortfolioD
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-primary">{portfolio.type === 'video' ? '영상' : '이미지'}</span>
-              <span className="text-xs text-text-muted truncate">{portfolio.fileName}</span>
+              {portfolio.uploading && <span className="text-xs text-text-muted">업로드 중...</span>}
+              {!portfolio.uploading && <span className="text-xs text-text-muted truncate">{portfolio.fileName}</span>}
             </div>
             <div className="font-bold text-sm text-text-primary truncate mt-1">{portfolio.title}</div>
           </div>
-          <button type="button" onClick={() => onRemove(portfolio.id)} className="text-xs font-bold text-accent hover:opacity-80">
+          <button type="button" onClick={() => onRemove(portfolio.id)} disabled={portfolio.uploading} className="text-xs font-bold text-accent hover:opacity-80 disabled:opacity-30">
             삭제
           </button>
         </div>
@@ -670,8 +736,8 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
     const saved = loadPortfolios(userId);
     setPortfolios(saved);
     setSelectedOrders({
-      video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
-      image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.order - b.order).map((portfolio) => portfolio.id),
+      video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+      image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
     });
   }, [userId]);
 
@@ -697,9 +763,9 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         const selectedIds = selectedOrders[portfolio.type];
         const index = selectedIds.indexOf(portfolio.id);
         if (index === -1) {
-          return { ...portfolio, order: 999, isRepresentative: false };
+          return { ...portfolio, displayOrder: 999, isRepresentative: false };
         }
-        return { ...portfolio, order: index + 1, isRepresentative: index === 0 };
+        return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
       });
       savePortfolios(userId, next);
       return next;
@@ -707,8 +773,8 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
     setMessage('순번이 저장되었습니다.');
   };
 
-  const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.order - b.order);
-  const imagePortfolios = portfolios.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.order - b.order);
+  const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder);
+  const imagePortfolios = portfolios.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
     <SectionCard title="포트폴리오 관리" description="영상 포트폴리오와 이미지 포트폴리오를 클릭해 노출 순번을 지정합니다. 각 목록의 1번이 대표 포트폴리오입니다.">
@@ -759,7 +825,7 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4">
-                <ToggleButton active={portfolio.isPublic} onClick={() => onUpdate(portfolio.id, { isPublic: !portfolio.isPublic })} label={portfolio.isPublic ? '공개' : '비공개'} />
+                <ToggleButton active={portfolio.isRepresentative} onClick={() => onUpdate(portfolio.id, { isRepresentative: !portfolio.isRepresentative })} label={portfolio.isRepresentative ? '대표' : '일반'} />
                 {selectedOrder === 1 && <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>}
               </div>
             </div>
@@ -774,7 +840,8 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
 
 function PricingSection({ userId }: { userId: string | null }) {
   const [matchEnabled, setMatchEnabled] = useState(false);
-  const [matchPrice, setMatchPrice] = useState('');
+  const [matchPriceMin, setMatchPriceMin] = useState('');
+  const [matchPriceMax, setMatchPriceMax] = useState('');
   const [matchPriceUnit, setMatchPriceUnit] = useState<MatchPriceUnit>('MIN');
   const [representativePortfolioConfigured, setRepresentativePortfolioConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -786,13 +853,15 @@ function PricingSection({ userId }: { userId: string | null }) {
     fetchMyPageData<MatchingPrice>('/api/users/me/matching-price')
       .then((data) => {
         setMatchEnabled(data.matchEnabled);
-        setMatchPrice(data.matchPrice ? String(data.matchPrice) : '');
+        setMatchPriceMin(data.matchPriceMin ? String(data.matchPriceMin) : '');
+        setMatchPriceMax(data.matchPriceMax ? String(data.matchPriceMax) : '');
         setMatchPriceUnit(data.matchPriceUnit ?? 'MIN');
         setRepresentativePortfolioConfigured(data.representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId));
       })
       .catch(() => {
         setMatchEnabled(false);
-        setMatchPrice('');
+        setMatchPriceMin('');
+        setMatchPriceMax('');
         setMatchPriceUnit('MIN');
         setRepresentativePortfolioConfigured(hasLocalRepresentativePortfolio(userId));
       })
@@ -808,7 +877,8 @@ function PricingSection({ userId }: { userId: string | null }) {
 
       const hasRepresentative = detail.representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
       setMatchEnabled(detail.matchEnabled);
-      setMatchPrice(detail.matchPrice ? String(detail.matchPrice) : '');
+      setMatchPriceMin(detail.matchPriceMin ? String(detail.matchPriceMin) : '');
+      setMatchPriceMax(detail.matchPriceMax ? String(detail.matchPriceMax) : '');
       setMatchPriceUnit(detail.matchPriceUnit ?? 'MIN');
       setRepresentativePortfolioConfigured(hasRepresentative);
     };
@@ -820,8 +890,16 @@ function PricingSection({ userId }: { userId: string | null }) {
   const hasRepresentativeConfigured = () => representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
 
   const validateEnable = () => {
-    if (!matchPrice || Number(matchPrice) <= 0) {
-      setError('단가를 먼저 설정해주세요');
+    if (!matchPriceMin || Number(matchPriceMin) <= 0) {
+      setError('최소 단가를 먼저 설정해주세요');
+      return false;
+    }
+    if (!matchPriceMax || Number(matchPriceMax) <= 0) {
+      setError('최대 단가를 먼저 설정해주세요');
+      return false;
+    }
+    if (Number(matchPriceMin) > Number(matchPriceMax)) {
+      setError('최소 단가는 최대 단가보다 클 수 없습니다');
       return false;
     }
     if (!hasRepresentativeConfigured()) {
@@ -835,7 +913,8 @@ function PricingSection({ userId }: { userId: string | null }) {
     window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
       detail: {
         matchEnabled: saved.matchEnabled,
-        matchPrice: saved.matchPrice,
+        matchPriceMin: saved.matchPriceMin,
+        matchPriceMax: saved.matchPriceMax,
         matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
         representativePortfolioConfigured: representativeConfigured,
       },
@@ -856,19 +935,21 @@ function PricingSection({ userId }: { userId: string | null }) {
       const representativeConfigured = hasRepresentativeConfigured();
       const saved = await patchMyPageData<MatchingPrice>('/api/users/me/matching-price', {
         matchEnabled: nextEnabled,
-        matchPrice: matchPrice ? Number(matchPrice) : null,
+        matchPriceMin: matchPriceMin ? Number(matchPriceMin) : null,
+        matchPriceMax: matchPriceMax ? Number(matchPriceMax) : null,
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
       const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
       setMatchEnabled(saved.matchEnabled);
-      setMatchPrice(saved.matchPrice ? String(saved.matchPrice) : '');
+      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
+      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
       setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
       setRepresentativePortfolioConfigured(hasRepresentative);
       publishMatchingPriceUpdate(saved, hasRepresentative);
     } catch (saveError) {
       setMatchEnabled(previousEnabled);
-      setError(saveError instanceof Error ? saveError.message : '??μ뿉 ?ㅽ뙣?덉뒿?덈떎.');
+      setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
     }
   };
 
@@ -881,12 +962,14 @@ function PricingSection({ userId }: { userId: string | null }) {
       const representativeConfigured = representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
       const saved = await patchMyPageData<MatchingPrice>('/api/users/me/matching-price', {
         matchEnabled,
-        matchPrice: matchPrice ? Number(matchPrice) : null,
+        matchPriceMin: matchPriceMin ? Number(matchPriceMin) : null,
+        matchPriceMax: matchPriceMax ? Number(matchPriceMax) : null,
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
       setMatchEnabled(saved.matchEnabled);
-      setMatchPrice(saved.matchPrice ? String(saved.matchPrice) : '');
+      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
+      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
       setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
       const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
       setRepresentativePortfolioConfigured(hasRepresentative);
@@ -920,31 +1003,47 @@ function PricingSection({ userId }: { userId: string | null }) {
               <div className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Pricing</div>
               <div className="font-bold text-text-primary">노출 단가</div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4">
-            <Field label="노출 단가">
-              <input
-                type="number"
-                min="1"
-                value={matchPrice}
-                onChange={(event) => {
-                  setMatchPrice(event.target.value);
-                  setError('');
-                }}
-                placeholder="단가를 입력해주세요"
-                className="form-input"
-              />
-            </Field>
-            <div>
-              <span className="block text-sm font-bold text-text-primary mb-2">단위</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMatchPriceUnit('MIN')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'MIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
-                  분(min)
-                </button>
-                <button type="button" onClick={() => setMatchPriceUnit('CASE')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'CASE' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
-                  건
-                </button>
+            <div className="space-y-4">
+              <div>
+                <span className="block text-sm font-bold text-text-primary mb-2">단가 범위 (원)</span>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    value={matchPriceMin}
+                    onChange={(event) => { setMatchPriceMin(event.target.value); setError(''); }}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    placeholder="최소"
+                    className="form-input flex-1"
+                  />
+                  <span className="text-text-secondary font-bold">~</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={matchPriceMax}
+                    onChange={(event) => { setMatchPriceMax(event.target.value); setError(''); }}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    placeholder="최대"
+                    className="form-input flex-1"
+                  />
+                </div>
+                {matchPriceMin && matchPriceMax && (
+                  <p className="text-xs text-text-secondary mt-2">
+                    {Number(matchPriceMin).toLocaleString()}원 ~ {Number(matchPriceMax).toLocaleString()}원 / {matchPriceUnit === 'MIN' ? '분' : '건'}
+                  </p>
+                )}
               </div>
-            </div>
+              <div>
+                <span className="block text-sm font-bold text-text-primary mb-2">단위</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setMatchPriceUnit('MIN')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'MIN' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
+                    원/분
+                  </button>
+                  <button type="button" onClick={() => setMatchPriceUnit('CASE')} className={`px-3 py-3 rounded-xl text-sm font-bold border transition-colors ${matchPriceUnit === 'CASE' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>
+                    원/건
+                  </button>
+                </div>
+              </div>
             </div>
             <button type="button" onClick={savePricing} disabled={isSaving} className={`mt-5 px-4 py-3 rounded-xl text-sm font-bold transition-colors ${isSaving ? 'bg-surface text-text-muted' : 'bg-primary text-white hover:bg-primary/90'}`}>
               저장

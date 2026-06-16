@@ -5,38 +5,34 @@ import { useRouter } from 'next/navigation';
 import { Bell, Check, X } from 'lucide-react';
 import type { Notification } from '@/types/notification';
 
-// TODO: 백엔드 연동 후 실제 API 호출로 교체
-// GET /api/notifications — 현재 유저의 알림 목록 조회
-const mockNotifications: Notification[] = [
-  {
-    id: 'n1',
-    type: 'MATCHING_REQUEST',
-    status: 'PENDING',
-    senderName: '모션그래픽왕',
-    senderAvatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80',
-    matchingId: 'm1',
-    message: '영상 편집 매칭을 요청했습니다.',
-    createdAt: '방금',
-  },
-  {
-    id: 'n2',
-    type: 'MATCHING_REQUEST',
-    status: 'PENDING',
-    senderName: '쇼츠공장장',
-    senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80',
-    matchingId: 'm2',
-    message: '쇼츠 편집 매칭을 요청했습니다.',
-    createdAt: '1시간 전',
-  },
-];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 export function NotificationDropdown() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
   const hasUnread = notifications.some((n) => n.status === 'PENDING');
+
+  const fetchNotifications = async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications(data);
+    } catch {
+      // 네트워크 에러 무시
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -48,25 +44,50 @@ export function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  const toggleOpen = () => setOpen((prev) => !prev);
-
-  const handleAccept = (notification: Notification) => {
-    // TODO: POST /api/matching/{matchingId}/accept 호출
-    // 성공 시 채팅방 ID를 응답으로 받아 아래 router.push에 사용
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notification.id ? { ...n, status: 'ACCEPTED' } : n)),
-    );
-    setOpen(false);
-    // TODO: 응답받은 실제 채팅방 ID로 교체 ex) router.push(`/chat/${chatRoomId}`)
-    router.push('/chat');
+  const toggleOpen = () => {
+    if (!open) fetchNotifications();
+    setOpen((prev) => !prev);
   };
 
-  const handleReject = (notification: Notification) => {
-    // TODO: POST /api/matching/{matchingId}/reject 호출
-    // 백엔드에서 상대방에게 "매칭이 거절되었습니다" 알림 자동 발송
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notification.id ? { ...n, status: 'REJECTED' } : n)),
-    );
+  const handleAccept = async (notification: Notification) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/accept`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, status: 'ACCEPTED' } : n)),
+      );
+      setOpen(false);
+      // TODO: 채팅 페이지 구현 후 아래 주석으로 교체
+      // const chatRoomId = data.chatRoomId;
+      // router.push(chatRoomId ? `/chat/${chatRoomId}` : '/chat');
+      // 현재는 채팅 페이지(/chat/[id])가 없어 마이페이지로 임시 이동
+      router.push('/mypage');
+    } catch {
+      // 에러 무시
+    }
+  };
+
+  const handleReject = async (notification: Notification) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/reject`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, status: 'REJECTED' } : n)),
+      );
+    } catch {
+      // 에러 무시
+    }
   };
 
   return (
@@ -133,8 +154,7 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-text-primary">
-            <span className="font-bold">{notification.senderName}</span>님이{' '}
-            {notification.message}
+            <span className="font-bold">{notification.senderName}</span>님이 매칭을 요청했습니다.
           </p>
           <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
 

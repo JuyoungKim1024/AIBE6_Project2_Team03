@@ -4,6 +4,7 @@ import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.chat.dto.MyChatRoomResponseDTO;
 import com.backend.domain.mypage.dto.*;
 import com.backend.domain.mypage.service.MyPageService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,5 +55,33 @@ public class MyPageController {
             @RequestBody PublicContentVisibilityRequest request
     ) {
         return myPageService.updatePublicContentVisibility(authService.resolveUserId(authorizationHeader), request);
+    }
+
+    @GetMapping("/portfolios")
+    public List<PortfolioItemResponse> getPortfolios(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getPortfolios(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PutMapping("/portfolios")
+    public ResponseEntity<Void> savePortfolios(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody List<PortfolioItemRequest> items
+    ) {
+        myPageService.savePortfolios(authService.resolveUserId(authorizationHeader), items);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/tags")
+    public TagsResponse getTags(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getTags(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PutMapping("/tags")
+    public ResponseEntity<Void> updateTags(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody UpdateTagsRequest request
+    ) {
+        myPageService.updateTags(authService.resolveUserId(authorizationHeader), request);
+        return ResponseEntity.ok().build();
     }
 }

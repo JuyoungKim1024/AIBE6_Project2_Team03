@@ -11,19 +11,23 @@ public record NotificationResponse(
         String status,
         String senderName,
         String senderAvatar,
-        String matchingId,
+        String chatRoomId,
         String createdAt
 ) {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public static NotificationResponse from(MatchRequest request) {
+        return from(request, null);
+    }
+
+    public static NotificationResponse from(MatchRequest request, String chatRoomId) {
         return new NotificationResponse(
                 request.getId(),
                 "MATCHING_REQUEST",
                 toFrontendStatus(request.getStatus()),
                 request.getRequester().getNickname(),
                 request.getRequester().getProfileImage(),
-                request.getId(),
+                chatRoomId,
                 request.getCreatedAt() != null ? request.getCreatedAt().format(FORMATTER) : null
         );
     }
