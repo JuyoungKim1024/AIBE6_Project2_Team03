@@ -32,7 +32,8 @@ export default function MatchingPage() {
   const [editors, setEditors] = useState<BlindEditor[]>([]);
   const [error, setError] = useState('');
 
-  const canSearch = category !== '';
+  const isPriceInvalid = minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice);
+  const canSearch = category !== '' && !isPriceInvalid;
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,7 +190,10 @@ export default function MatchingPage() {
                       className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
                     />
                   </div>
-                  {minPrice && maxPrice && (
+                  {isPriceInvalid && (
+                    <p className="text-xs text-accent mt-2">최소 단가는 최대 단가보다 클 수 없습니다.</p>
+                  )}
+                  {!isPriceInvalid && minPrice && maxPrice && (
                     <p className="text-xs text-text-secondary mt-2">
                       {Number(minPrice).toLocaleString()}원 ~ {Number(maxPrice).toLocaleString()}원
                     </p>
