@@ -49,8 +49,11 @@ public class User {
     @Column(name = "match_enabled", nullable = false)
     private boolean matchEnabled = false;
 
-    @Column(name = "match_price")
-    private Integer matchPrice;
+    @Column(name = "match_price_min")
+    private Integer matchPriceMin;
+
+    @Column(name = "match_price_max")
+    private Integer matchPriceMax;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "match_price_unit", length = 20)
@@ -98,9 +101,10 @@ public class User {
         }
     }
 
-    public void updateMatchingPrice(boolean matchEnabled, Integer matchPrice, MatchPriceUnit matchPriceUnit) {
+    public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {
         this.matchEnabled = matchEnabled;
-        this.matchPrice = matchPrice;
+        this.matchPriceMin = matchPriceMin;
+        this.matchPriceMax = matchPriceMax;
         this.matchPriceUnit = matchPriceUnit;
     }
 }

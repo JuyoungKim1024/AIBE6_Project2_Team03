@@ -9,12 +9,12 @@ import { ProfileDropdown } from '@/components/common/ProfileDropdown';
 import { NotificationDropdown } from '@/components/common/NotificationDropdown';
 import { SearchBar } from '@/components/common/SearchBar';
 
-type NavLink = { name: string; path: string; requireAuth?: boolean };
+type NavLink = { name: string; path: string; requireAuth?: boolean; hideForEditor?: boolean };
 
 const navLinks: NavLink[] = [
   { name: '구인구직', path: '/jobs' },
   { name: '커뮤니티', path: '/community' },
-  { name: '맞춤매칭', path: '/matching', requireAuth: true },
+  { name: '맞춤매칭', path: '/matching', requireAuth: true, hideForEditor: true },
   { name: '마이페이지', path: '/mypage' },
 ];
 
@@ -61,7 +61,7 @@ export function NavBar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => {
+              {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
                 const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
                 return (
                   <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link)} className={navLinkClass(isActive)}>
@@ -116,7 +116,7 @@ export function NavBar() {
 
         {mobileOpen && (
           <div className="md:hidden border-t border-border py-3 space-y-1">
-            {navLinks.map((link) => {
+            {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
               const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
               return (
                 <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link, () => setMobileOpen(false))} className={mobileNavLinkClass(isActive)}>

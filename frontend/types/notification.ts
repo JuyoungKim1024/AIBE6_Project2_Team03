@@ -9,8 +9,6 @@ export interface Notification {
   // 매칭 요청자 정보
   senderName: string;
   senderAvatar?: string;
-  // 매칭 관련 정보
-  matchingId: string;
   message?: string;
   createdAt: string;
 }

@@ -5,14 +5,60 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+
+const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
+const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
+const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
+const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
+
+type BlindEditor = {
+  id: string;
+  thumbnails: string[];
+  categories: string[];
+  tools: string[];
+  matchPriceMin: number | null;
+  matchPriceMax: number | null;
+  matchPriceUnit: string;
+};
+
 export default function MatchingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [priceRange, setPriceRange] = useState(15000);
+  const [category, setCategory] = useState('');
+  const [tool, setTool] = useState('상관없음');
+  const [videoLength, setVideoLength] = useState('롱폼');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [editors, setEditors] = useState<BlindEditor[]>([]);
+  const [error, setError] = useState('');
 
-  const handleMatch = (e: React.FormEvent) => {
+  const canSearch = category !== '';
+
+  const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSearch) return;
+
     setStep(2);
-    setTimeout(() => setStep(3), 2000);
+    setError('');
+
+    try {
+      const params = new URLSearchParams();
+      if (category) params.set('category', category);
+      if (tool && tool !== '상관없음') params.set('tool', tool);
+      if (videoLength && videoLength !== '상관없음') params.set('videoLength', videoLength);
+      if (minPrice !== '') params.set('minPrice', minPrice);
+      if (maxPrice !== '') params.set('maxPrice', maxPrice);
+
+      const res = await fetch(`${API_BASE_URL}/api/matching/editors?${params}`);
+      if (!res.ok) throw new Error();
+      const data: BlindEditor[] = await res.json();
+      setEditors(data);
+    } catch {
+      setError('에디터 검색 중 오류가 발생했습니다.');
+      setEditors([]);
+    }
+
+    setStep(3);
   };
 
   return (
@@ -27,80 +73,145 @@ export default function MatchingPage() {
               </div>
               <form onSubmit={handleMatch} className="space-y-8">
                 <div>
-                  <label className="block text-sm font-bold text-text-primary mb-3">콘텐츠 카테고리</label>
+                  <label className="block text-sm font-bold text-text-primary mb-3">
+                    콘텐츠 카테고리 <span className="text-accent">*</span>
+                  </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {['게임', '뷰티', '브이로그', 'IT/테크', '예능', '정보전달', '음악', '기타'].map((cat) => (
-                      <label key={cat} className="cursor-pointer">
-                        <input type="radio" name="category" className="peer sr-only" defaultChecked={cat === '게임'} />
-                        <div className="px-4 py-3 rounded-xl border border-border bg-surface-elevated text-center text-sm text-text-secondary peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all hover:border-primary/50">{cat}</div>
-                      </label>
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCategory(cat)}
+                        className={`px-4 py-3 rounded-xl border text-sm transition-all ${
+                          category === cat
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
+                        }`}
+                      >
+                        {cat}
+                      </button>
                     ))}
                   </div>
+                  {!category && (
+                    <p className="text-xs text-accent mt-2">카테고리를 선택해야 매칭을 시작할 수 있습니다.</p>
+                  )}
                 </div>
+
                 <div>
-                  <label className="block text-sm font-bold text-text-primary mb-3">선호하는 편집 툴</label>
+                  <label className="block text-sm font-bold text-text-primary mb-3">선호하는 툴</label>
+                  <button
+                    type="button"
+                    onClick={() => setTool('상관없음')}
+                    className={`mb-3 px-4 py-2 rounded-xl border text-sm transition-all ${
+                      tool === '상관없음'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-surface-elevated text-text-secondary'
+                    }`}
+                  >
+                    상관없음
+                  </button>
+                  <p className="text-xs text-text-muted mb-2">영상편집 툴</p>
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {VIDEO_TOOLS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTool(t)}
+                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+                          tool === t
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface-elevated text-text-secondary'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-text-muted mb-2">디자인 툴</p>
                   <div className="flex flex-wrap gap-3">
-                    {['상관없음', 'Premiere Pro', 'Final Cut', 'After Effects', 'DaVinci Resolve'].map((tool) => (
-                      <label key={tool} className="cursor-pointer flex-1 min-w-[120px]">
-                        <input type="radio" name="tool" className="peer sr-only" defaultChecked={tool === '상관없음'} />
-                        <div className="px-4 py-3 rounded-xl border border-border bg-surface-elevated text-center text-sm text-text-secondary peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all">{tool}</div>
-                      </label>
+                    {DESIGN_TOOLS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTool(t)}
+                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+                          tool === t
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface-elevated text-text-secondary'
+                        }`}
+                      >
+                        {t}
+                      </button>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-sm font-bold text-text-primary mb-3">영상 길이</label>
-                    <div className="flex bg-surface-elevated p-1 rounded-xl border border-border">
-                      {['숏폼', '미드폼', '롱폼'].map((len) => (
-                        <label key={len} className="flex-1 cursor-pointer">
-                          <input type="radio" name="length" className="peer sr-only" defaultChecked={len === '롱폼'} />
-                          <div className="py-2 text-center text-sm rounded-lg text-text-secondary peer-checked:bg-surface peer-checked:text-text-primary peer-checked:shadow-sm transition-all">{len}</div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-text-primary mb-3">납기 속도</label>
-                    <div className="flex bg-surface-elevated p-1 rounded-xl border border-border">
-                      {['여유롭게', '보통 (3~4일)', '빠르게 (1~2일)'].map((speed) => (
-                        <label key={speed} className="flex-1 cursor-pointer">
-                          <input type="radio" name="speed" className="peer sr-only" defaultChecked={speed === '보통 (3~4일)'} />
-                          <div className="py-2 text-center text-sm rounded-lg text-text-secondary peer-checked:bg-surface peer-checked:text-text-primary peer-checked:shadow-sm transition-all">{speed}</div>
-                        </label>
-                      ))}
-                    </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-text-primary mb-3">영상 길이</label>
+                  <div className="flex bg-surface-elevated p-1 rounded-xl border border-border">
+                    {VIDEO_LENGTHS.map((len) => (
+                      <button
+                        key={len}
+                        type="button"
+                        onClick={() => setVideoLength(len)}
+                        className={`flex-1 py-2 text-center text-sm rounded-lg transition-all ${
+                          videoLength === len
+                            ? 'bg-surface text-text-primary shadow-sm'
+                            : 'text-text-secondary'
+                        }`}
+                      >
+                        {len}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-sm font-bold text-text-primary mb-3">작업 경력</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['신입 (가성비)', '1~3년 (안정적)', '3~5년 (숙련자)', '5년 이상 (전문가)'].map((exp) => (
-                        <label key={exp} className="cursor-pointer">
-                          <input type="radio" name="exp" className="peer sr-only" defaultChecked={exp === '1~3년 (안정적)'} />
-                          <div className="px-4 py-2.5 rounded-xl border border-border bg-surface-elevated text-center text-sm text-text-secondary peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary transition-all">{exp}</div>
-                        </label>
-                      ))}
-                    </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-text-primary mb-3">희망 단가 범위 (원)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="최소"
+                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                    />
+                    <span className="text-text-secondary font-bold">~</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="최대"
+                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                    />
                   </div>
-                  <div>
-                    <div className="flex justify-between items-end mb-3">
-                      <label className="block text-sm font-bold text-text-primary">희망 단가 (분당)</label>
-                      <span className="font-mono text-primary font-bold">₩{new Intl.NumberFormat('ko-KR').format(priceRange)}</span>
-                    </div>
-                    <div className="pt-2">
-                      <input type="range" min="3000" max="30000" step="1000" value={priceRange} onChange={(e) => setPriceRange(Number(e.target.value))} className="w-full accent-primary h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer" />
-                      <div className="flex justify-between text-xs text-text-muted mt-2 font-mono"><span>₩3,000</span><span>₩30,000+</span></div>
-                    </div>
-                  </div>
+                  {minPrice && maxPrice && (
+                    <p className="text-xs text-text-secondary mt-2">
+                      {Number(minPrice).toLocaleString()}원 ~ {Number(maxPrice).toLocaleString()}원
+                    </p>
+                  )}
                 </div>
-                <button type="submit" className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]">
-                  <Search size={20} />매칭 시작하기
+
+                <button
+                  type="submit"
+                  disabled={!canSearch}
+                  className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
+                    canSearch
+                      ? 'bg-primary text-white hover:bg-primary/90 shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]'
+                      : 'bg-surface-elevated text-text-muted cursor-not-allowed'
+                  }`}
+                >
+                  <Search size={20} />
+                  매칭 시작하기
                 </button>
               </form>
             </motion.div>
           )}
+
           {step === 2 && (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-32">
               <Loader2 size={48} className="text-primary animate-spin mb-6" />
@@ -108,41 +219,53 @@ export default function MatchingPage() {
               <p className="text-text-secondary">포트폴리오와 작업 스타일을 분석중입니다.</p>
             </motion.div>
           )}
+
           {step === 3 && (
             <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-3xl font-bold text-text-primary mb-2">5명의 에디터를 찾았어요!</h2>
-                  <p className="text-text-secondary">조건에 가장 잘 맞는 상위 5명의 블라인드 프로필입니다.</p>
+                  {editors.length > 0 ? (
+                    <>
+                      <h2 className="text-3xl font-bold text-text-primary mb-2">{editors.length}명의 에디터를 찾았어요!</h2>
+                      <p className="text-text-secondary">조건에 가장 잘 맞는 블라인드 프로필입니다.</p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-3xl font-bold text-text-primary mb-2">조건에 맞는 편집자가 없습니다</h2>
+                      <p className="text-text-secondary">필터를 조정하거나 단가 범위를 넓혀보세요.</p>
+                    </>
+                  )}
                 </div>
-                <button onClick={() => setStep(1)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-elevated border border-border text-sm text-text-primary hover:bg-surface transition-colors">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-elevated border border-border text-sm text-text-primary hover:bg-surface transition-colors"
+                >
                   <RefreshCw size={16} />다시 찾기
                 </button>
               </div>
-              <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-6 snap-x">
-                {[
-                  { id: '1', price: 15000, len: '롱폼', cats: ['게임', '예능'], tools: ['Premiere Pro', 'After Effects'] },
-                  { id: '2', price: 12000, len: '롱폼', cats: ['게임', '브이로그'], tools: ['Final Cut'] },
-                  { id: '3', price: 14000, len: '롱폼', cats: ['게임', 'IT/테크'], tools: ['Premiere Pro'] },
-                  { id: '4', price: 10000, len: '롱폼', cats: ['게임'], tools: ['Premiere Pro'] },
-                  { id: '5', price: 8000, len: '롱폼', cats: ['게임', '기타'], tools: ['DaVinci Resolve'] },
-                ].map((editor, i) => (
-                  <div key={editor.id} className="min-w-[280px] sm:min-w-[320px] flex-1 snap-center">
-                    <MatchingCard
-                      id={editor.id}
-                      thumbnails={[
-                        `https://images.unsplash.com/photo-1542204165-65bf26472b9b?auto=format&fit=crop&w=400&q=80&sig=${i + 10}`,
-                        `https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80&sig=${i + 20}`,
-                      ]}
-                      categories={editor.cats}
-                      tools={editor.tools}
-                      videoLength={editor.len}
-                      minPrice={editor.price}
-                      maxPrice={editor.price + 3000}
-                    />
-                  </div>
-                ))}
-              </div>
+
+              {error && (
+                <p className="text-sm text-accent mb-4">{error}</p>
+              )}
+
+              {editors.length > 0 && (
+                <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-6 snap-x">
+                  {editors.map((editor) => (
+                    <div key={editor.id} className="min-w-[280px] sm:min-w-[320px] flex-1 snap-center">
+                      <MatchingCard
+                        id={editor.id}
+                        thumbnails={editor.thumbnails}
+                        categories={editor.categories}
+                        tools={editor.tools}
+                        videoLength={videoLength}
+                        minPrice={editor.matchPriceMin ?? 0}
+                        maxPrice={editor.matchPriceMax ?? 0}
+                        priceUnit={editor.matchPriceUnit}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

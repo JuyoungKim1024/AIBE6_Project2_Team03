@@ -14,6 +14,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Getter
 @Entity
 @Table(name = "user_tags")
@@ -34,4 +36,11 @@ public class UserTag {
 
     @Column(name = "tag_name", nullable = false, length = 50)
     private String tagName;
+
+    public UserTag(User user, UserTagType tagType, String tagName) {
+        this.id = UUID.randomUUID().toString();
+        this.user = user;
+        this.tagType = tagType;
+        this.tagName = tagName;
+    }
 }

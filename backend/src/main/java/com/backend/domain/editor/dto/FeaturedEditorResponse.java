@@ -12,7 +12,8 @@ public record FeaturedEditorResponse(
         String nickname,
         String avatar,
         List<String> tags,
-        Integer matchPrice,
+        Integer matchPriceMin,
+        Integer matchPriceMax,
         String matchPriceUnit,
         double rating,
         String thumbnailUrl
@@ -25,7 +26,8 @@ public record FeaturedEditorResponse(
                 user.getNickname(),
                 user.getProfileImage(),
                 tags.stream().map(UserTag::getTagName).toList(),
-                user.getMatchPrice(),
+                user.getMatchPriceMin(),
+                user.getMatchPriceMax(),
                 unitLabel,
                 Math.round(rating * 10.0) / 10.0,
                 thumbnail
