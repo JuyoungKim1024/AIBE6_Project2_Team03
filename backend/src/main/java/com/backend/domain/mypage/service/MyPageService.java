@@ -1,29 +1,19 @@
 package com.backend.domain.mypage.service;
 
-import com.backend.domain.mypage.dto.MyChatRoomResponse;
-import com.backend.domain.mypage.dto.MyMatchRequestResponse;
-import com.backend.domain.mypage.dto.MyProjectResponse;
-import com.backend.domain.mypage.dto.MyProjectsResponse;
-import com.backend.domain.mypage.dto.MatchingPriceRequest;
-import com.backend.domain.mypage.dto.MatchingPriceResponse;
-import com.backend.domain.mypage.dto.PublicContentVisibilityRequest;
-import com.backend.domain.mypage.dto.PublicContentVisibilityResponse;
-import com.backend.domain.mypage.dto.PortfolioItemRequest;
-import com.backend.domain.mypage.dto.PortfolioItemResponse;
-import com.backend.domain.mypage.dto.TagsResponse;
-import com.backend.domain.mypage.dto.UpdateTagsRequest;
+import com.backend.domain.chat.dto.MyChatRoomResponseDTO;
+import com.backend.domain.chat.entity.ChatMessage;
+import com.backend.domain.chat.entity.ChatParticipant;
+import com.backend.domain.chat.repository.ChatMessageRepository;
+import com.backend.domain.chat.repository.ChatParticipantRepository;
+import com.backend.domain.mypage.dto.*;
 import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.profile.repository.PortfolioRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
-import com.backend.domain.mypage.entity.ChatRoomUser;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
-import com.backend.domain.mypage.entity.Message;
-import com.backend.domain.mypage.repository.MyPageChatRoomUserRepository;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
-import com.backend.domain.mypage.repository.MyPageMessageRepository;
 import com.backend.domain.mypage.repository.MyPageProjectRepository;
 import com.backend.domain.profile.entity.Project;
 import com.backend.domain.user.entity.Profile;
@@ -31,18 +21,19 @@ import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import org.springframework.stereotype.Service;
 
 @Service
 public class MyPageService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
-    private final MyPageChatRoomUserRepository chatRoomUserRepository;
-    private final MyPageMessageRepository messageRepository;
+    private final ChatParticipantRepository chatParticipantRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final MyPageMatchRequestRepository matchRequestRepository;
     private final MyPageProjectRepository projectRepository;
     private final UserRepository userRepository;
@@ -51,8 +42,8 @@ public class MyPageService {
     private final PortfolioRepository portfolioRepository;
 
     public MyPageService(
-            MyPageChatRoomUserRepository chatRoomUserRepository,
-            MyPageMessageRepository messageRepository,
+            ChatParticipantRepository chatParticipantRepository,
+            ChatMessageRepository chatMessageRepository,
             MyPageMatchRequestRepository matchRequestRepository,
             MyPageProjectRepository projectRepository,
             UserRepository userRepository,
@@ -60,8 +51,8 @@ public class MyPageService {
             UserTagRepository userTagRepository,
             PortfolioRepository portfolioRepository
     ) {
-        this.chatRoomUserRepository = chatRoomUserRepository;
-        this.messageRepository = messageRepository;
+        this.chatParticipantRepository = chatParticipantRepository;
+        this.chatMessageRepository = chatMessageRepository;
         this.matchRequestRepository = matchRequestRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
@@ -70,8 +61,8 @@ public class MyPageService {
         this.portfolioRepository = portfolioRepository;
     }
 
-    public List<MyChatRoomResponse> getChatRooms(String userId) {
-        return chatRoomUserRepository.findByUser_IdOrderByJoinedAtDesc(userId)
+    public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
+        return chatParticipantRepository.findByUser_Id(userId)
                 .stream()
                 .map(roomUser -> toChatRoomResponse(userId, roomUser))
                 .toList();
@@ -221,20 +212,19 @@ public class MyPageService {
                 .anyMatch(Portfolio::isRepresentative);
     }
 
-    private MyChatRoomResponse toChatRoomResponse(String userId, ChatRoomUser roomUser) {
-        String roomId = roomUser.getRoom().getId();
-        String partnerName = chatRoomUserRepository.findByRoom_Id(roomId)
+    private MyChatRoomResponseDTO toChatRoomResponse(String userId, ChatParticipant roomUser) {
+        String roomId = roomUser.getChatRoom().getId();
+        String partnerName = chatParticipantRepository.findByChatRoom_Id(roomId)
                 .stream()
-                .map(ChatRoomUser::getUser)
+                .map(ChatParticipant::getUser)
                 .filter(user -> !user.getId().equals(userId))
                 .map(User::getNickname)
                 .findFirst()
                 .orElse("알 수 없음");
 
-        Message lastMessage = messageRepository.findTopByRoom_IdOrderByCreatedAtDesc(roomId)
-                .orElse(null);
+        ChatMessage lastMessage = chatMessageRepository.findTopByChatRoom_IdOrderByCreatedAtDesc(roomId);
 
-        return new MyChatRoomResponse(
+        return new MyChatRoomResponseDTO(
                 roomId,
                 partnerName,
                 lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),

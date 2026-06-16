@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, TrendingUp, ChevronRight, Activity } from 'lucide-react';
 import Link from 'next/link';
@@ -8,6 +8,9 @@ import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { RankBadge } from '@/components/common/RankBadge';
+import { fetchCommunityPosts } from '@/lib/api/post';
+import { CommunityPostDto } from '@/types/post';
+import { formatTimeAgo } from '@/lib/utils/time';
 import type { PostType } from '@/types/post';
 import type { RankTier } from '@/types/user';
 
@@ -17,12 +20,6 @@ const categories = [
   { id: 'free', label: '💬 자유게시판', dot: 'bg-text-secondary' },
 ];
 
-const mockPosts = [
-  { id: '1', type: 'info' as PostType, author: { name: '편집장인', rank: 'platinum' as RankTier, avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&q=80' }, title: '프리미어프로 단축키 세팅 공유합니다 (효율 200%)', categoryTags: ['꿀팁'], toolTags: ['Premiere Pro'], likes: 234, comments: 42, views: 1500, timeAgo: '2시간 전' },
-  { id: '2', type: 'free' as PostType, author: { name: '밤샘작업자', rank: 'gold' as RankTier, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80' }, title: '파이널컷 업데이트 이후 렌더링 오류 저만 있나요?', categoryTags: ['오류해결'], toolTags: ['Final Cut'], likes: 8, comments: 12, views: 156, timeAgo: '3시간 전' },
-  { id: '3', type: 'info' as PostType, author: { name: '쇼츠공장장', rank: 'gold' as RankTier, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80' }, title: '클라이언트가 자꾸 무료 수정을 요구할 때 대처법', categoryTags: ['협업팁', '계약'], toolTags: [], likes: 156, comments: 31, views: 890, timeAgo: '하루 전' },
-];
-
 function CommunityContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') ?? '';
@@ -30,17 +27,36 @@ function CommunityContent() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [posts, setPosts] = useState<CommunityPostDto[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredPosts = mockPosts.filter((post) => {
-    const matchesCategory = activeCategory === 'all' || post.type === activeCategory;
-    const matchesQuery = query === '' || (
-      post.title.includes(query) ||
-      post.categoryTags.some((t) => t.includes(query)) ||
-      post.toolTags.some((t) => t.includes(query)) ||
-      post.author.name.includes(query)
-    );
-    return matchesCategory && matchesQuery;
-  });
+  useEffect(() => {
+    setLoading(true);
+    const request =
+      activeCategory === 'all'
+        ? Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')]).then(
+            ([info, free]) => [...info, ...free],
+          )
+        : fetchCommunityPosts(activeCategory.toUpperCase() as 'INFO' | 'FREE');
+
+    request
+      .then(setPosts)
+      .catch((err) => console.error('fetchCommunityPosts error:', err))
+      .finally(() => setLoading(false));
+  }, [activeCategory]);
+
+  const filteredPosts = posts
+    .filter((p) => {
+      const matchesQuery =
+        query === '' ||
+        p.title.includes(query) ||
+        p.author.nickname.includes(query);
+      return matchesQuery;
+    })
+    .sort((a, b) => {
+      if (sort === 'popular') return b.viewCount - a.viewCount;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   return (
     <div className="min-h-screen">
@@ -59,7 +75,7 @@ function CommunityContent() {
           <div className="flex items-center gap-3">
             <div className="flex bg-surface-elevated p-1 rounded-lg border border-border">
               {[{ id: 'latest', label: '최신순' }, { id: 'popular', label: '인기순' }].map((opt) => (
-                <button key={opt.id} onClick={() => setSort(opt.id as any)} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                <button key={opt.id} onClick={() => setSort(opt.id as 'latest' | 'popular')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
                   {opt.label}
                 </button>
               ))}
@@ -101,11 +117,30 @@ function CommunityContent() {
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <main className="flex-1 min-w-0 space-y-4">
-            {filteredPosts.length > 0 ? filteredPosts.map((post, i) => (
-              <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
-                <PostCard id={post.id} linkTo={`/community/${post.id}`} type={post.type} title={post.title} author={post.author} categoryTags={post.categoryTags} toolTags={post.toolTags} likes={post.likes} comments={post.comments} views={post.views} timeAgo={post.timeAgo} />
-              </motion.div>
-            )) : <div className="text-center py-20 text-text-muted">조건에 맞는 게시글이 없습니다.</div>}
+            {loading ? (
+              <p className="text-center text-text-muted py-20 text-sm">불러오는 중...</p>
+            ) : filteredPosts.length === 0 ? (
+              <div className="text-center py-20 text-text-muted">조건에 맞는 게시글이 없습니다.</div>
+            ) : (
+              filteredPosts.map((post, i) => (
+                <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
+                  <PostCard
+                    id={post.id}
+                    linkTo={`/community/${post.id}`}
+                    type={post.category.toLowerCase() as PostType}
+                    title={post.title}
+                    author={{ name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
+                    categoryTags={[]}
+                    toolTags={[]}
+                    likes={post.likeCount}
+                    comments={post.chatCount}
+                    views={post.viewCount}
+                    timeAgo={formatTimeAgo(post.createdAt)}
+                    thumbnail={post.thumbnailUrl ?? undefined}
+                  />
+                </motion.div>
+              ))
+            )}
           </main>
           <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
             <div className="bg-surface border border-border rounded-xl p-5">
@@ -128,10 +163,10 @@ function CommunityContent() {
             <div className="bg-surface border border-border rounded-xl p-5">
               <h3 className="text-base font-bold text-text-primary mb-4">지금 뜨는 글 🔥</h3>
               <div className="space-y-3">
-                {['요즘 숏폼 분당 단가 1만원이면 적당한가요?', '최근 작업한 IT 리뷰 채널 인트로/아웃트로 모음', '파이널컷 업데이트 이후 렌더링 오류 저만 있나요?', '클라이언트가 자꾸 무료 수정을 요구할 때 대처법', '프리미어프로 단축키 세팅 공유합니다 (효율 200%)'].map((title, i) => (
-                  <Link key={i} href="#" className="flex items-start gap-3 group">
+                {filteredPosts.slice(0, 5).map((post, i) => (
+                  <Link key={post.id} href={`/community/${post.id}`} className="flex items-start gap-3 group">
                     <span className={`text-sm font-bold mt-0.5 ${i < 3 ? 'text-primary' : 'text-text-muted'}`}>{i + 1}</span>
-                    <p className="flex-1 min-w-0 text-sm text-text-secondary group-hover:text-text-primary truncate transition-colors">{title}</p>
+                    <p className="flex-1 min-w-0 text-sm text-text-secondary group-hover:text-text-primary truncate transition-colors">{post.title}</p>
                   </Link>
                 ))}
               </div>

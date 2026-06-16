@@ -6,9 +6,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, String> {
 
+    @Query("SELECT p FROM CommunityPost p JOIN FETCH p.author WHERE p.category = :category ORDER BY p.createdAt DESC")
+    List<CommunityPost> findByCategory(@Param("category") CommunityPost.Category category);
+
+    @Query("SELECT p FROM CommunityPost p JOIN FETCH p.author WHERE p.id = :id")
+    Optional<CommunityPost> findByIdWithAuthor(@Param("id") String id);
     @Query("SELECT c FROM CommunityPost c WHERE (:category IS NULL OR c.category = :category) AND (:q IS NULL OR c.title LIKE %:q% OR c.content LIKE %:q%)")
     List<CommunityPost> search(@Param("category") CommunityPost.Category category, @Param("q") String q);
 }

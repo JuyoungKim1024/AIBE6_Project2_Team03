@@ -49,3 +49,6 @@ agents.local.md
 
 ### File uploads ###
 uploads/
+
+# custom
+docker-compose.yml
