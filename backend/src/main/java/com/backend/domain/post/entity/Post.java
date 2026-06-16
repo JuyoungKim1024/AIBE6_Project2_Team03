@@ -49,4 +49,12 @@ public abstract class Post extends BaseEntity {
         this.content = content;
         this.thumbnailUrl = thumbnailUrl;
     }
+
+    public void incrementViewCount() {
+        this.viewCount++;
+    }
+
+    public void setViewCount(int viewCount) {
+        this.viewCount = viewCount;
+    }
 }

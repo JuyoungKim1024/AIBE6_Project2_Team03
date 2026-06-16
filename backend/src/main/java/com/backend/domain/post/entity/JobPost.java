@@ -12,8 +12,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class JobPost extends Post {
 
-    @Column
-    private Integer price;
+    @Column(name = "min_price")
+    private Integer minPrice;
+
+    @Column(name = "max_price")
+    private Integer maxPrice;
+
+    @Column(name = "price_visible", nullable = false)
+    private boolean priceVisible = true;
+
+    public enum PostType {
+        RECRUITING, JOB_SEARCH
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "post_type")
@@ -22,14 +32,14 @@ public class JobPost extends Post {
     @Column(name = "portfolio_id", columnDefinition = "CHAR(36)")
     private String portfolioId;
 
-    public enum PostType {
-        RECRUITING, JOB_SEARCH
-    }
+
 
     public JobPost(User author, String title, String content, String thumbnailUrl,
-                   Integer price, PostType postType) {
+                   Integer minPrice, Integer maxPrice, boolean priceVisible, PostType postType) {
         super(author, title, content, thumbnailUrl);
-        this.price = price;
+        this.minPrice = minPrice;
+        this.maxPrice = maxPrice;
+        this.priceVisible = priceVisible;
         this.postType = postType;
     }
 }
