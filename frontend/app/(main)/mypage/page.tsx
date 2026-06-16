@@ -1032,14 +1032,20 @@ function PricingSection({ userId }: { userId: string | null }) {
     return true;
   };
 
-  const publishMatchingPriceUpdate = (saved: MatchingPrice, representativeConfigured: boolean) => {
+  const applyMatchingPriceSaved = (saved: MatchingPrice, representativeConfigured: boolean) => {
+    const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
+    setMatchEnabled(saved.matchEnabled);
+    setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
+    setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
+    setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
+    setRepresentativePortfolioConfigured(hasRepresentative);
     window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
       detail: {
         matchEnabled: saved.matchEnabled,
         matchPriceMin: saved.matchPriceMin,
         matchPriceMax: saved.matchPriceMax,
         matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
-        representativePortfolioConfigured: representativeConfigured,
+        representativePortfolioConfigured: hasRepresentative,
       },
     }));
   };
@@ -1063,13 +1069,7 @@ function PricingSection({ userId }: { userId: string | null }) {
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
-      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
-      setMatchEnabled(saved.matchEnabled);
-      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
-      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
-      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
-      setRepresentativePortfolioConfigured(hasRepresentative);
-      publishMatchingPriceUpdate(saved, hasRepresentative);
+      applyMatchingPriceSaved(saved, representativeConfigured);
     } catch (saveError) {
       setMatchEnabled(previousEnabled);
       setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
@@ -1089,13 +1089,7 @@ function PricingSection({ userId }: { userId: string | null }) {
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
-      setMatchEnabled(saved.matchEnabled);
-      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
-      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
-      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
-      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
-      setRepresentativePortfolioConfigured(hasRepresentative);
-      publishMatchingPriceUpdate(saved, hasRepresentative);
+      applyMatchingPriceSaved(saved, representativeConfigured);
       setMessage('맞춤매칭 단가 설정이 저장되었습니다.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
@@ -1178,10 +1172,6 @@ function PricingSection({ userId }: { userId: string | null }) {
 
           {error && <p className="text-sm font-bold text-accent">{error}</p>}
           {message && <p className="text-sm font-bold text-primary">{message}</p>}
-
-          <button type="button" onClick={savePricing} disabled={isSaving} className="hidden">
-            저장
-          </button>
         </div>
       )}
     </SectionCard>
