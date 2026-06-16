@@ -9,3 +9,14 @@ export interface ChatRoom {
   time: string;
   unread: number;
 }
+
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE';
+
+export interface ChatMessage {
+  messageId: string;
+  roomId: string;
+  senderId: string;
+  content: string;
+  messageType: MessageType;
+  createdAt: string;
+}
