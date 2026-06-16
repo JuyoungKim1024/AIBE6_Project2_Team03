@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { PlayCircle } from 'lucide-react';
 
 export interface MatchingCardProps {
   id: string;
@@ -58,7 +57,7 @@ export function MatchingCard({ id, thumbnails, categories, tools, videoLength, m
             <span className="text-xs text-text-secondary font-medium">예상 단가</span>
             <div className="text-sm font-bold text-text-primary">
               {minPrice > 0 && maxPrice > 0
-                ? <span>₩{fmt(minPrice)} ~ ₩{fmt(maxPrice)}<span className="text-xs text-text-muted font-normal ml-0.5">/{priceUnit === '원/분' ? '분' : '건'}</span></span>
+                ? <span>₩{fmt(minPrice)} ~ ₩{fmt(maxPrice)}<span className="text-xs text-text-muted font-normal ml-0.5">원/{priceUnit}</span></span>
                 : <span className="text-text-muted text-xs">단가 미설정</span>
               }
             </div>
