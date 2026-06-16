@@ -4,6 +4,7 @@ import com.backend.domain.matching.dto.BlindEditorResponse;
 import com.backend.domain.matching.dto.MatchRequestBody;
 import com.backend.domain.matching.dto.MatchRequestResponse;
 import com.backend.domain.mypage.entity.MatchRequest;
+import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.profile.entity.UserTag;
@@ -78,6 +79,10 @@ public class MatchingService {
     // POST /api/matching/requests
     @Transactional
     public MatchRequestResponse sendRequest(String requesterId, MatchRequestBody body) {
+        if (requesterId.equals(body.editorId())) {
+            throw new IllegalArgumentException("자기 자신에게 매칭 요청을 보낼 수 없습니다.");
+        }
+
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         User editor = userRepository.findById(body.editorId())
@@ -85,6 +90,10 @@ public class MatchingService {
 
         if (!editor.isMatchEnabled()) {
             throw new IllegalArgumentException("맞춤매칭 OFF 상태인 에디터입니다.");
+        }
+
+        if (matchRequestRepository.existsByRequester_IdAndEditor_IdAndStatus(requesterId, body.editorId(), MatchRequestStatus.WAITING)) {
+            throw new IllegalArgumentException("이미 매칭 요청을 보낸 에디터입니다. 에디터의 수락을 기다려주세요.");
         }
 
         MatchRequest request = new MatchRequest(requester, editor);
