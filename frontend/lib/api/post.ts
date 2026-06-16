@@ -3,6 +3,7 @@ import {
   CommunityCategory,
   CommunityPostDetailDto,
   CommunityPostDto,
+  CommentDto,
   JobPostDetailDto,
   JobPostDto,
   JobPostType,
@@ -39,4 +40,54 @@ export async function fetchCommunityPost(
   const res = await fetch(`${API_BASE_URL}/api/posts/community/${id}`);
   if (!res.ok) throw new Error("커뮤니티 상세 조회 실패");
   return res.json();
+}
+
+export async function fetchComments(postId: string): Promise<CommentDto[]> {
+  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`);
+  if (!res.ok) throw new Error("댓글 조회 실패");
+  return res.json();
+}
+
+export async function createComment(
+  postId: string,
+  content: string,
+  parentId?: string,
+): Promise<CommentDto> {
+  const token = localStorage.getItem("accessToken");
+  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content, parentId: parentId ?? null }),
+  });
+  if (!res.ok) throw new Error("댓글 등록 실패");
+  return res.json();
+}
+
+export async function updateComment(
+  commentId: string,
+  content: string,
+): Promise<CommentDto> {
+  const token = localStorage.getItem("accessToken");
+  const res = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) throw new Error("댓글 수정 실패");
+  return res.json();
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const token = localStorage.getItem("accessToken");
+  const res = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("댓글 삭제 실패");
 }

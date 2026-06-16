@@ -47,3 +47,11 @@ export interface CommunityPostDetailDto extends CommunityPostDto {
   content: string;
   updatedAt: string;
 }
+
+export interface CommentDto {
+  id: string;
+  author: AuthorDto;
+  content: string;
+  createdAt: string;
+  replies: CommentDto[];
+}

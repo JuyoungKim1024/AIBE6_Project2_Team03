@@ -37,12 +37,19 @@ export default function JobsWritePage() {
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) {
+      router.push("/login");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/posts/job`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH",
           title,

@@ -63,7 +63,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   const insertImageUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요");
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+    if (url) editor.chain().focus().setImage({ src: url }).createParagraphNear().run();
   };
 
   const insertImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +72,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const src = ev.target?.result as string;
-      if (src) editor.chain().focus().setImage({ src }).run();
+      if (src) editor.chain().focus().setImage({ src }).createParagraphNear().run();
     };
     reader.readAsDataURL(file);
     e.target.value = "";
