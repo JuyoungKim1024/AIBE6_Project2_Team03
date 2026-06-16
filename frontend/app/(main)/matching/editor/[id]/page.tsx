@@ -12,7 +12,8 @@ type BlindEditor = {
   thumbnails: string[];
   categories: string[];
   tools: string[];
-  matchPrice: number | null;
+  matchPriceMin: number | null;
+  matchPriceMax: number | null;
   matchPriceUnit: string;
 };
 
@@ -155,8 +156,8 @@ export default function EditorDetailPage() {
             {/* 단가 */}
             <div className="rounded-xl bg-surface-elevated border border-border p-4 flex items-center justify-between">
               <span className="text-sm font-bold text-text-primary">예상 단가</span>
-              <span className="font-mono font-bold text-text-primary">
-                ₩{new Intl.NumberFormat('ko-KR').format(editor.matchPrice ?? 0)}
+              <span className="font-bold text-text-primary">
+                ₩{new Intl.NumberFormat('ko-KR').format(editor.matchPriceMin ?? 0)} ~ ₩{new Intl.NumberFormat('ko-KR').format(editor.matchPriceMax ?? 0)}
                 <span className="text-xs text-text-muted font-normal ml-1">{editor.matchPriceUnit}</span>
               </span>
             </div>
