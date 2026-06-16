@@ -64,7 +64,7 @@ function JobsContent() {
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text-primary mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
             구인구직
           </h1>
           {query ? (
@@ -82,12 +82,14 @@ function JobsContent() {
           {[
             {
               id: "hiring" as const,
-              label: "구인 (Hiring)",
+              label: "구인",
+              labelSub: "Hiring",
               color: "text-accent",
             },
             {
               id: "looking" as const,
-              label: "구직 (Looking for Work)",
+              label: "구직",
+              labelSub: "Looking for Work",
               color: "text-primary",
             },
           ].map((tab) => {
@@ -96,9 +98,10 @@ function JobsContent() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative px-6 py-4 text-sm font-bold transition-colors ${isActive ? "text-text-primary" : "text-text-secondary hover:text-text-primary"}`}
+                className={`relative px-4 sm:px-6 py-4 text-sm font-bold transition-colors whitespace-nowrap ${isActive ? "text-text-primary" : "text-text-secondary hover:text-text-primary"}`}
               >
-                {tab.label}
+                <span>{tab.label}</span>
+                <span className="hidden sm:inline text-text-muted font-normal"> ({tab.labelSub})</span>
                 {isActive && (
                   <motion.div
                     layoutId="jobTabIndicator"
