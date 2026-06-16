@@ -7,13 +7,10 @@ import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 
-const contentTags = ["롱폼", "숏폼", "게임", "음악", "브이로그", "Shorts"];
-const toolTags = [
-  "Premiere Pro",
-  "Final Cut",
-  "After Effects",
-  "DaVinci Resolve",
-];
+const categoryTags = ["롱폼", "숏폼", "썸네일"];
+const subCategoryTags = ["게임", "여행", "브이로그", "반려동물", "IT", "애니메이션", "기타"];
+const videoToolTags = ["Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "CapCut", "기타"];
+const designToolTags = ["Photoshop", "Adobe Illustrator", "Figma", "Canva", "기타"];
 
 type UserRole = "YOUTUBER" | "EDITOR";
 
@@ -30,14 +27,16 @@ export default function JobsWritePage() {
 
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
-  const [type, setType] = useState<"hiring" | "looking">("hiring");
+  const [type, setType] = useState<"hiring" | "looking" | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [minPrice, setMinPrice] = useState(10000);
   const [maxPrice, setMaxPrice] = useState(20000);
   const [priceHidden, setPriceHidden] = useState(false);
-  const [selectedContentTags, setSelectedContentTags] = useState<string[]>([]);
-  const [selectedToolTags, setSelectedToolTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string[]>([]);
+  const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
+  const [selectedDesignTools, setSelectedDesignTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -69,6 +68,7 @@ export default function JobsWritePage() {
   }, []);
 
   const handleTypeChange = (next: "hiring" | "looking") => {
+    if (!userRole) return;
     if (userRole === "YOUTUBER" && next === "looking") {
       setRoleError(
         "유튜버 계정으로는 구직 글을 작성할 수 없습니다. 에디터 계정으로 변경해주세요.",
@@ -85,20 +85,14 @@ export default function JobsWritePage() {
     setType(next);
   };
 
-  const toggleTag = (tag: string, kind: "content" | "tool") => {
-    if (kind === "content") {
-      setSelectedContentTags((prev) =>
-        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-      );
-    } else {
-      setSelectedToolTags((prev) =>
-        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-      );
-    }
+  const toggle = (tag: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setter((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !content.trim()) return;
+    if (!title.trim() || !content.trim() || !type) return;
+    if (userRole === "EDITOR" && type === "hiring") return;
+    if (userRole === "YOUTUBER" && type === "looking") return;
     if (priceRangeError) {
       priceSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -123,8 +117,12 @@ export default function JobsWritePage() {
           minPrice: priceHidden ? null : minPrice,
           maxPrice: priceHidden ? null : maxPrice,
           priceVisible: !priceHidden,
-          fieldTags: selectedContentTags,
-          toolTags: selectedToolTags,
+          fieldTags: [...selectedCategory, ...selectedSubCategory],
+          toolTags: [
+            ...selectedVideoTools.filter((t) => t !== "기타"),
+            ...selectedDesignTools.filter((t) => t !== "기타"),
+            ...(selectedVideoTools.includes("기타") || selectedDesignTools.includes("기타") ? ["기타"] : []),
+          ],
           portfolioId: selectedPortfolioId,
         }),
       });
@@ -158,32 +156,36 @@ export default function JobsWritePage() {
             <label className="block text-sm font-bold text-text-primary mb-3">
               게시글 종류
             </label>
-            <div className="flex bg-surface-elevated p-1 rounded-xl border border-border w-full sm:w-64">
-              <label className="flex-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="type"
-                  className="peer sr-only"
-                  checked={type === "hiring"}
-                  onChange={() => handleTypeChange("hiring")}
-                />
-                <div className="py-2.5 text-center text-sm font-bold rounded-lg text-text-secondary peer-checked:bg-accent/10 peer-checked:text-accent peer-checked:shadow-sm transition-all">
-                  구인 (Hiring)
-                </div>
-              </label>
-              <label className="flex-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="type"
-                  className="peer sr-only"
-                  checked={type === "looking"}
-                  onChange={() => handleTypeChange("looking")}
-                />
-                <div className="py-2.5 text-center text-sm font-bold rounded-lg text-text-secondary peer-checked:bg-primary/10 peer-checked:text-primary peer-checked:shadow-sm transition-all">
-                  구직 (Looking)
-                </div>
-              </label>
-            </div>
+            {type === null ? (
+              <div className="w-full sm:w-64 h-11 bg-surface-elevated border border-border rounded-xl animate-pulse" />
+            ) : (
+              <div className="flex bg-surface-elevated p-1 rounded-xl border border-border w-full sm:w-64">
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="type"
+                    className="peer sr-only"
+                    checked={type === "hiring"}
+                    onChange={() => handleTypeChange("hiring")}
+                  />
+                  <div className="py-2.5 text-center text-sm font-bold rounded-lg text-text-secondary peer-checked:bg-accent/10 peer-checked:text-accent peer-checked:shadow-sm transition-all">
+                    구인 (Hiring)
+                  </div>
+                </label>
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="type"
+                    className="peer sr-only"
+                    checked={type === "looking"}
+                    onChange={() => handleTypeChange("looking")}
+                  />
+                  <div className="py-2.5 text-center text-sm font-bold rounded-lg text-text-secondary peer-checked:bg-primary/10 peer-checked:text-primary peer-checked:shadow-sm transition-all">
+                    구직 (Looking)
+                  </div>
+                </label>
+              </div>
+            )}
             {roleError && (
               <div className="mt-3 flex items-start gap-2 text-amber-500 text-xs font-medium bg-amber-500/10 p-3 rounded-lg">
                 <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
@@ -280,37 +282,53 @@ export default function JobsWritePage() {
           </div>
 
           {/* 태그 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-bold text-text-primary mb-3">
-                분야 태그
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {contentTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag, "content")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedContentTags.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-text-primary mb-3">분야</label>
+                <div className="flex flex-wrap gap-2">
+                  {categoryTags.map((tag) => (
+                    <button key={tag} type="button" onClick={() => toggle(tag, setSelectedCategory)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedCategory.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-text-primary mb-3">세부분야</label>
+                <div className="flex flex-wrap gap-2">
+                  {subCategoryTags.map((tag) => (
+                    <button key={tag} type="button" onClick={() => toggle(tag, setSelectedSubCategory)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedSubCategory.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-bold text-text-primary mb-3">
-                툴 태그
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {toolTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag, "tool")}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedToolTags.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-text-primary mb-3">영상편집툴</label>
+                <div className="flex flex-wrap gap-2">
+                  {videoToolTags.map((tag) => (
+                    <button key={tag} type="button" onClick={() => toggle(tag, setSelectedVideoTools)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedVideoTools.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-text-primary mb-3">디자인툴</label>
+                <div className="flex flex-wrap gap-2">
+                  {designToolTags.map((tag) => (
+                    <button key={tag} type="button" onClick={() => toggle(tag, setSelectedDesignTools)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedDesignTools.includes(tag) ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

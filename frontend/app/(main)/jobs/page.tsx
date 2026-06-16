@@ -11,7 +11,7 @@ import { formatTimeAgo } from "@/lib/utils/time";
 
 type JobType = "hiring" | "looking";
 
-const filterChips = ["롱폼", "숏폼", "게임", "음악", "브이로그"];
+const filterChips = ["롱폼", "숏폼", "썸네일", "게임", "여행", "브이로그", "반려동물", "음악", "IT", "애니메이션", "기타"];
 
 function JobsContent() {
   const searchParams = useSearchParams();
@@ -57,7 +57,7 @@ function JobsContent() {
     .sort((a, b) => {
       // 단가 미공개는 항상 하위
       if (a.priceVisible !== b.priceVisible) return a.priceVisible ? -1 : 1;
-      if (sort === "popular") return b.viewCount - a.viewCount;
+      if (sort === "popular") return b.likeCount - a.likeCount;
       if (sort === "price") return (b.minPrice ?? 0) - (a.minPrice ?? 0);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
