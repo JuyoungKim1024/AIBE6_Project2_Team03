@@ -163,7 +163,7 @@ public class MyPageService {
             PortfolioItemRequest item = items.get(i);
             String thumbnailUrl = "video".equals(item.type()) ? item.url() : null;
             String imageUrl = "image".equals(item.type()) ? item.url() : null;
-            portfolios.add(new Portfolio(user, item.title(), thumbnailUrl, imageUrl, i + 1, item.representative()));
+            portfolios.add(new Portfolio(user, item.title(), thumbnailUrl, imageUrl, item.displayOrder(), item.representative()));
         }
         portfolioRepository.saveAll(portfolios);
     }

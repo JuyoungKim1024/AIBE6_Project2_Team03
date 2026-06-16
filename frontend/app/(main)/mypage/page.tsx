@@ -150,6 +150,14 @@ function hasLocalRepresentativePortfolio(userId?: string | null) {
   return loadPortfolios(userId).some((portfolio) => portfolio.isRepresentative && portfolio.displayOrder === 1);
 }
 
+function isAcceptedPortfolioFile(type: PortfolioType, file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (type === 'image') {
+    return ['png', 'jpg', 'jpeg'].includes(extension) || ['image/png', 'image/jpeg'].includes(file.type);
+  }
+  return ['mp4', 'webm', 'mov'].includes(extension) || file.type.startsWith('video/');
+}
+
 function getAccessToken(): string {
   const token = localStorage.getItem('accessToken');
   if (!token) throw new Error('Login required');
@@ -240,6 +248,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -253,6 +262,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         setSelectedFields(data.contentTypes ?? []);
         if (data.fields.length > 0 || data.tools.length > 0 || data.contentTypes.length > 0) {
           setIsRegistered(true);
+          setIsEditing(false);
         }
       })
       .catch(() => {});
@@ -269,7 +279,10 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           displayOrder: item.displayOrder,
         }));
         setPortfolios(loaded);
-        if (loaded.length > 0) setIsRegistered(true);
+        if (loaded.length > 0) {
+          setIsRegistered(true);
+          setIsEditing(false);
+        }
       })
       .catch(() => {});
   }, [userId]);
@@ -279,8 +292,12 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
   };
 
   const addPortfolio = async (type: PortfolioType, file: File) => {
-    const tempId = `${type}-${Date.now()}`;
-    const sameTypeCount = portfolios.filter((p) => p.type === type).length;
+    if (!isAcceptedPortfolioFile(type, file)) {
+      setMessage(type === 'image' ? 'PNG, JPG, JPEG 이미지만 업로드할 수 있습니다.' : '지원하지 않는 영상 파일입니다.');
+      return;
+    }
+
+    const tempId = `${type}-${Date.now()}-${crypto.randomUUID()}`;
 
     // 업로드 중 임시 항목 추가
     setPortfolios((prev) => [
@@ -291,7 +308,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         title: file.name.replace(/\.[^/.]+$/, ''),
         fileName: file.name,
         url: '',
-        isRepresentative: sameTypeCount === 0,
+        isRepresentative: !prev.some((p) => p.isRepresentative),
         displayOrder: prev.length + 1,
         uploading: true,
       },
@@ -345,7 +362,9 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           displayOrder: i + 1,
         }))),
       ]);
+      savePortfolios(userId, portfolios);
       setIsRegistered(true);
+      setIsEditing(false);
       onSaved();
       setMessage('에디터 프로필이 저장되었습니다.');
     } catch (e) {
@@ -355,29 +374,53 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
     }
   };
 
+  const isViewMode = isRegistered && !isEditing;
+
   return (
     <SectionCard title={isRegistered ? '에디터 프로필 수정' : '에디터 프로필 등록'} description="분야와 툴 태그를 선택하고 공개 프로필에 노출할 포트폴리오를 등록합니다.">
-      <div className="space-y-8">
-        <TagGroup title="분야" options={fieldTags} selected={selectedFields} onToggle={(value) => toggleValue(value, setSelectedFields)} />
-        <TagGroup title="세부 분야" options={detailTags} selected={selectedDetails} onToggle={(value) => toggleValue(value, setSelectedDetails)} />
-        <TagGroup title="영상편집 툴" options={videoTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
-        <TagGroup title="디자인 툴" options={designTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PortfolioDropzone type="video" title="영상 포트폴리오 등록" accept="video/*" onAdd={addPortfolio} />
-          <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/*" onAdd={addPortfolio} />
+      {isViewMode ? (
+        <div className="space-y-8">
+          <TagSummary title="분야" values={selectedFields} />
+          <TagSummary title="세부 분야" values={selectedDetails} />
+          <TagSummary title="툴" values={selectedTools} />
+          <PortfolioSummaryList portfolios={portfolios} />
+          {message && (
+            <p className={`text-sm font-bold ${message.includes('실패') ? 'text-accent' : 'text-primary'}`}>{message}</p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditing(true);
+              setMessage('');
+            }}
+            className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors"
+          >
+            수정
+          </button>
         </div>
-        <PortfolioPreviewList portfolios={portfolios} onRemove={removePortfolio} />
-        {message && (
-          <p className={`text-sm font-bold ${message.includes('실패') ? 'text-accent' : 'text-primary'}`}>{message}</p>
-        )}
-        <button
-          onClick={saveEditorProfile}
-          disabled={isSaving}
-          className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSaving ? '저장 중...' : isRegistered ? '수정' : '등록'}
-        </button>
-      </div>
+      ) : (
+        <div className="space-y-8">
+          <TagGroup title="분야" options={fieldTags} selected={selectedFields} onToggle={(value) => toggleValue(value, setSelectedFields)} />
+          <TagGroup title="세부 분야" options={detailTags} selected={selectedDetails} onToggle={(value) => toggleValue(value, setSelectedDetails)} />
+          <TagGroup title="영상편집 툴" options={videoTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
+          <TagGroup title="디자인 툴" options={designTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PortfolioDropzone type="video" title="영상 포트폴리오 등록" accept="video/*,.mp4,.webm,.mov" onAdd={addPortfolio} />
+            <PortfolioDropzone type="image" title="이미지 포트폴리오 등록" accept="image/png,image/jpeg,.png,.jpg,.jpeg" onAdd={addPortfolio} />
+          </div>
+          <PortfolioPreviewList portfolios={portfolios} onRemove={removePortfolio} />
+          {message && (
+            <p className={`text-sm font-bold ${message.includes('실패') ? 'text-accent' : 'text-primary'}`}>{message}</p>
+          )}
+          <button
+            onClick={saveEditorProfile}
+            disabled={isSaving}
+            className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? '저장 중...' : isRegistered ? '수정 저장' : '등록'}
+          </button>
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -386,10 +429,7 @@ function PortfolioDropzone({ type, title, accept, onAdd }: { type: PortfolioType
   const inputId = `${type}-portfolio-input`;
 
   const addFiles = (files: FileList | null) => {
-    const file = files?.[0];
-    if (file) {
-      onAdd(type, file);
-    }
+    Array.from(files ?? []).forEach((file) => onAdd(type, file));
   };
 
   return (
@@ -402,7 +442,10 @@ function PortfolioDropzone({ type, title, accept, onAdd }: { type: PortfolioType
       }}
       className="min-h-44 cursor-pointer rounded-xl border border-dashed border-border bg-surface-elevated p-5 flex flex-col items-center justify-center text-center hover:border-primary/60 transition-colors"
     >
-      <input id={inputId} type="file" accept={accept} className="hidden" onChange={(event) => addFiles(event.target.files)} />
+      <input id={inputId} type="file" accept={accept} multiple className="hidden" onChange={(event) => {
+        addFiles(event.target.files);
+        event.currentTarget.value = '';
+      }} />
       <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
         {type === 'video' ? <Film size={20} /> : <ImageIcon size={20} />}
       </div>
@@ -446,6 +489,59 @@ function PortfolioPreviewList({ portfolios, onRemove }: { portfolios: PortfolioD
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function TagSummary({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div>
+      <h3 className="text-sm font-bold text-text-primary mb-3">{title}</h3>
+      {values.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {values.map((value) => (
+            <span key={`${title}-${value}`} className="px-3 py-2 rounded-lg text-sm font-bold border border-primary bg-primary/10 text-primary">
+              {value}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-text-muted">선택된 항목이 없습니다</p>
+      )}
+    </div>
+  );
+}
+
+function PortfolioSummaryList({ portfolios }: { portfolios: PortfolioDraft[] }) {
+  if (portfolios.length === 0) {
+    return <EmptyState message="등록된 포트폴리오가 없습니다" />;
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-bold text-text-primary mb-3">포트폴리오</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {portfolios.map((portfolio) => (
+          <div key={portfolio.id} className="rounded-xl bg-surface-elevated border border-border p-4 flex gap-3">
+            <div className="w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+              {portfolio.type === 'image' && portfolio.url ? (
+                <img src={portfolio.url} alt={portfolio.title} className="w-full h-full object-cover" />
+              ) : portfolio.type === 'video' && portfolio.url ? (
+                <video src={portfolio.url} className="w-full h-full object-cover" muted />
+              ) : (
+                <Film size={22} className="text-text-muted" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-primary">{portfolio.type === 'video' ? '영상' : '이미지'}</span>
+                <span className="text-xs text-text-muted truncate">{portfolio.fileName}</span>
+              </div>
+              <div className="font-bold text-sm text-text-primary truncate mt-1">{portfolio.title}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -733,12 +829,28 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const saved = loadPortfolios(userId);
-    setPortfolios(saved);
-    setSelectedOrders({
-      video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
-      image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
-    });
+    if (!userId) return;
+
+    const applyPortfolios = (saved: PortfolioDraft[]) => {
+      setPortfolios(saved);
+      savePortfolios(userId, saved);
+      setSelectedOrders({
+        video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+        image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+      });
+    };
+
+    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number }[]>('/api/users/me/portfolios')
+      .then((data) => applyPortfolios(data.map((item) => ({
+        id: item.id,
+        type: item.type as PortfolioType,
+        title: item.title,
+        fileName: item.title,
+        url: item.url,
+        isRepresentative: item.representative,
+        displayOrder: item.displayOrder,
+      }))))
+      .catch(() => applyPortfolios(loadPortfolios(userId)));
   }, [userId]);
 
   const updatePortfolio = (id: string, patch: Partial<PortfolioDraft>) => {
@@ -757,9 +869,8 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
     });
   };
 
-  const saveOrder = () => {
-    setPortfolios((prev) => {
-      const next = prev.map((portfolio) => {
+  const saveOrder = async () => {
+    const next = portfolios.map((portfolio) => {
         const selectedIds = selectedOrders[portfolio.type];
         const index = selectedIds.indexOf(portfolio.id);
         if (index === -1) {
@@ -767,9 +878,15 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         }
         return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
       });
-      savePortfolios(userId, next);
-      return next;
-    });
+    await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
+      title: p.title,
+      url: p.url,
+      type: p.type,
+      representative: p.isRepresentative,
+      displayOrder: p.displayOrder,
+    })));
+    savePortfolios(userId, next);
+    setPortfolios(next);
     setMessage('순번이 저장되었습니다.');
   };
 
@@ -805,8 +922,10 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
             <div key={portfolio.id} className={`rounded-xl border p-4 transition-colors ${selected ? 'bg-primary/10 border-primary' : 'bg-surface-elevated border-border'}`}>
               <div className="flex gap-3">
                 <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-                  {portfolio.type === 'image' ? (
-                    <img src={portfolio.dataUrl} alt={portfolio.title} className="w-full h-full object-cover" />
+                  {portfolio.type === 'image' && portfolio.url ? (
+                    <img src={portfolio.url} alt={portfolio.title} className="w-full h-full object-cover" />
+                  ) : portfolio.type === 'video' && portfolio.url ? (
+                    <video src={portfolio.url} className="w-full h-full object-cover" muted />
                   ) : (
                     <Film size={24} className="text-text-muted" />
                   )}
@@ -1156,9 +1275,34 @@ function MypageContent() {
   }, [activeSection, defaultSection, router, sectionParam, userRole]);
 
   useEffect(() => {
-    const storageKey = getUserStorageKey(userId, 'editorProfileDraft');
-    setIsEditorProfileRegistered(Boolean(storageKey && localStorage.getItem(storageKey)));
-  }, [activeSection, userId]);
+    if (!userId || userRole !== 'EDITOR') {
+      setIsEditorProfileRegistered(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all([
+      fetchMyPageData<{ fields: string[]; tools: string[]; contentTypes: string[] }>('/api/users/me/tags').catch(() => null),
+      fetchMyPageData<{ id: string }[]>('/api/users/me/portfolios').catch(() => null),
+    ]).then(([tags, portfolios]) => {
+      if (cancelled) return;
+
+      const hasTags = Boolean(
+        tags &&
+        ((tags.fields?.length ?? 0) > 0 ||
+          (tags.tools?.length ?? 0) > 0 ||
+          (tags.contentTypes?.length ?? 0) > 0)
+      );
+      const hasPortfolios = portfolios ? portfolios.length > 0 : loadPortfolios(userId).length > 0;
+
+      setIsEditorProfileRegistered(hasTags || hasPortfolios);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection, userId, userRole]);
 
   const visibleSidebarItems = sidebarItems.filter((item) => !item.editorOnly || userRole === 'EDITOR');
 
