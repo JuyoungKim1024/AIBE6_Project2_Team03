@@ -1,0 +1,2 @@
+ALTER TABLE posts
+    MODIFY COLUMN revision_count INT NULL DEFAULT NULL;

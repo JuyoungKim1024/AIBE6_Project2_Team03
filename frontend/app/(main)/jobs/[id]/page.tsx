@@ -20,7 +20,16 @@ import {
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
-import { fetchJobPost, fetchComments, createComment, updateComment, deleteComment } from "@/lib/api/post";
+import {
+  fetchJobPost,
+  fetchComments,
+  createComment,
+  updateComment,
+  deleteComment,
+  incrementPostView,
+  togglePostLike,
+  getPostLikedStatus,
+} from "@/lib/api/post";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
@@ -49,6 +58,10 @@ export default function JobDetailPage() {
   const [likeCount, setLikeCount] = useState(0);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     fetchJobPost(id)
       .then((data) => {
@@ -58,24 +71,28 @@ export default function JobDetailPage() {
       .catch((err) => console.error("fetchJobPost error:", err))
       .finally(() => setLoading(false));
     fetchComments(id).then(setComments).catch(console.error);
+    incrementPostView(id).catch(() => {});
+    getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
     const token = localStorage.getItem("accessToken");
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then((r) => r.ok ? r.json() : null)
+        .then((r) => (r.ok ? r.json() : null))
         .then((user) => user && setCurrentUserId(user.id))
         .catch(() => {});
     }
   }, [id]);
 
-  const handleLike = () => {
-    if (liked) {
-      setLikeCount((prev) => prev - 1);
-      setLiked(false);
-    } else {
-      setLikeCount((prev) => prev + 1);
-      setLiked(true);
+  const handleLike = async () => {
+    try {
+      const result = await togglePostLike(id!);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+    } catch {
+      // 비로그인 시 로컬 토글
+      setLiked((prev) => !prev);
+      setLikeCount((prev) => liked ? prev - 1 : prev + 1);
     }
   };
 
@@ -88,7 +105,9 @@ export default function JobDetailPage() {
 
   const addReply = async (parentId: string) => {
     if (!replyText.trim() || !id) return;
-    const reply = await createComment(id, replyText, parentId).catch(console.error);
+    const reply = await createComment(id, replyText, parentId).catch(
+      console.error,
+    );
     if (reply) {
       setComments((prev) =>
         prev.map((c) =>
@@ -102,7 +121,9 @@ export default function JobDetailPage() {
 
   const saveEdit = async () => {
     if (!editingComment || !editText.trim()) return;
-    const updated = await updateComment(editingComment.id, editText).catch(console.error);
+    const updated = await updateComment(editingComment.id, editText).catch(
+      console.error,
+    );
     if (!updated) return;
     setComments((prev) =>
       prev.map((c) => {
@@ -112,7 +133,9 @@ export default function JobDetailPage() {
           return {
             ...c,
             replies: c.replies.map((r) =>
-              r.id === editingComment.id ? { ...r, content: updated.content } : r,
+              r.id === editingComment.id
+                ? { ...r, content: updated.content }
+                : r,
             ),
           };
         return c;
@@ -125,15 +148,20 @@ export default function JobDetailPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     await deleteComment(deleteConfirm.id).catch(console.error);
-    setComments((prev) =>
-      prev
-        .map((c) => {
-          if (!deleteConfirm.isReply && c.id === deleteConfirm.id) return null;
-          if (deleteConfirm.isReply && c.id === deleteConfirm.parentId)
-            return { ...c, replies: c.replies.filter((r) => r.id !== deleteConfirm.id) };
-          return c;
-        })
-        .filter(Boolean) as CommentDto[],
+    setComments(
+      (prev) =>
+        prev
+          .map((c) => {
+            if (!deleteConfirm.isReply && c.id === deleteConfirm.id)
+              return null;
+            if (deleteConfirm.isReply && c.id === deleteConfirm.parentId)
+              return {
+                ...c,
+                replies: c.replies.filter((r) => r.id !== deleteConfirm.id),
+              };
+            return c;
+          })
+          .filter(Boolean) as CommentDto[],
     );
     setDeleteConfirm(null);
   };
@@ -149,7 +177,9 @@ export default function JobDetailPage() {
   if (!post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-text-muted text-sm">게시글을 찾을 수 없습니다.</div>
+        <div className="text-text-muted text-sm">
+          게시글을 찾을 수 없습니다.
+        </div>
       </div>
     );
   }
@@ -181,7 +211,10 @@ export default function JobDetailPage() {
     {
       icon: RotateCcw,
       label: "수정 횟수",
-      value: "-",
+      value:
+        post.revisionCount === null || post.revisionCount === undefined
+          ? "무제한"
+          : `${post.revisionCount}회`,
     },
   ];
 
@@ -204,7 +237,9 @@ export default function JobDetailPage() {
           className="mb-6"
         >
           <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-accent/10 text-accent">
+            <span
+              className={`px-2.5 py-1 rounded-md text-xs font-bold ${post.postType === "RECRUITING" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"}`}
+            >
               {postTypeLabel}
             </span>
             {post.fieldTags.map((tag) => (
@@ -230,7 +265,11 @@ export default function JobDetailPage() {
           </h1>
 
           <div className="flex items-center gap-3 mb-6">
-            <UserActionMenu userId={post.author.id} nickname={post.author.nickname} profileImage={post.author.profileImage} />
+            <UserActionMenu
+              userId={post.author.id}
+              nickname={post.author.nickname}
+              profileImage={post.author.profileImage}
+            />
             <div className="flex items-center gap-2">
               <span className="font-bold text-text-primary">
                 {post.author.nickname}
@@ -308,7 +347,10 @@ export default function JobDetailPage() {
         {/* Comments Section */}
         <div>
           <h2 className="text-lg font-bold text-text-primary mb-5">
-            댓글 ({comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)})
+            댓글 (
+            {comments.length +
+              comments.reduce((acc, c) => acc + c.replies.length, 0)}
+            )
           </h2>
 
           {/* Comment Input */}
@@ -337,7 +379,23 @@ export default function JobDetailPage() {
                 <div className="bg-surface border border-border rounded-xl p-4 group">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <UserActionMenu userId={comment.author.id} nickname={comment.author.nickname} profileImage={comment.author.profileImage} size="sm" />
+                      {comment.author.profileImage ? (
+                        <img
+                          src={comment.author.profileImage}
+                          alt={comment.author.nickname}
+                          className="w-7 h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
+                          {comment.author.nickname[0]}
+                        </div>
+                      )}
+                      <UserActionMenu
+                        userId={comment.author.id}
+                        nickname={comment.author.nickname}
+                        profileImage={comment.author.profileImage}
+                        size="sm"
+                      />
                       <span className="font-bold text-sm text-text-primary">
                         {comment.author.nickname}
                       </span>
@@ -350,7 +408,10 @@ export default function JobDetailPage() {
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => {
-                            setEditingComment({ id: comment.id, isReply: false });
+                            setEditingComment({
+                              id: comment.id,
+                              isReply: false,
+                            });
                             setEditText(comment.content);
                           }}
                           className="text-text-muted hover:text-primary"
@@ -445,7 +506,23 @@ export default function JobDetailPage() {
                     <div className="absolute -left-4 top-0 bottom-1/2 border-l border-b border-border/50 w-4 rounded-bl-xl" />
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <UserActionMenu userId={reply.author.id} nickname={reply.author.nickname} profileImage={reply.author.profileImage} size="sm" />
+                        {reply.author.profileImage ? (
+                          <img
+                            src={reply.author.profileImage}
+                            alt={reply.author.nickname}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
+                            {reply.author.nickname[0]}
+                          </div>
+                        )}
+                        <UserActionMenu
+                          userId={reply.author.id}
+                          nickname={reply.author.nickname}
+                          profileImage={reply.author.profileImage}
+                          size="sm"
+                        />
                         <span className="font-bold text-sm text-text-primary">
                           {reply.author.nickname}
                         </span>

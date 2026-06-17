@@ -42,4 +42,5 @@ public class JobPost extends Post {
         this.priceVisible = priceVisible;
         this.postType = postType;
     }
+
 }

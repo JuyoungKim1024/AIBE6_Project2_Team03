@@ -22,6 +22,7 @@ public record JobPostDetailResponse(
         int viewCount,
         int likeCount,
         int chatCount,
+        Integer revisionCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -48,6 +49,7 @@ public record JobPostDetailResponse(
                 post.getViewCount(),
                 post.getLikeCount(),
                 post.getChatCount(),
+                post.getRevisionCount(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

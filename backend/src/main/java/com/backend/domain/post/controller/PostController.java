@@ -61,4 +61,44 @@ public class PostController {
     public ResponseEntity<CommunityPostDetailResponse> getCommunityPost(@PathVariable String id) {
         return ResponseEntity.ok(postService.getCommunityPost(id));
     }
+
+    // 조회수 증가
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Void> incrementView(@PathVariable String id) {
+        postService.incrementViewCount(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // 좋아요 토글
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> toggleLike(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorization) {
+        String userId = authService.resolveUserId(authorization);
+        return ResponseEntity.ok(postService.toggleLike(id, userId));
+    }
+
+    // 좋아요 상태 조회
+    @GetMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> getLikedStatus(
+            @PathVariable String id,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        if (authorization == null) {
+            return ResponseEntity.ok(Map.of("liked", false));
+        }
+        String userId = authService.resolveUserId(authorization);
+        boolean liked = postService.isLiked(id, userId);
+        return ResponseEntity.ok(Map.of("liked", liked));
+    }
+
+    // 현재 유저가 좋아요한 게시글 ID 목록
+    @GetMapping("/liked")
+    public ResponseEntity<List<String>> getLikedPostIds(
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        if (authorization == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        String userId = authService.resolveUserId(authorization);
+        return ResponseEntity.ok(postService.getLikedPostIds(userId));
+    }
 }
