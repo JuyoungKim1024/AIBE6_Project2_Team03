@@ -17,6 +17,7 @@ import {
   Edit2,
   Trash2,
   Reply,
+  User,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { fetchJobPost, fetchComments, createComment, updateComment, deleteComment } from "@/lib/api/post";
@@ -233,11 +234,11 @@ export default function JobDetailPage() {
               <img
                 src={post.author.profileImage}
                 alt={post.author.nickname}
-                className="w-10 h-10 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover border border-border"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-sm font-bold">
-                {post.author.nickname[0]}
+              <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+                <User size={18} className="text-text-secondary" />
               </div>
             )}
             <div className="flex items-center gap-2">
@@ -350,11 +351,11 @@ export default function JobDetailPage() {
                         <img
                           src={comment.author.profileImage}
                           alt={comment.author.nickname}
-                          className="w-7 h-7 rounded-full object-cover"
+                          className="w-7 h-7 rounded-full object-cover border border-border"
                         />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                          {comment.author.nickname[0]}
+                        <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+                          <User size={13} className="text-text-secondary" />
                         </div>
                       )}
                       <span className="font-bold text-sm text-text-primary">
@@ -468,11 +469,11 @@ export default function JobDetailPage() {
                           <img
                             src={reply.author.profileImage}
                             alt={reply.author.nickname}
-                            className="w-6 h-6 rounded-full object-cover"
+                            className="w-6 h-6 rounded-full object-cover border border-border"
                           />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                            {reply.author.nickname[0]}
+                          <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+                            <User size={11} className="text-text-secondary" />
                           </div>
                         )}
                         <span className="font-bold text-sm text-text-primary">
@@ -645,11 +646,11 @@ export default function JobDetailPage() {
                     <img
                       src={post.author.profileImage}
                       alt={post.author.nickname}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover border border-border"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-sm font-bold">
-                      {post.author.nickname[0]}
+                    <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center border border-border">
+                      <User size={18} className="text-text-secondary" />
                     </div>
                   )}
                   <div>

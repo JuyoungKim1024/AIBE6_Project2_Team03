@@ -28,7 +28,7 @@ export function NavBar() {
     if (link.requireAuth && !user) {
       e.preventDefault();
       router.push('/login');
-    } else if (pathname === link.path || pathname.startsWith(link.path + '/')) {
+    } else if (pathname === link.path) {
       e.preventDefault();
       window.location.reload();
     }
