@@ -11,20 +11,49 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8
 const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
 const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
 const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
-const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
+const VIDEO_LENGTHS = ['숏폼', '롱폼', '썸네일'];
+
+function ToolButtons({ tools, selected, onToggle }: { tools: string[]; selected: string[]; onToggle: (t: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {tools.map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => onToggle(t)}
+          className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+            selected.includes(t)
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function MatchingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [category, setCategory] = useState('');
-  const [tool, setTool] = useState('상관없음');
-  const [videoLength, setVideoLength] = useState('롱폼');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [tools, setTools] = useState<string[]>([]);
+  const [videoLengths, setVideoLengths] = useState<string[]>([]);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [editors, setEditors] = useState<BlindEditor[]>([]);
   const [error, setError] = useState('');
 
   const isPriceInvalid = minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice);
-  const canSearch = category !== '' && !isPriceInvalid;
+  const canSearch = categories.length > 0 && !isPriceInvalid;
+
+  const makeToggle = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (value: string) => {
+    setter((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
+  };
+
+  const toggleCategory = makeToggle(setCategories);
+  const toggleTool = makeToggle(setTools);
+  const toggleVideoLength = makeToggle(setVideoLengths);
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,22 +64,22 @@ export default function MatchingPage() {
 
     try {
       const params = new URLSearchParams();
-      if (category) params.set('category', category);
-      if (tool && tool !== '상관없음') params.set('tool', tool);
-      if (videoLength && videoLength !== '상관없음') params.set('videoLength', videoLength);
+      categories.forEach((cat) => params.append('categories', cat));
+      tools.forEach((t) => params.append('tools', t));
+      videoLengths.forEach((len) => params.append('videoLengths', len));
       if (minPrice !== '') params.set('minPrice', minPrice);
       if (maxPrice !== '') params.set('maxPrice', maxPrice);
 
       const res = await fetch(`${API_BASE_URL}/api/matching/editors?${params}`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: BlindEditor[] = await res.json();
       setEditors(data);
+      setStep(3);
     } catch {
       setError('에디터 검색 중 오류가 발생했습니다.');
       setEditors([]);
+      setStep(3);
     }
-
-    setStep(3);
   };
 
   return (
@@ -73,9 +102,9 @@ export default function MatchingPage() {
                       <button
                         key={cat}
                         type="button"
-                        onClick={() => setCategory(cat)}
+                        onClick={() => toggleCategory(cat)}
                         className={`px-4 py-3 rounded-xl border text-sm transition-all ${
-                          category === cat
+                          categories.includes(cat)
                             ? 'border-primary bg-primary/10 text-primary'
                             : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
                         }`}
@@ -84,7 +113,7 @@ export default function MatchingPage() {
                       </button>
                     ))}
                   </div>
-                  {!category && (
+                  {categories.length === 0 && (
                     <p className="text-xs text-accent mt-2">카테고리를 선택해야 매칭을 시작할 수 있습니다.</p>
                   )}
                 </div>
@@ -93,63 +122,46 @@ export default function MatchingPage() {
                   <label className="block text-sm font-bold text-text-primary mb-3">선호하는 툴</label>
                   <button
                     type="button"
-                    onClick={() => setTool('상관없음')}
+                    onClick={() => setTools([])}
                     className={`mb-3 px-4 py-2 rounded-xl border text-sm transition-all ${
-                      tool === '상관없음'
+                      tools.length === 0
                         ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-surface-elevated text-text-secondary'
+                        : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
                     }`}
                   >
                     상관없음
                   </button>
                   <p className="text-xs text-text-muted mb-2">영상편집 툴</p>
-                  <div className="flex flex-wrap gap-3 mb-4">
-                    {VIDEO_TOOLS.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTool(t)}
-                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
-                          tool === t
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-surface-elevated text-text-secondary'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="mb-4">
+                    <ToolButtons tools={VIDEO_TOOLS} selected={tools} onToggle={toggleTool} />
                   </div>
                   <p className="text-xs text-text-muted mb-2">디자인 툴</p>
-                  <div className="flex flex-wrap gap-3">
-                    {DESIGN_TOOLS.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTool(t)}
-                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
-                          tool === t
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-surface-elevated text-text-secondary'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
+                  <ToolButtons tools={DESIGN_TOOLS} selected={tools} onToggle={toggleTool} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-text-primary mb-3">영상 길이</label>
-                  <div className="flex bg-surface-elevated p-1 rounded-xl border border-border">
+                  <label className="block text-sm font-bold text-text-primary mb-3">콘텐츠 유형</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setVideoLengths([])}
+                      className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+                        videoLengths.length === 0
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
+                      }`}
+                    >
+                      전체
+                    </button>
                     {VIDEO_LENGTHS.map((len) => (
                       <button
                         key={len}
                         type="button"
-                        onClick={() => setVideoLength(len)}
-                        className={`flex-1 py-2 text-center text-sm rounded-lg transition-all ${
-                          videoLength === len
-                            ? 'bg-surface text-text-primary shadow-sm'
-                            : 'text-text-secondary'
+                        onClick={() => toggleVideoLength(len)}
+                        className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+                          videoLengths.includes(len)
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-surface-elevated text-text-secondary hover:border-primary/50'
                         }`}
                       >
                         {len}
@@ -219,7 +231,12 @@ export default function MatchingPage() {
             <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-7xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  {editors.length > 0 ? (
+                  {error ? (
+                    <>
+                      <h2 className="text-3xl font-bold text-text-primary mb-2">검색 중 오류가 발생했습니다</h2>
+                      <p className="text-text-secondary">잠시 후 다시 시도해 주세요.</p>
+                    </>
+                  ) : editors.length > 0 ? (
                     <>
                       <h2 className="text-3xl font-bold text-text-primary mb-2">{editors.length}명의 에디터를 찾았어요!</h2>
                       <p className="text-text-secondary">조건에 가장 잘 맞는 블라인드 프로필입니다.</p>
@@ -252,7 +269,7 @@ export default function MatchingPage() {
                         thumbnails={editor.thumbnails}
                         categories={editor.categories}
                         tools={editor.tools}
-                        videoLength={videoLength}
+                        videoLengths={editor.videoLengths}
                         minPrice={editor.matchPriceMin ?? 0}
                         maxPrice={editor.matchPriceMax ?? 0}
                         priceUnit={editor.matchPriceUnit}

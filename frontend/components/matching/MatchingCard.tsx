@@ -8,13 +8,13 @@ export interface MatchingCardProps {
   thumbnails: string[];
   categories: string[];
   tools: string[];
-  videoLength: string;
+  videoLengths: string[];
   minPrice: number;
   maxPrice: number;
   priceUnit?: string;
 }
 
-export function MatchingCard({ id, thumbnails, categories, tools, videoLength, minPrice, maxPrice, priceUnit = '원/분' }: MatchingCardProps) {
+export function MatchingCard({ id, thumbnails, categories, tools, videoLengths, minPrice, maxPrice, priceUnit = '분' }: MatchingCardProps) {
   const validThumbs = thumbnails.slice(0, 2);
   const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
 
@@ -42,7 +42,12 @@ export function MatchingCard({ id, thumbnails, categories, tools, videoLength, m
       </Link>
       <div className="p-4 flex flex-col flex-grow">
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-bold">{videoLength}</span>
+          {videoLengths.length > 0
+            ? videoLengths.map((v) => (
+                <span key={v} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-bold">{v}</span>
+              ))
+            : <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-bold">전체</span>
+          }
           {categories.map((cat) => (
             <span key={cat} className="px-2 py-0.5 rounded bg-surface-elevated text-xs text-text-secondary border border-border/50">{cat}</span>
           ))}
