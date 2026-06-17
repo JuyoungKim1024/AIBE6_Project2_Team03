@@ -45,26 +45,23 @@ export default function JobsWritePage() {
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
+    const cachedRole = localStorage.getItem("userRole") as UserRole | null;
+
+    if (cachedRole) {
+      setUserRole(cachedRole);
+      setType(cachedRole === "YOUTUBER" ? "hiring" : "looking");
+    }
+
     if (!token) return;
-    fetch(`${API_BASE_URL}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((user) => {
-        if (!user?.role) return;
-        const role = user.role as UserRole;
-        setUserRole(role);
-        setType(role === "YOUTUBER" ? "hiring" : "looking");
-        if (role === "EDITOR") {
-          fetch(`${API_BASE_URL}/api/users/me/portfolios`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-            .then((r) => r.ok ? r.json() : [])
-            .then(setPortfolios)
-            .catch(() => {});
-        }
+
+    if (cachedRole === "EDITOR") {
+      fetch(`${API_BASE_URL}/api/users/me/portfolios`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch(() => {});
+        .then((r) => r.ok ? r.json() : [])
+        .then(setPortfolios)
+        .catch(() => {});
+    }
   }, []);
 
   const handleTypeChange = (next: "hiring" | "looking") => {
@@ -87,6 +84,11 @@ export default function JobsWritePage() {
 
   const toggle = (tag: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
     setter((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+  };
+
+  const extractThumbnailUrl = (html: string): string | null => {
+    const match = html.match(/<img[^>]+src="([^"]+)"/);
+    return match?.[1] ?? null;
   };
 
   const handleSubmit = async () => {
@@ -114,6 +116,7 @@ export default function JobsWritePage() {
           postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH",
           title,
           content,
+          thumbnailUrl: extractThumbnailUrl(content),
           minPrice: priceHidden ? null : minPrice,
           maxPrice: priceHidden ? null : maxPrice,
           priceVisible: !priceHidden,
@@ -127,7 +130,7 @@ export default function JobsWritePage() {
         }),
       });
       if (!res.ok) throw new Error("등록 실패");
-      router.push("/jobs");
+      router.push(`/jobs?tab=${type}`);
     } catch (err) {
       console.error(err);
     } finally {

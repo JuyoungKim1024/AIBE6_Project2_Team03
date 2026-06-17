@@ -13,9 +13,10 @@ export async function fetchJobPosts(
   postType: JobPostType,
 ): Promise<JobPostDto[]> {
   const res = await fetch(`${API_BASE_URL}/api/posts/job?postType=${postType}`);
-  console.log("fetchJobPosts response:", res);
   if (!res.ok) throw new Error("구인구직 목록 조회 실패");
-  return res.json();
+  const data = await res.json();
+  console.log("fetchJobPosts data[0]:", data[0]);
+  return data;
 }
 
 export async function fetchJobPost(id: string): Promise<JobPostDetailDto> {

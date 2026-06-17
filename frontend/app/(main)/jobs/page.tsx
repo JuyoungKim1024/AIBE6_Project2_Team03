@@ -16,13 +16,18 @@ const filterChips = ["롱폼", "숏폼", "썸네일", "게임", "여행", "브�
 function JobsContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
+  const tabParam = searchParams.get("tab") as JobType | null;
 
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<JobType>("hiring");
+  const [activeTab, setActiveTab] = useState<JobType>(tabParam === "looking" ? "looking" : "hiring");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sort, setSort] = useState("latest");
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
 
   useEffect(() => {
     const postType = activeTab === "hiring" ? "RECRUITING" : "JOB_SEARCH";
