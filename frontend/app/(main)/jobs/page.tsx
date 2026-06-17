@@ -5,24 +5,31 @@ import { motion } from "framer-motion";
 import { Plus, ChevronDown } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PostCard, PostType } from "@/components/post/PostCard";
-import { fetchJobPosts } from "@/lib/api/post";
+import { fetchJobPosts, getLikedPostIds } from "@/lib/api/post";
 import { JobPostDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 type JobType = "hiring" | "looking";
 
-const filterChips = ["롱폼", "숏폼", "게임", "음악", "브이로그"];
+const filterChips = ["롱폼", "숏폼", "썸네일", "게임", "여행", "브이로그", "반려동물", "음악", "IT", "애니메이션", "기타"];
 
 function JobsContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") ?? "";
+  const tabParam = searchParams.get("tab") as JobType | null;
 
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<JobType>("hiring");
+  const [activeTab, setActiveTab] = useState<JobType>(tabParam === "looking" ? "looking" : "hiring");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sort, setSort] = useState("latest");
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const postType = activeTab === "hiring" ? "RECRUITING" : "JOB_SEARCH";
@@ -55,9 +62,11 @@ function JobsContent() {
       return matchesFilter && matchesQuery;
     })
     .sort((a, b) => {
-      if (sort === "popular") return b.viewCount - a.viewCount;
+      // 단가 미공개는 항상 하위
+      if (a.priceVisible !== b.priceVisible) return a.priceVisible ? -1 : 1;
+      if (sort === "popular") return b.likeCount - a.likeCount;
       if (sort === "price") return (b.minPrice ?? 0) - (a.minPrice ?? 0);
-      return 0;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
   return (
@@ -185,6 +194,7 @@ function JobsContent() {
                   views={job.viewCount}
                   timeAgo={formatTimeAgo(job.createdAt)}
                   thumbnail={job.thumbnailUrl ?? undefined}
+                  initialLiked={likedIds.has(job.id)}
                 />
               </motion.div>
             ))

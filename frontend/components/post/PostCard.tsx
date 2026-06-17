@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
-import type { PostType } from "@/types/post";
+import { togglePostLike } from "@/lib/api/post";
 
-export type { PostType };
+export type PostType = "hiring" | "looking" | "info" | "free";
 
 export interface PostCardProps {
   id: string;
@@ -71,16 +71,24 @@ export function PostCard({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikes);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (liked) {
-      setLikeCount((prev) => prev - 1);
-      setLiked(false);
-      if (onUnlike) onUnlike(id);
-    } else {
-      setLikeCount((prev) => prev + 1);
-      setLiked(true);
+    try {
+      const result = await togglePostLike(id);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+      if (!result.liked && onUnlike) onUnlike(id);
+    } catch {
+      // 비로그인 fallback
+      if (liked) {
+        setLikeCount((prev) => prev - 1);
+        setLiked(false);
+        if (onUnlike) onUnlike(id);
+      } else {
+        setLikeCount((prev) => prev + 1);
+        setLiked(true);
+      }
     }
   };
 
@@ -97,7 +105,19 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            <UserActionMenu userId={author.id} nickname={author.name} profileImage={author.avatar} size="sm" />
+            {author.avatar && (
+              <img
+                src={author.avatar}
+                alt={author.name}
+                className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
+              />
+            )}
+            <UserActionMenu
+              userId={author.id}
+              nickname={author.name}
+              profileImage={author.avatar}
+              size="sm"
+            />
             <span className="font-medium text-text-primary">{author.name}</span>
             <span className="text-text-muted text-xs">•</span>
             <span className="text-text-muted text-xs">{timeAgo}</span>

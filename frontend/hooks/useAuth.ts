@@ -14,6 +14,7 @@ export type AuthUser = {
 export function clearTokens() {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+  localStorage.removeItem('userRole');
 }
 
 export function useAuth() {
@@ -34,7 +35,10 @@ export function useAuth() {
         if (!res.ok) throw new Error('Unauthorized');
         return res.json();
       })
-      .then((data: AuthUser) => setUser(data))
+      .then((data: AuthUser) => {
+        if (data.role) localStorage.setItem('userRole', data.role);
+        setUser(data);
+      })
       .catch(() => {
         clearTokens();
         setUser(null);

@@ -10,9 +10,10 @@ import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import ResizableImage from "tiptap-extension-resize-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { API_BASE_URL } from "@/lib/api";
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
-  AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown,
+  AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2,
 } from "lucide-react";
 
 const COLORS = [
@@ -41,6 +42,8 @@ function ToolbarButton({
 function Toolbar({ editor }: { editor: Editor }) {
   const [showColors, setShowColors] = useState(false);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const setHeading = (level: 0 | 1 | 2 | 3) => {
@@ -63,19 +66,51 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   const insertImageUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요");
-    if (url) editor.chain().focus().setImage({ src: url }).createParagraphNear().run();
+    if (url) editor.chain().focus().setImage({ src: url, wrapperStyle: imgWrapperStyle("left") }).createParagraphNear().run();
   };
 
-  const insertImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const imgWrapperStyle = (align: "left" | "center" | "right") => {
+    return `display: block; width: 100%; text-align: ${align}; margin: 12px 0;`;
+  };
+
+  const setAlignment = (align: "left" | "center" | "right") => {
+    if (editor.isActive("image")) {
+      editor.chain().updateAttributes("image", { wrapperStyle: imgWrapperStyle(align) }).run();
+    } else {
+      editor.chain().focus().setTextAlign(align).run();
+    }
+  };
+
+  const isAlignActive = (align: "left" | "center" | "right") => {
+    if (editor.isActive("image")) {
+      const style: string = editor.getAttributes("image").wrapperStyle ?? "";
+      return style.includes(`text-align: ${align}`);
+    }
+    return editor.isActive({ textAlign: align });
+  };
+
+  const insertImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const src = ev.target?.result as string;
-      if (src) editor.chain().focus().setImage({ src }).createParagraphNear().run();
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+    setFileKey((k) => k + 1);
+    setUploading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${API_BASE_URL}/api/files/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error("upload failed");
+      const data = await res.json();
+      editor.chain().focus("end").setImage({ src: data.url, wrapperStyle: imgWrapperStyle("left") }).createParagraphNear().run();
+    } catch {
+      alert("이미지 업로드에 실패했습니다.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -167,13 +202,13 @@ function Toolbar({ editor }: { editor: Editor }) {
       <div className="w-px h-5 bg-border mx-1" />
 
       {/* 정렬 */}
-      <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })} title="왼쪽 정렬">
+      <ToolbarButton onClick={() => setAlignment("left")} active={isAlignActive("left")} title="왼쪽 정렬">
         <AlignLeft size={15} />
       </ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })} title="가운데 정렬">
+      <ToolbarButton onClick={() => setAlignment("center")} active={isAlignActive("center")} title="가운데 정렬">
         <AlignCenter size={15} />
       </ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })} title="오른쪽 정렬">
+      <ToolbarButton onClick={() => setAlignment("right")} active={isAlignActive("right")} title="오른쪽 정렬">
         <AlignRight size={15} />
       </ToolbarButton>
 
@@ -191,14 +226,15 @@ function Toolbar({ editor }: { editor: Editor }) {
         </ToolbarButton>
         <button
           type="button"
+          disabled={uploading}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => fileRef.current?.click()}
           title="이미지 파일"
-          className="text-xs px-1.5 py-1 rounded text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors"
+          className="text-xs px-1.5 py-1 rounded text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
         >
-          파일
+          {uploading ? <Loader2 size={12} className="animate-spin" /> : "파일"}
         </button>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={insertImageFile} />
+        <input key={fileKey} ref={fileRef} type="file" accept="image/*" className="hidden" onChange={insertImageFile} />
       </div>
     </div>
   );
@@ -247,7 +283,7 @@ export function RichTextEditor({
       <EditorContent
         editor={editor}
         style={{ minHeight }}
-        className="[&_.ProseMirror]:min-h-[300px] [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-bold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:my-2 [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-text-muted [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none"
+        className="[&_.ProseMirror]:min-h-[300px] [&_.ProseMirror_h1]:text-2xl [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-bold [&_.ProseMirror_h3]:mb-2 [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:inline-block [&_.ProseMirror_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_.is-editor-empty:first-child::before]:text-text-muted [&_.ProseMirror_.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_.is-editor-empty:first-child::before]:pointer-events-none"
       />
     </div>
   );
