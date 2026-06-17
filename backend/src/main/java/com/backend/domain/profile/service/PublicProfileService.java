@@ -11,6 +11,7 @@ import com.backend.domain.profile.dto.RecentDealResponse;
 import com.backend.domain.profile.dto.ReviewResponse;
 import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.profile.entity.Project;
+import com.backend.domain.profile.entity.ProjectStatus;
 import com.backend.domain.profile.entity.Review;
 import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
@@ -75,6 +76,8 @@ public class PublicProfileService {
                 getTagNames(userId, UserTagType.FIELD),
                 getTagNames(userId, UserTagType.TOOL),
                 user.getMannerScore(),
+                projectRepository.countByEditor_IdAndStatus(userId, ProjectStatus.COMPLETED),
+                reviewRepository.countByTargetUser_Id(userId),
                 getPortfolios(userId),
                 getReviews(userId),
                 getRecentDeals(userId),
