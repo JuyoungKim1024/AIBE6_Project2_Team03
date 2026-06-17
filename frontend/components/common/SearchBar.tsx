@@ -61,8 +61,12 @@ export function SearchBar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.replace(/\s+/g, ' ').trim();
-    if (!trimmed) return;
     inputRef.current?.blur();
+    if (!trimmed) {
+      router.push(`/${category}`);
+      router.refresh();
+      return;
+    }
     const target = `/${category}?q=${encodeURIComponent(trimmed)}`;
     router.push(target);
     router.refresh();
