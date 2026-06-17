@@ -36,6 +36,7 @@ public class PostService {
                 author, req.title(), req.content(), req.thumbnailUrl(),
                 req.minPrice(), req.maxPrice(), req.priceVisible(), req.postType()
         );
+        post.setRevisionCount(req.revisionCount());
         jobPostRepository.save(post);
 
         if (req.fieldTags() != null) {

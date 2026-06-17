@@ -12,6 +12,7 @@ public record JobPostCreateRequest(
         Integer minPrice,
         Integer maxPrice,
         boolean priceVisible,
+        Integer revisionCount,
         List<String> fieldTags,
         List<String> toolTags
 ) {}

@@ -43,8 +43,12 @@ public abstract class Post extends BaseEntity {
     @Column(name = "public_visible", nullable = false)
     private boolean publicVisible = false;
 
-    @Column(name = "revision_count", nullable = false)
-    private int revisionCount = 0;
+    @Column(name = "revision_count")
+    private Integer revisionCount;
+
+    public void setRevisionCount(Integer revisionCount) {
+        this.revisionCount = revisionCount;
+    }
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostTag> tags = new ArrayList<>();
@@ -66,5 +70,9 @@ public abstract class Post extends BaseEntity {
 
     public void updatePublicVisible(boolean publicVisible) {
         this.publicVisible = publicVisible;
+    }
+
+    public void incrementRevisionCount() {
+        this.revisionCount++;
     }
 }
