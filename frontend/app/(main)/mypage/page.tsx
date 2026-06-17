@@ -576,7 +576,7 @@ function ToggleButton({ active, onClick, label }: { active: boolean; onClick: ()
   );
 }
 
-function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVisibility; label: string }) {
+function PublicVisibilityToggle({ field, label, onChanged }: { field: keyof PublicContentVisibility; label: string; onChanged?: (active: boolean) => void }) {
   const [active, setActive] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -595,6 +595,7 @@ function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVi
         [field]: next,
       });
       setActive(saved[field]);
+      onChanged?.(saved[field]);
     } catch {
       setActive(!next);
     } finally {
@@ -646,6 +647,23 @@ function PostsSection({ userRole }: { userRole: UserRole }) {
     }
   };
 
+  const toggleGroupVisibility = async (targetPosts: MyPost[], publicVisible: boolean) => {
+    if (targetPosts.length === 0) return;
+
+    const targetIds = new Set(targetPosts.map((post) => post.id));
+    const previousPosts = posts;
+    setPosts((prev) => prev.map((post) => targetIds.has(post.id) ? { ...post, publicVisible } : post));
+
+    try {
+      const savedPosts = await Promise.all(
+        targetPosts.map((post) => patchMyPageData<MyPost>(`/api/users/me/posts/${post.id}/visibility`, { publicVisible }))
+      );
+      setPosts((prev) => prev.map((post) => savedPosts.find((saved) => saved.id === post.id) ?? post));
+    } catch {
+      setPosts(previousPosts);
+    }
+  };
+
   const jobPosts = posts.filter((post) => post.boardType === 'JOB');
   const communityPosts = posts.filter((post) => post.boardType === 'COMMUNITY');
   const jobTitle = userRole === 'YOUTUBER' ? '구인글' : '구직글';
@@ -665,6 +683,7 @@ function PostsSection({ userRole }: { userRole: UserRole }) {
             emptyMessage={jobEmptyMessage}
             onDelete={deletePost}
             onToggleVisibility={togglePostVisibility}
+            onBulkVisibilityChange={(publicVisible) => toggleGroupVisibility(jobPosts, publicVisible)}
           />
           <PostManageGroup
             title="커뮤니티글"
@@ -674,6 +693,7 @@ function PostsSection({ userRole }: { userRole: UserRole }) {
             emptyMessage="작성한 커뮤니티글이 없습니다"
             onDelete={deletePost}
             onToggleVisibility={togglePostVisibility}
+            onBulkVisibilityChange={(publicVisible) => toggleGroupVisibility(communityPosts, publicVisible)}
           />
         </div>
       )}
@@ -689,6 +709,7 @@ function PostManageGroup({
   emptyMessage,
   onDelete,
   onToggleVisibility,
+  onBulkVisibilityChange,
 }: {
   title: string;
   visibilityField: keyof PublicContentVisibility;
@@ -697,6 +718,7 @@ function PostManageGroup({
   emptyMessage: string;
   onDelete: (postId: string) => void;
   onToggleVisibility: (postId: string, publicVisible: boolean) => void;
+  onBulkVisibilityChange: (publicVisible: boolean) => void;
 }) {
   return (
     <section>
@@ -704,7 +726,7 @@ function PostManageGroup({
         <h3 className="text-lg font-bold text-text-primary">{title}</h3>
         <span className="text-sm text-text-muted">{posts.length}개</span>
       </div>
-      <PublicVisibilityToggle field={visibilityField} label={visibilityLabel} />
+      <PublicVisibilityToggle field={visibilityField} label={visibilityLabel} onChanged={onBulkVisibilityChange} />
       {posts.length > 0 ? (
         <div className="space-y-3">
           {posts.map((post) => (
