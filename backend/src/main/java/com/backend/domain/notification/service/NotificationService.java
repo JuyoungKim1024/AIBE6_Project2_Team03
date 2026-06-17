@@ -1,10 +1,9 @@
 package com.backend.domain.notification.service;
 
-import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
-import com.backend.domain.chat.type.ChatRoomType;
+import com.backend.domain.chat.service.DirectChatRoomService;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
@@ -24,6 +23,7 @@ public class NotificationService {
     private final MyPageMatchRequestRepository matchRequestRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final DirectChatRoomService directChatRoomService;
     private final PointService pointService;
 
     // 로그인한 에디터에게 온 WAITING 상태 매칭 요청 목록 반환
@@ -45,11 +45,10 @@ public class NotificationService {
         pointService.holdEscrow(request.getId());
 
         // 채팅방 생성 및 양측 유저 추가
-        ChatRoom room = chatRoomRepository.save(new ChatRoom(ChatRoomType.DIRECT));
-        chatParticipantRepository.save(new ChatParticipant(room, request.getRequester()));
-        chatParticipantRepository.save(new ChatParticipant(room, request.getEditor()));
+        ChatRoom room = directChatRoomService.getOrCreate(request.getRequester(), request.getEditor());
 
         return NotificationResponse.from(request, room.getId());
+
     }
 
     @Transactional
@@ -67,5 +66,4 @@ public class NotificationService {
         }
         return request;
     }
-
 }

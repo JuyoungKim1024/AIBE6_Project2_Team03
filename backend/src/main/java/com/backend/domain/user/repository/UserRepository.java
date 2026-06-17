@@ -4,12 +4,13 @@ import com.backend.domain.user.entity.MatchPriceUnit;
 import com.backend.domain.user.entity.SocialProvider;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.entity.UserRole;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByProviderAndSocialIdAndDeletedAtIsNull(SocialProvider provider, String socialId);
@@ -33,4 +34,6 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Query(value = "SELECT DISTINCT u.* FROM users u JOIN portfolios p ON p.user_id = u.id AND p.is_representative = true WHERE u.role = 'EDITOR' AND u.match_enabled = true AND u.match_price_min IS NOT NULL ORDER BY RAND() LIMIT :count", nativeQuery = true)
     List<User> findRandomMatchableEditors(@Param("count") int count);
+
+
 }
