@@ -13,6 +13,7 @@ public record BlindEditorResponse(
         List<String> thumbnails,
         List<String> categories,
         List<String> tools,
+        List<String> videoLengths,
         Integer matchPriceMin,
         Integer matchPriceMax,
         String matchPriceUnit
@@ -25,6 +26,11 @@ public record BlindEditorResponse(
 
         List<String> tools = tags.stream()
                 .filter(t -> t.getTagType() == UserTagType.TOOL)
+                .map(UserTag::getTagName)
+                .toList();
+
+        List<String> videoLengths = tags.stream()
+                .filter(t -> t.getTagType() == UserTagType.CONTENT_TYPE)
                 .map(UserTag::getTagName)
                 .toList();
 
@@ -41,6 +47,7 @@ public record BlindEditorResponse(
                 thumbnails,
                 categories,
                 tools,
+                videoLengths,
                 user.getMatchPriceMin(),
                 user.getMatchPriceMax(),
                 unitLabel
