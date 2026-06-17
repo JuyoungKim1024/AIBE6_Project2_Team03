@@ -61,7 +61,7 @@ export function NavBar() {
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
+              {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR') && !(link.requireAuth && !user)).map((link) => {
                 const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
                 return (
                   <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link)} className={navLinkClass(isActive)}>
@@ -116,7 +116,7 @@ export function NavBar() {
 
         {mobileOpen && (
           <div className="md:hidden border-t border-border py-3 space-y-1">
-            {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
+            {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR') && !(link.requireAuth && !user)).map((link) => {
               const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
               return (
                 <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link, () => setMobileOpen(false))} className={mobileNavLinkClass(isActive)}>
