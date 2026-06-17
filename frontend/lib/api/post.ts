@@ -92,3 +92,42 @@ export async function deleteComment(commentId: string): Promise<void> {
   });
   if (!res.ok) throw new Error("댓글 삭제 실패");
 }
+
+export async function incrementPostView(postId: string): Promise<void> {
+  await fetch(`${API_BASE_URL}/api/posts/${postId}/view`, { method: "POST" });
+}
+
+export async function togglePostLike(
+  postId: string,
+): Promise<{ liked: boolean; likeCount: number }> {
+  const token = localStorage.getItem("accessToken");
+  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token ?? ""}` },
+  });
+  if (!res.ok) throw new Error("좋아요 실패");
+  return res.json();
+}
+
+export async function getPostLikedStatus(
+  postId: string,
+): Promise<{ liked: boolean }> {
+  const token = localStorage.getItem("accessToken");
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
+    headers,
+  });
+  if (!res.ok) return { liked: false };
+  return res.json();
+}
+
+export async function getLikedPostIds(): Promise<string[]> {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return [];
+  const res = await fetch(`${API_BASE_URL}/api/posts/liked`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}

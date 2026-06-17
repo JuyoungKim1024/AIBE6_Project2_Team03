@@ -8,7 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { RankBadge } from '@/components/common/RankBadge';
-import { fetchCommunityPosts } from '@/lib/api/post';
+import { fetchCommunityPosts, getLikedPostIds } from '@/lib/api/post';
 import { CommunityPostDto } from '@/types/post';
 import { formatTimeAgo } from '@/lib/utils/time';
 import type { PostType } from '@/types/post';
@@ -29,9 +29,11 @@ function CommunityContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [posts, setPosts] = useState<CommunityPostDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+    getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -145,6 +147,7 @@ function CommunityContent() {
                     views={post.viewCount}
                     timeAgo={formatTimeAgo(post.createdAt)}
                     thumbnail={post.thumbnailUrl ?? undefined}
+                    initialLiked={likedIds.has(post.id)}
                   />
                 </motion.div>
               ))

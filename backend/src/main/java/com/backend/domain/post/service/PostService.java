@@ -7,9 +7,13 @@ import com.backend.domain.post.dto.JobPostDetailResponse;
 import com.backend.domain.post.dto.JobPostResponse;
 import com.backend.domain.post.entity.CommunityPost;
 import com.backend.domain.post.entity.JobPost;
+import com.backend.domain.post.entity.Post;
+import com.backend.domain.post.entity.PostLike;
 import com.backend.domain.post.entity.PostTag;
 import com.backend.domain.post.repository.CommunityPostRepository;
 import com.backend.domain.post.repository.JobPostRepository;
+import com.backend.domain.post.repository.PostLikeRepository;
+import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,8 @@ public class PostService {
     private final JobPostRepository jobPostRepository;
     private final CommunityPostRepository communityPostRepository;
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
 
     @Transactional
     public String createJobPost(String userId, JobPostCreateRequest req) {
@@ -73,6 +80,41 @@ public class PostService {
         CommunityPost post = communityPostRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
         return CommunityPostDetailResponse.from(post);
+    }
+
+    @Transactional
+    public void incrementViewCount(String postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        post.incrementViewCount();
+    }
+
+    @Transactional
+    public Map<String, Object> toggleLike(String postId, String userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        boolean liked;
+        postLikeRepository.findByPost_IdAndUser_Id(postId, userId)
+                .ifPresentOrElse(existing -> {
+                    postLikeRepository.delete(existing);
+                    post.decrementLikeCount();
+                }, () -> {
+                    postLikeRepository.save(new PostLike(post, user));
+                    post.incrementLikeCount();
+                });
+        liked = postLikeRepository.existsByPost_IdAndUser_Id(postId, userId);
+        return Map.of("liked", liked, "likeCount", post.getLikeCount());
+    }
+
+    public boolean isLiked(String postId, String userId) {
+        return postLikeRepository.existsByPost_IdAndUser_Id(postId, userId);
+    }
+
+    public List<String> getLikedPostIds(String userId) {
+        return postLikeRepository.findPostIdsByUserId(userId);
     }
 
 }

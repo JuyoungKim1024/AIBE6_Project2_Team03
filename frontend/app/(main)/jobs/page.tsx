@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Plus, ChevronDown } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PostCard, PostType } from "@/components/post/PostCard";
-import { fetchJobPosts } from "@/lib/api/post";
+import { fetchJobPosts, getLikedPostIds } from "@/lib/api/post";
 import { JobPostDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
@@ -24,9 +24,11 @@ function JobsContent() {
   const [sort, setSort] = useState("latest");
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
+    getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -192,6 +194,7 @@ function JobsContent() {
                   views={job.viewCount}
                   timeAgo={formatTimeAgo(job.createdAt)}
                   thumbnail={job.thumbnailUrl ?? undefined}
+                  initialLiked={likedIds.has(job.id)}
                 />
               </motion.div>
             ))

@@ -26,6 +26,9 @@ import {
   createComment,
   updateComment,
   deleteComment,
+  incrementPostView,
+  togglePostLike,
+  getPostLikedStatus,
 } from "@/lib/api/post";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
@@ -55,6 +58,10 @@ export default function JobDetailPage() {
   const [likeCount, setLikeCount] = useState(0);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
     fetchJobPost(id)
       .then((data) => {
@@ -64,6 +71,8 @@ export default function JobDetailPage() {
       .catch((err) => console.error("fetchJobPost error:", err))
       .finally(() => setLoading(false));
     fetchComments(id).then(setComments).catch(console.error);
+    incrementPostView(id).catch(() => {});
+    getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
     const token = localStorage.getItem("accessToken");
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
@@ -75,13 +84,15 @@ export default function JobDetailPage() {
     }
   }, [id]);
 
-  const handleLike = () => {
-    if (liked) {
-      setLikeCount((prev) => prev - 1);
-      setLiked(false);
-    } else {
-      setLikeCount((prev) => prev + 1);
-      setLiked(true);
+  const handleLike = async () => {
+    try {
+      const result = await togglePostLike(id!);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+    } catch {
+      // 비로그인 시 로컬 토글
+      setLiked((prev) => !prev);
+      setLikeCount((prev) => liked ? prev - 1 : prev + 1);
     }
   };
 
@@ -254,17 +265,6 @@ export default function JobDetailPage() {
           </h1>
 
           <div className="flex items-center gap-3 mb-6">
-            {post.author.profileImage ? (
-              <img
-                src={post.author.profileImage}
-                alt={post.author.nickname}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-sm font-bold">
-                {post.author.nickname[0]}
-              </div>
-            )}
             <UserActionMenu
               userId={post.author.id}
               nickname={post.author.nickname}

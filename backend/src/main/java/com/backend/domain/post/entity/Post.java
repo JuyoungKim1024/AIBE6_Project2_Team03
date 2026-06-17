@@ -64,6 +64,14 @@ public abstract class Post extends BaseEntity {
         this.viewCount++;
     }
 
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) this.likeCount--;
+    }
+
     public void setViewCount(int viewCount) {
         this.viewCount = viewCount;
     }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
+import { togglePostLike } from "@/lib/api/post";
 
 export type PostType = "hiring" | "looking" | "info" | "free";
 
@@ -70,16 +71,24 @@ export function PostCard({
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikes);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (liked) {
-      setLikeCount((prev) => prev - 1);
-      setLiked(false);
-      if (onUnlike) onUnlike(id);
-    } else {
-      setLikeCount((prev) => prev + 1);
-      setLiked(true);
+    try {
+      const result = await togglePostLike(id);
+      setLiked(result.liked);
+      setLikeCount(result.likeCount);
+      if (!result.liked && onUnlike) onUnlike(id);
+    } catch {
+      // 비로그인 fallback
+      if (liked) {
+        setLikeCount((prev) => prev - 1);
+        setLiked(false);
+        if (onUnlike) onUnlike(id);
+      } else {
+        setLikeCount((prev) => prev + 1);
+        setLiked(true);
+      }
     }
   };
 
