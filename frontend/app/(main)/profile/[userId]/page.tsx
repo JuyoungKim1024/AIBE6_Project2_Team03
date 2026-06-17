@@ -70,10 +70,10 @@ const reviewsPerPage = 5;
 
 const rankGuide: { tier: RankTier; label: string; condition: string }[] = [
   { tier: 'bronze', label: '브론즈', condition: '기본 등급' },
-  { tier: 'silver', label: '실버', condition: '프로젝트 1개 완료 + 리뷰 1개' },
-  { tier: 'gold', label: '골드', condition: '전투력 50+ / 프로젝트 5개 / 리뷰 5개' },
-  { tier: 'platinum', label: '플래티넘', condition: '전투력 70+ / 프로젝트 15개 / 리뷰 15개' },
-  { tier: 'diamond', label: '다이아몬드', condition: '전투력 90+ / 프로젝트 30개 / 리뷰 30개' },
+  { tier: 'silver', label: '실버', condition: '프로젝트 1개 완료, 리뷰 1개' },
+  { tier: 'gold', label: '골드', condition: '전투력 50 이상, 프로젝트 5개 완료, 리뷰 5개' },
+  { tier: 'platinum', label: '플래티넘', condition: '전투력 70 이상, 프로젝트 15개 완료, 리뷰 15개' },
+  { tier: 'diamond', label: '다이아몬드', condition: '전투력 90 이상, 프로젝트 30개 완료, 리뷰 30개' },
 ];
 
 function getRankTier(battlePower: number, completedProjectCount: number, reviewCount: number): RankTier {
@@ -102,22 +102,26 @@ function RoleBadge({ role }: { role: PublicProfile['role'] }) {
   return null;
 }
 
-function RankLegend() {
+function RankLegend({ battlePower, completedProjectCount, reviewCount }: { battlePower: number; completedProjectCount: number; reviewCount: number }) {
   return (
     <div className="relative group">
       <button type="button" className="w-7 h-7 rounded-full border border-border bg-surface-elevated text-text-muted hover:text-text-primary hover:border-primary/50 flex items-center justify-center transition-colors" aria-label="등급 조건 보기">
         <HelpCircle size={15} />
       </button>
-      <div className="pointer-events-none absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-surface p-4 shadow-2xl opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all z-50">
-        <div className="font-bold text-text-primary mb-1">등업 조건</div>
-        <p className="text-xs text-text-muted mb-3">조건을 모두 만족하면 해당 등급으로 표시됩니다.</p>
-        <div className="space-y-2">
-          {rankGuide.map((rank) => (
-            <div key={rank.tier} className="flex items-center justify-between gap-3">
-              <RankBadge tier={rank.tier} size="sm" />
-              <span className="text-xs text-text-secondary flex-shrink-0">{rank.condition}</span>
-            </div>
-          ))}
+      <div className="absolute right-0 top-full w-[calc(100vw-2rem)] max-w-[440px] pt-2 opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:pointer-events-auto transition-all z-50">
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-2xl">
+          <div className="font-bold text-text-primary mb-1">등업 조건</div>
+          <p className="text-xs text-text-muted mb-3 leading-relaxed">
+            조건을 모두 만족하면 해당 등급으로 표시됩니다. 현재 전투력 {battlePower}, 완료 프로젝트 {completedProjectCount}개, 리뷰 {reviewCount}개입니다.
+          </p>
+          <div className="space-y-2">
+            {rankGuide.map((rank) => (
+              <div key={rank.tier} className="grid grid-cols-[112px_1fr] items-center gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
+                <RankBadge tier={rank.tier} size="sm" />
+                <span className="text-xs text-text-secondary leading-relaxed text-left break-keep">{rank.condition}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -307,7 +311,11 @@ export default function PublicProfilePage() {
                   <TrustTemperature temp={data.battlePower} />
                   <div className="flex items-center gap-2">
                     <RankBadge tier={getRankTier(data.battlePower, data.completedProjectCount ?? 0, data.reviewCount ?? data.reviews.length)} size="md" />
-                    <RankLegend />
+                    <RankLegend
+                      battlePower={data.battlePower}
+                      completedProjectCount={data.completedProjectCount ?? 0}
+                      reviewCount={data.reviewCount ?? data.reviews.length}
+                    />
                   </div>
                 </div>
               )}
