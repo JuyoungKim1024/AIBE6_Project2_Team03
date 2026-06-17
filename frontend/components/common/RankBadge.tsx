@@ -33,7 +33,7 @@ export function RankBadge({ tier, size = 'md', showLabel = true }: RankBadgeProp
     <div className={`inline-flex items-center gap-1.5 rounded-full border ${config.bg} ${config.border} ${s.padding} ${config.glow || ''}`}>
       <img src={config.icon} alt={`${config.label} 등급`} className={`${s.icon} object-contain flex-shrink-0`} />
       {showLabel && (
-        <span className={`${config.color} ${s.text} font-medium tracking-wide`}>{config.label}</span>
+        <span className={`${config.color} ${s.text} font-medium tracking-wide text-center leading-none`}>{config.label}</span>
       )}
     </div>
   );

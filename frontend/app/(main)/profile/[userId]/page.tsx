@@ -117,7 +117,9 @@ function RankLegend({ battlePower, completedProjectCount, reviewCount }: { battl
           <div className="space-y-2">
             {rankGuide.map((rank) => (
               <div key={rank.tier} className="grid grid-cols-[112px_1fr] items-center gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
-                <RankBadge tier={rank.tier} size="sm" />
+                <div className="flex justify-start">
+                  <RankBadge tier={rank.tier} size="sm" />
+                </div>
                 <span className="text-xs text-text-secondary leading-relaxed text-left break-keep">{rank.condition}</span>
               </div>
             ))}
