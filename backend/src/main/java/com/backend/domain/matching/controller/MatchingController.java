@@ -26,7 +26,7 @@ public class MatchingController {
     private final AuthService authService;
     private final MatchingService matchingService;
 
-    // GET /api/matching/editors?categories=게임&categories=여행&tool=Premiere Pro&videoLengths=숏폼&videoLengths=롱폼&minPrice=5000&maxPrice=20000
+    // GET /api/matching/editors?categories=게임&categories=여행&tools=Premiere Pro&videoLengths=숏폼&videoLengths=롱폼&minPrice=5000&maxPrice=20000
     @GetMapping("/editors")
     public List<BlindEditorResponse> searchEditors(
             @RequestParam(required = false) List<String> categories,
