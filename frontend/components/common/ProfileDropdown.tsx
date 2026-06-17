@@ -8,6 +8,7 @@ import {
   Edit2,
   FileText,
   FolderOpen,
+  HelpCircle,
   Inbox,
   LogOut,
   MessageSquare,
@@ -219,6 +220,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     { label: '공개 프로필 보기', icon: UserCircle, to: `/profile/${user.id}` },
     { label: '프로필 관리', icon: Edit2, to: '/mypage' },
     { label: '설정', icon: Settings, to: '/settings' },
+    { label: '가이드', icon: HelpCircle, to: '/guide' },
   ];
 
   return (
