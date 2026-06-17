@@ -15,6 +15,10 @@ import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.mypage.repository.MyPageProjectRepository;
+import com.backend.domain.post.entity.CommunityPost;
+import com.backend.domain.post.entity.JobPost;
+import com.backend.domain.post.entity.Post;
+import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.profile.entity.Project;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
@@ -40,6 +44,7 @@ public class MyPageService {
     private final ProfileRepository profileRepository;
     private final UserTagRepository userTagRepository;
     private final PortfolioRepository portfolioRepository;
+    private final PostRepository postRepository;
 
     public MyPageService(
             ChatParticipantRepository chatParticipantRepository,
@@ -49,7 +54,8 @@ public class MyPageService {
             UserRepository userRepository,
             ProfileRepository profileRepository,
             UserTagRepository userTagRepository,
-            PortfolioRepository portfolioRepository
+            PortfolioRepository portfolioRepository,
+            PostRepository postRepository
     ) {
         this.chatParticipantRepository = chatParticipantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -59,6 +65,7 @@ public class MyPageService {
         this.profileRepository = profileRepository;
         this.userTagRepository = userTagRepository;
         this.portfolioRepository = portfolioRepository;
+        this.postRepository = postRepository;
     }
 
     public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
@@ -122,9 +129,11 @@ public class MyPageService {
         return profileRepository.findByUser_Id(userId)
                 .map(profile -> new PublicContentVisibilityResponse(
                         profile.isPublicPostsVisible(),
+                        profile.isPublicJobPostsVisible(),
+                        profile.isPublicCommunityPostsVisible(),
                         profile.isPublicLikedPostsVisible()
                 ))
-                .orElseGet(() -> new PublicContentVisibilityResponse(false, false));
+                .orElseGet(() -> new PublicContentVisibilityResponse(false, false, false, false));
     }
 
     @Transactional
@@ -135,14 +144,46 @@ public class MyPageService {
         boolean publicPostsVisible = request.publicPostsVisible() == null
                 ? profile.isPublicPostsVisible()
                 : request.publicPostsVisible();
+        boolean publicJobPostsVisible = request.publicJobPostsVisible() == null
+                ? profile.isPublicJobPostsVisible()
+                : request.publicJobPostsVisible();
+        boolean publicCommunityPostsVisible = request.publicCommunityPostsVisible() == null
+                ? profile.isPublicCommunityPostsVisible()
+                : request.publicCommunityPostsVisible();
         boolean publicLikedPostsVisible = request.publicLikedPostsVisible() == null
                 ? profile.isPublicLikedPostsVisible()
                 : request.publicLikedPostsVisible();
-        profile.updatePublicContentVisibility(publicPostsVisible, publicLikedPostsVisible);
+        profile.updatePublicContentVisibility(
+                publicPostsVisible || publicJobPostsVisible || publicCommunityPostsVisible,
+                publicJobPostsVisible,
+                publicCommunityPostsVisible,
+                publicLikedPostsVisible
+        );
         return new PublicContentVisibilityResponse(
                 profile.isPublicPostsVisible(),
+                profile.isPublicJobPostsVisible(),
+                profile.isPublicCommunityPostsVisible(),
                 profile.isPublicLikedPostsVisible()
         );
+    }
+
+    public List<MyPostResponse> getPosts(String userId) {
+        return postRepository.findByAuthor_IdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toMyPostResponse)
+                .toList();
+    }
+
+    @Transactional
+    public MyPostResponse updatePostVisibility(String userId, String postId, PostVisibilityRequest request) {
+        Post post = getOwnedPost(userId, postId);
+        post.updatePublicVisible(Boolean.TRUE.equals(request.publicVisible()));
+        return toMyPostResponse(post);
+    }
+
+    @Transactional
+    public void deletePost(String userId, String postId) {
+        postRepository.delete(getOwnedPost(userId, postId));
     }
 
     public List<PortfolioItemResponse> getPortfolios(String userId) {
@@ -204,6 +245,33 @@ public class MyPageService {
     private User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
+    private Post getOwnedPost(String userId, String postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!post.getAuthor().getId().equals(userId)) {
+            throw new IllegalArgumentException("본인이 작성한 글만 수정할 수 있습니다.");
+        }
+        return post;
+    }
+
+    private MyPostResponse toMyPostResponse(Post post) {
+        String boardType = post instanceof CommunityPost ? "COMMUNITY" : "JOB";
+        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
+                ? jobPost.getPostType().name()
+                : null;
+        return new MyPostResponse(
+                post.getId(),
+                boardType,
+                postType,
+                post.getTitle(),
+                formatDate(post.getCreatedAt()),
+                post.getViewCount(),
+                post.getChatCount(),
+                post.getLikeCount(),
+                post.isPublicVisible()
+        );
     }
 
     private boolean hasRepresentativePortfolio(String userId) {

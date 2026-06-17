@@ -46,6 +46,12 @@ public class Profile {
     @Column(name = "public_posts_visible", nullable = false)
     private boolean publicPostsVisible = false;
 
+    @Column(name = "public_job_posts_visible", nullable = false)
+    private boolean publicJobPostsVisible = false;
+
+    @Column(name = "public_community_posts_visible", nullable = false)
+    private boolean publicCommunityPostsVisible = false;
+
     @Column(name = "public_liked_posts_visible", nullable = false)
     private boolean publicLikedPostsVisible = false;
 
@@ -75,6 +81,18 @@ public class Profile {
 
     public void updatePublicContentVisibility(boolean publicPostsVisible, boolean publicLikedPostsVisible) {
         this.publicPostsVisible = publicPostsVisible;
+        this.publicLikedPostsVisible = publicLikedPostsVisible;
+    }
+
+    public void updatePublicContentVisibility(
+            boolean publicPostsVisible,
+            boolean publicJobPostsVisible,
+            boolean publicCommunityPostsVisible,
+            boolean publicLikedPostsVisible
+    ) {
+        this.publicPostsVisible = publicPostsVisible;
+        this.publicJobPostsVisible = publicJobPostsVisible;
+        this.publicCommunityPostsVisible = publicCommunityPostsVisible;
         this.publicLikedPostsVisible = publicLikedPostsVisible;
     }
 }

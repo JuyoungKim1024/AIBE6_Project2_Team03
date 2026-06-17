@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, MessageSquare, Video, X } from 'lucide-react';
@@ -50,18 +50,18 @@ export function NavBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
+          <div className="flex items-center gap-4 lg:gap-8 min-w-0">
+            <Link href="/" className="flex items-center gap-2 group shrink-0">
               <div className="bg-primary/10 p-2 rounded-lg group-hover:bg-primary/20 transition-colors">
                 <Video size={24} className="text-primary" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-text-primary">
+              <span className="glitch font-bold text-xl tracking-tight text-text-primary">
                 크크<span className="text-primary">킄</span>
               </span>
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
+              {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR') && !(link.requireAuth && !user)).map((link) => {
                 const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
                 return (
                   <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link)} className={navLinkClass(isActive)}>
@@ -73,8 +73,10 @@ export function NavBar() {
           </div>
 
           {pathname !== '/' && (
-            <div className="hidden md:block">
-              <SearchBar />
+            <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md mx-4">
+              <Suspense fallback={<div className="w-full h-9 rounded-xl bg-surface-elevated animate-pulse" />}>
+                <SearchBar />
+              </Suspense>
             </div>
           )}
 
@@ -116,7 +118,7 @@ export function NavBar() {
 
         {mobileOpen && (
           <div className="md:hidden border-t border-border py-3 space-y-1">
-            {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR')).map((link) => {
+            {navLinks.filter((link) => !(link.hideForEditor && user?.role === 'EDITOR') && !(link.requireAuth && !user)).map((link) => {
               const isActive = pathname === link.path || pathname.startsWith(link.path + '/');
               return (
                 <Link key={link.path} href={link.path} onClick={(e) => handleNavClick(e, link, () => setMobileOpen(false))} className={mobileNavLinkClass(isActive)}>

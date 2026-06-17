@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
+import type { BlindEditor } from '@/types/matching';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -11,16 +12,6 @@ const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악'
 const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
 const DESIGN_TOOLS = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 const VIDEO_LENGTHS = ['숏폼', '미드폼', '롱폼'];
-
-type BlindEditor = {
-  id: string;
-  thumbnails: string[];
-  categories: string[];
-  tools: string[];
-  matchPriceMin: number | null;
-  matchPriceMax: number | null;
-  matchPriceUnit: string;
-};
 
 export default function MatchingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -32,7 +23,8 @@ export default function MatchingPage() {
   const [editors, setEditors] = useState<BlindEditor[]>([]);
   const [error, setError] = useState('');
 
-  const canSearch = category !== '';
+  const isPriceInvalid = minPrice !== '' && maxPrice !== '' && Number(minPrice) > Number(maxPrice);
+  const canSearch = category !== '' && !isPriceInvalid;
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,12 +55,12 @@ export default function MatchingPage() {
 
   return (
     <div className="min-h-screen py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <AnimatePresence mode="wait">
           {step === 1 && (
-            <motion.div key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="bg-surface border border-border rounded-2xl p-8 md:p-12 shadow-xl">
+            <motion.div key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="bg-surface border border-border rounded-2xl p-5 sm:p-8 md:p-12 shadow-xl">
               <div className="text-center mb-10">
-                <h1 className="text-3xl font-bold text-text-primary mb-3">딱 맞는 에디터를 찾아드릴게요</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-3">딱 맞는 에디터를 찾아드릴게요</h1>
                 <p className="text-text-secondary">원하는 조건을 선택하면 5명의 최적의 에디터를 매칭해 드립니다.</p>
               </div>
               <form onSubmit={handleMatch} className="space-y-8">
@@ -76,7 +68,7 @@ export default function MatchingPage() {
                   <label className="block text-sm font-bold text-text-primary mb-3">
                     콘텐츠 카테고리 <span className="text-accent">*</span>
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {CATEGORIES.map((cat) => (
                       <button
                         key={cat}
@@ -168,7 +160,7 @@ export default function MatchingPage() {
 
                 <div>
                   <label className="block text-sm font-bold text-text-primary mb-3">희망 단가 범위 (원)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <input
                       type="number"
                       min="0"
@@ -176,9 +168,9 @@ export default function MatchingPage() {
                       onChange={(e) => setMinPrice(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="최소"
-                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                      className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
                     />
-                    <span className="text-text-secondary font-bold">~</span>
+                    <span className="text-text-secondary font-bold shrink-0">~</span>
                     <input
                       type="number"
                       min="0"
@@ -186,10 +178,13 @@ export default function MatchingPage() {
                       onChange={(e) => setMaxPrice(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="최대"
-                      className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
+                      className="flex-1 min-w-0 px-3 sm:px-4 py-3 rounded-xl border border-border bg-surface-elevated text-text-primary text-sm focus:outline-none focus:border-primary"
                     />
                   </div>
-                  {minPrice && maxPrice && (
+                  {isPriceInvalid && (
+                    <p className="text-xs text-accent mt-2">최소 단가는 최대 단가보다 클 수 없습니다.</p>
+                  )}
+                  {!isPriceInvalid && minPrice && maxPrice && (
                     <p className="text-xs text-text-secondary mt-2">
                       {Number(minPrice).toLocaleString()}원 ~ {Number(maxPrice).toLocaleString()}원
                     </p>

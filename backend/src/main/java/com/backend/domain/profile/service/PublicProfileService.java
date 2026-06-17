@@ -1,5 +1,10 @@
 package com.backend.domain.profile.service;
 
+import com.backend.domain.mypage.dto.MyPostResponse;
+import com.backend.domain.post.entity.CommunityPost;
+import com.backend.domain.post.entity.JobPost;
+import com.backend.domain.post.entity.Post;
+import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.profile.dto.PortfolioResponse;
 import com.backend.domain.profile.dto.PublicProfileResponse;
 import com.backend.domain.profile.dto.RecentDealResponse;
@@ -35,6 +40,7 @@ public class PublicProfileService {
     private final ReviewRepository reviewRepository;
     private final ProjectRepository projectRepository;
     private final ProfileRepository profileRepository;
+    private final PostRepository postRepository;
 
     public PublicProfileService(
             UserRepository userRepository,
@@ -42,7 +48,8 @@ public class PublicProfileService {
             UserTagRepository userTagRepository,
             ReviewRepository reviewRepository,
             ProjectRepository projectRepository,
-            ProfileRepository profileRepository
+            ProfileRepository profileRepository,
+            PostRepository postRepository
     ) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
@@ -50,6 +57,7 @@ public class PublicProfileService {
         this.reviewRepository = reviewRepository;
         this.projectRepository = projectRepository;
         this.profileRepository = profileRepository;
+        this.postRepository = postRepository;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +79,41 @@ public class PublicProfileService {
                 getReviews(userId),
                 getRecentDeals(userId),
                 profile != null && profile.isPublicPostsVisible(),
+                profile != null && profile.isPublicJobPostsVisible(),
+                profile != null && profile.isPublicCommunityPostsVisible(),
+                getPublicPosts(userId, profile),
                 profile != null && profile.isPublicLikedPostsVisible()
+        );
+    }
+
+    private List<MyPostResponse> getPublicPosts(String userId, Profile profile) {
+        if (profile == null || !profile.isPublicPostsVisible()) {
+            return List.of();
+        }
+        boolean includeJob = profile.isPublicJobPostsVisible();
+        boolean includeCommunity = profile.isPublicCommunityPostsVisible();
+        return postRepository.findByAuthor_IdAndPublicVisibleTrueOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(post -> post instanceof CommunityPost ? includeCommunity : includeJob)
+                .map(this::toMyPostResponse)
+                .toList();
+    }
+
+    private MyPostResponse toMyPostResponse(Post post) {
+        String boardType = post instanceof CommunityPost ? "COMMUNITY" : "JOB";
+        String postType = post instanceof JobPost jobPost && jobPost.getPostType() != null
+                ? jobPost.getPostType().name()
+                : null;
+        return new MyPostResponse(
+                post.getId(),
+                boardType,
+                postType,
+                post.getTitle(),
+                post.getCreatedAt() == null ? "" : post.getCreatedAt().format(DATE_FORMATTER),
+                post.getViewCount(),
+                post.getChatCount(),
+                post.getLikeCount(),
+                post.isPublicVisible()
         );
     }
 

@@ -43,11 +43,13 @@ const sidebarItems: { id: SidebarItemId; label: string; icon: any; hasDot?: bool
 type MyPost = {
   id: string;
   boardType: 'JOB' | 'COMMUNITY';
-  postType: string | null;
+  postType: 'RECRUITING' | 'JOB_SEARCH' | string | null;
   title: string;
   date: string;
   views: number;
   comments: number;
+  likes: number;
+  publicVisible: boolean;
 };
 
 type MyLikedPost = {
@@ -102,6 +104,8 @@ type MatchingPrice = {
 
 type PublicContentVisibility = {
   publicPostsVisible: boolean;
+  publicJobPostsVisible: boolean;
+  publicCommunityPostsVisible: boolean;
   publicLikedPostsVisible: boolean;
 };
 
@@ -572,7 +576,7 @@ function ToggleButton({ active, onClick, label }: { active: boolean; onClick: ()
   );
 }
 
-function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVisibility; label: string }) {
+function PublicVisibilityToggle({ field, label, onChanged }: { field: keyof PublicContentVisibility; label: string; onChanged?: (active: boolean) => void }) {
   const [active, setActive] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -591,6 +595,7 @@ function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVi
         [field]: next,
       });
       setActive(saved[field]);
+      onChanged?.(saved[field]);
     } catch {
       setActive(!next);
     } finally {
@@ -611,7 +616,7 @@ function PublicVisibilityToggle({ field, label }: { field: keyof PublicContentVi
   );
 }
 
-function PostsSection() {
+function PostsSection({ userRole }: { userRole: UserRole }) {
   const [posts, setPosts] = useState<MyPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -632,33 +637,155 @@ function PostsSection() {
     setPosts((prev) => prev.filter((post) => post.id !== postId));
   };
 
+  const togglePostVisibility = async (postId: string, publicVisible: boolean) => {
+    setPosts((prev) => prev.map((post) => post.id === postId ? { ...post, publicVisible } : post));
+    try {
+      const saved = await patchMyPageData<MyPost>(`/api/users/me/posts/${postId}/visibility`, { publicVisible });
+      setPosts((prev) => prev.map((post) => post.id === postId ? saved : post));
+    } catch {
+      setPosts((prev) => prev.map((post) => post.id === postId ? { ...post, publicVisible: !publicVisible } : post));
+    }
+  };
+
+  const toggleGroupVisibility = async (targetPosts: MyPost[], publicVisible: boolean) => {
+    if (targetPosts.length === 0) return;
+
+    const targetIds = new Set(targetPosts.map((post) => post.id));
+    const previousPosts = posts;
+    setPosts((prev) => prev.map((post) => targetIds.has(post.id) ? { ...post, publicVisible } : post));
+
+    try {
+      const savedPosts = await Promise.all(
+        targetPosts.map((post) => patchMyPageData<MyPost>(`/api/users/me/posts/${post.id}/visibility`, { publicVisible }))
+      );
+      setPosts((prev) => prev.map((post) => savedPosts.find((saved) => saved.id === post.id) ?? post));
+    } catch {
+      setPosts(previousPosts);
+    }
+  };
+
+  const jobPosts = posts.filter((post) => post.boardType === 'JOB');
+  const communityPosts = posts.filter((post) => post.boardType === 'COMMUNITY');
+  const jobTitle = userRole === 'YOUTUBER' ? '구인글' : '구직글';
+  const jobEmptyMessage = userRole === 'YOUTUBER' ? '작성한 구인글이 없습니다' : '작성한 구직글이 없습니다';
+
   return (
     <SectionCard title="내가 쓴 글" description="구인구직과 커뮤니티 작성글을 통합 관리합니다.">
-      <PublicVisibilityToggle field="publicPostsVisible" label="공개 프로필에 내가 쓴 글 공개" />
       {isLoading ? (
         <EmptyState message="작성글을 불러오는 중입니다" />
-      ) : posts.length > 0 ? (
+      ) : (
+        <div className="space-y-8">
+          <PostManageGroup
+            title={jobTitle}
+            visibilityField="publicJobPostsVisible"
+            visibilityLabel={`공개 프로필에 ${jobTitle} 공개`}
+            posts={jobPosts}
+            emptyMessage={jobEmptyMessage}
+            onDelete={deletePost}
+            onToggleVisibility={togglePostVisibility}
+            onBulkVisibilityChange={(publicVisible) => toggleGroupVisibility(jobPosts, publicVisible)}
+          />
+          <PostManageGroup
+            title="커뮤니티글"
+            visibilityField="publicCommunityPostsVisible"
+            visibilityLabel="공개 프로필에 커뮤니티글 공개"
+            posts={communityPosts}
+            emptyMessage="작성한 커뮤니티글이 없습니다"
+            onDelete={deletePost}
+            onToggleVisibility={togglePostVisibility}
+            onBulkVisibilityChange={(publicVisible) => toggleGroupVisibility(communityPosts, publicVisible)}
+          />
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function PostManageGroup({
+  title,
+  visibilityField,
+  visibilityLabel,
+  posts,
+  emptyMessage,
+  onDelete,
+  onToggleVisibility,
+  onBulkVisibilityChange,
+}: {
+  title: string;
+  visibilityField: keyof PublicContentVisibility;
+  visibilityLabel: string;
+  posts: MyPost[];
+  emptyMessage: string;
+  onDelete: (postId: string) => void;
+  onToggleVisibility: (postId: string, publicVisible: boolean) => void;
+  onBulkVisibilityChange: (publicVisible: boolean) => void;
+}) {
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h3 className="text-lg font-bold text-text-primary">{title}</h3>
+        <span className="text-sm text-text-muted">{posts.length}개</span>
+      </div>
+      <PublicVisibilityToggle field={visibilityField} label={visibilityLabel} onChanged={onBulkVisibilityChange} />
+      {posts.length > 0 ? (
         <div className="space-y-3">
           {posts.map((post) => (
-            <div key={post.id} className="bg-surface-elevated border border-border rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.boardType === 'JOB' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>{post.boardType === 'JOB' ? '구인구직' : '커뮤니티'}</span>
-                {post.postType && <span className="text-xs text-text-muted">{post.postType}</span>}
-                <span className="text-xs text-text-muted">·</span>
-                <span className="text-xs text-text-muted">{post.date}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="font-bold text-text-primary">{post.title}</h3>
-                <button onClick={() => deletePost(post.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 transition-colors">삭제</button>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-text-muted mt-2"><span>조회 {post.views}</span><span>댓글 {post.comments}</span></div>
-            </div>
+            <PostManageItem key={post.id} post={post} onDelete={onDelete} onToggleVisibility={onToggleVisibility} />
           ))}
         </div>
       ) : (
-        <EmptyState message="아직 작성한 글이 없습니다" />
+        <EmptyState message={emptyMessage} />
       )}
-    </SectionCard>
+    </section>
+  );
+}
+
+function PostManageItem({
+  post,
+  onDelete,
+  onToggleVisibility,
+}: {
+  post: MyPost;
+  onDelete: (postId: string) => void;
+  onToggleVisibility: (postId: string, publicVisible: boolean) => void;
+}) {
+  const typeLabel = post.boardType === 'COMMUNITY'
+    ? '커뮤니티글'
+    : post.postType === 'RECRUITING'
+      ? '구인글'
+      : '구직글';
+  const typeClass = post.boardType === 'COMMUNITY'
+    ? 'bg-cyan-400/10 text-cyan-400'
+    : post.postType === 'RECRUITING'
+      ? 'bg-accent/10 text-accent'
+      : 'bg-primary/10 text-primary';
+
+  return (
+    <div className="bg-surface-elevated border border-border rounded-xl p-5">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <span className={`px-2 py-0.5 rounded text-xs font-bold ${typeClass}`}>{typeLabel}</span>
+        <span className="text-xs text-text-muted">{post.date}</span>
+      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h3 className="font-bold text-text-primary">{post.title}</h3>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onToggleVisibility(post.id, !post.publicVisible)}
+            className={`relative w-12 h-7 rounded-full transition-colors ${post.publicVisible ? 'bg-primary' : 'bg-surface border border-border'}`}
+            aria-label="글 공개 여부 변경"
+          >
+            <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform ${post.publicVisible ? 'translate-x-5' : ''}`} />
+          </button>
+          <button onClick={() => onDelete(post.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-accent bg-accent/10 hover:bg-accent/20 transition-colors">삭제</button>
+        </div>
+      </div>
+      <div className="flex items-center gap-4 text-xs text-text-muted mt-2">
+        <span>좋아요 {post.likes}</span>
+        <span>조회 {post.views}</span>
+        <span>댓글 {post.comments}</span>
+      </div>
+    </div>
   );
 }
 
@@ -878,16 +1005,20 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         }
         return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
       });
-    await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
-      title: p.title,
-      url: p.url,
-      type: p.type,
-      representative: p.isRepresentative,
-      displayOrder: p.displayOrder,
-    })));
-    savePortfolios(userId, next);
-    setPortfolios(next);
-    setMessage('순번이 저장되었습니다.');
+    try {
+      await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
+        title: p.title,
+        url: p.url,
+        type: p.type,
+        representative: p.isRepresentative,
+        displayOrder: p.displayOrder,
+      })));
+      savePortfolios(userId, next);
+      setPortfolios(next);
+      setMessage('순번이 저장되었습니다.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : '저장에 실패했습니다.');
+    }
   };
 
   const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder);
@@ -944,8 +1075,11 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-4">
-                <ToggleButton active={portfolio.isRepresentative} onClick={() => onUpdate(portfolio.id, { isRepresentative: !portfolio.isRepresentative })} label={portfolio.isRepresentative ? '대표' : '일반'} />
-                {selectedOrder === 1 && <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>}
+                {selectedOrder === 1 ? (
+                  <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>
+                ) : (
+                  <span className="px-3 py-2 rounded-lg text-sm font-bold border border-border bg-surface-elevated text-text-secondary">일반</span>
+                )}
               </div>
             </div>
           )})}
@@ -1028,14 +1162,20 @@ function PricingSection({ userId }: { userId: string | null }) {
     return true;
   };
 
-  const publishMatchingPriceUpdate = (saved: MatchingPrice, representativeConfigured: boolean) => {
+  const applyMatchingPriceSaved = (saved: MatchingPrice, representativeConfigured: boolean) => {
+    const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
+    setMatchEnabled(saved.matchEnabled);
+    setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
+    setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
+    setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
+    setRepresentativePortfolioConfigured(hasRepresentative);
     window.dispatchEvent(new CustomEvent('matchingPriceUpdated', {
       detail: {
         matchEnabled: saved.matchEnabled,
         matchPriceMin: saved.matchPriceMin,
         matchPriceMax: saved.matchPriceMax,
         matchPriceUnit: saved.matchPriceUnit ?? 'MIN',
-        representativePortfolioConfigured: representativeConfigured,
+        representativePortfolioConfigured: hasRepresentative,
       },
     }));
   };
@@ -1059,13 +1199,7 @@ function PricingSection({ userId }: { userId: string | null }) {
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
-      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
-      setMatchEnabled(saved.matchEnabled);
-      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
-      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
-      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
-      setRepresentativePortfolioConfigured(hasRepresentative);
-      publishMatchingPriceUpdate(saved, hasRepresentative);
+      applyMatchingPriceSaved(saved, representativeConfigured);
     } catch (saveError) {
       setMatchEnabled(previousEnabled);
       setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
@@ -1075,7 +1209,6 @@ function PricingSection({ userId }: { userId: string | null }) {
   const savePricing = async () => {
     setMessage('');
     setError('');
-
     setIsSaving(true);
     try {
       const representativeConfigured = representativePortfolioConfigured || hasLocalRepresentativePortfolio(userId);
@@ -1086,13 +1219,7 @@ function PricingSection({ userId }: { userId: string | null }) {
         matchPriceUnit,
         representativePortfolioConfigured: representativeConfigured,
       });
-      setMatchEnabled(saved.matchEnabled);
-      setMatchPriceMin(saved.matchPriceMin ? String(saved.matchPriceMin) : '');
-      setMatchPriceMax(saved.matchPriceMax ? String(saved.matchPriceMax) : '');
-      setMatchPriceUnit(saved.matchPriceUnit ?? 'MIN');
-      const hasRepresentative = saved.representativePortfolioConfigured || representativeConfigured;
-      setRepresentativePortfolioConfigured(hasRepresentative);
-      publishMatchingPriceUpdate(saved, hasRepresentative);
+      applyMatchingPriceSaved(saved, representativeConfigured);
       setMessage('맞춤매칭 단가 설정이 저장되었습니다.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '저장에 실패했습니다.');
@@ -1125,7 +1252,7 @@ function PricingSection({ userId }: { userId: string | null }) {
             <div className="space-y-4">
               <div>
                 <span className="block text-sm font-bold text-text-primary mb-2">단가 범위 (원)</span>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <input
                     type="number"
                     min="1"
@@ -1133,9 +1260,9 @@ function PricingSection({ userId }: { userId: string | null }) {
                     onChange={(event) => { setMatchPriceMin(event.target.value); setError(''); }}
                     onWheel={(e) => e.currentTarget.blur()}
                     placeholder="최소"
-                    className="form-input flex-1"
+                    className="form-input flex-1 min-w-0"
                   />
-                  <span className="text-text-secondary font-bold">~</span>
+                  <span className="text-text-secondary font-bold shrink-0">~</span>
                   <input
                     type="number"
                     min="1"
@@ -1143,7 +1270,7 @@ function PricingSection({ userId }: { userId: string | null }) {
                     onChange={(event) => { setMatchPriceMax(event.target.value); setError(''); }}
                     onWheel={(e) => e.currentTarget.blur()}
                     placeholder="최대"
-                    className="form-input flex-1"
+                    className="form-input flex-1 min-w-0"
                   />
                 </div>
                 {matchPriceMin && matchPriceMax && (
@@ -1175,10 +1302,6 @@ function PricingSection({ userId }: { userId: string | null }) {
 
           {error && <p className="text-sm font-bold text-accent">{error}</p>}
           {message && <p className="text-sm font-bold text-primary">{message}</p>}
-
-          <button type="button" onClick={savePricing} disabled={isSaving} className="hidden">
-            저장
-          </button>
         </div>
       )}
     </SectionCard>
@@ -1325,9 +1448,26 @@ function MypageContent() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-text-primary mb-8">마이페이지</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-8">마이페이지</h1>
+
+        {/* 모바일: 가로 스크롤 탭 */}
+        <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 border-b border-border">
+          {visibleSidebarItems.map((item) => {
+            const isActive = activeSection === item.id;
+            const label = item.id === 'editor-profile' && isEditorProfileRegistered ? '에디터 프로필 수정' : item.label;
+            return (
+              <button key={item.id} type="button" onClick={() => changeSection(item.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-colors shrink-0 ${isActive ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary bg-surface-elevated'}`}>
+                <item.icon size={14} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-          <aside className="bg-surface border border-border rounded-xl p-3 h-fit lg:sticky lg:top-24">
+          {/* 데스크탑: 사이드바 */}
+          <aside className="hidden lg:block bg-surface border border-border rounded-xl p-3 h-fit lg:sticky lg:top-24">
             <nav className="space-y-1">
               {visibleSidebarItems.map((item) => {
                 const isActive = activeSection === item.id;
@@ -1346,7 +1486,7 @@ function MypageContent() {
           </aside>
           <div>
             {activeSection === 'editor-profile' && <EditorProfileSection userId={userId} onSaved={() => setIsEditorProfileRegistered(true)} />}
-            {activeSection === 'posts' && <PostsSection />}
+            {activeSection === 'posts' && <PostsSection userRole={userRole} />}
             {activeSection === 'liked' && <LikedSection />}
             {activeSection === 'chats' && <ChatsSection />}
             {activeSection === 'portfolio' && <PortfolioManagementSection userId={userId} />}

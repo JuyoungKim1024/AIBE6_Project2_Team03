@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Eye, User } from "lucide-react";
+import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
-import type { PostType } from "@/types/post";
+import { UserActionMenu } from "@/components/common/UserActionMenu";
 
-export type { PostType };
+export type PostType = "hiring" | "looking" | "info" | "free";
 
 export interface PostCardProps {
   id: string;
@@ -14,7 +14,7 @@ export interface PostCardProps {
   type: PostType;
   title: string;
   preview?: string;
-  author: { name: string; avatar?: string };
+  author: { id?: string; name: string; avatar?: string };
   categoryTags: string[];
   toolTags: string[];
   minPrice?: number;
@@ -96,17 +96,19 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            {author.avatar ? (
+            {author.avatar && (
               <img
                 src={author.avatar}
                 alt={author.name}
-                className="w-5 h-5 rounded-full object-cover bg-surface-elevated border border-border"
+                className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
               />
-            ) : (
-              <div className="w-5 h-5 rounded-full bg-surface-elevated flex items-center justify-center border border-border flex-shrink-0">
-                <User size={11} className="text-text-secondary" />
-              </div>
             )}
+            <UserActionMenu
+              userId={author.id}
+              nickname={author.name}
+              profileImage={author.avatar}
+              size="sm"
+            />
             <span className="font-medium text-text-primary">{author.name}</span>
             <span className="text-text-muted text-xs">•</span>
             <span className="text-text-muted text-xs">{timeAgo}</span>

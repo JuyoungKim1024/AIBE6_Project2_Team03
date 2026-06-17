@@ -57,6 +57,29 @@ public class MyPageController {
         return myPageService.updatePublicContentVisibility(authService.resolveUserId(authorizationHeader), request);
     }
 
+    @GetMapping("/posts")
+    public List<MyPostResponse> getPosts(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getPosts(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PatchMapping("/posts/{postId}/visibility")
+    public MyPostResponse updatePostVisibility(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String postId,
+            @RequestBody PostVisibilityRequest request
+    ) {
+        return myPageService.updatePostVisibility(authService.resolveUserId(authorizationHeader), postId, request);
+    }
+
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<Void> deletePost(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String postId
+    ) {
+        myPageService.deletePost(authService.resolveUserId(authorizationHeader), postId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/portfolios")
     public List<PortfolioItemResponse> getPortfolios(@RequestHeader("Authorization") String authorizationHeader) {
         return myPageService.getPortfolios(authService.resolveUserId(authorizationHeader));

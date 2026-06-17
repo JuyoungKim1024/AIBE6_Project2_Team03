@@ -55,6 +55,8 @@ type PublicProfile = {
   reviews: Review[];
   recentDeals: Deal[];
   publicPostsVisible: boolean;
+  publicJobPostsVisible: boolean;
+  publicCommunityPostsVisible: boolean;
   publicLikedPostsVisible: boolean;
   posts?: ProfilePost[];
   likedPosts?: ProfilePost[];
@@ -70,6 +72,16 @@ const projectStatusLabel: Record<string, string> = {
   CANCELED: '취소',
 };
 
+function RoleBadge({ role }: { role: PublicProfile['role'] }) {
+  if (role === 'YOUTUBER') {
+    return <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold">크리에이터</span>;
+  }
+  if (role === 'EDITOR') {
+    return <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">에디터</span>;
+  }
+  return null;
+}
+
 function ProfilePostSection({ title, posts, emptyMessage }: { title: string; posts: ProfilePost[]; emptyMessage: string }) {
   return (
     <section className="bg-surface border border-border rounded-xl p-6">
@@ -82,7 +94,7 @@ function ProfilePostSection({ title, posts, emptyMessage }: { title: string; pos
           <Link key={post.id} href={post.boardType === 'JOB' ? `/jobs/${post.id}` : `/community/${post.id}`} className="block rounded-xl bg-surface-elevated border border-border p-4 hover:border-primary/50 transition-colors">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className={`px-2 py-0.5 rounded text-xs font-bold ${post.boardType === 'JOB' ? 'bg-accent/10 text-accent' : 'bg-cyan-400/10 text-cyan-400'}`}>
-                {post.boardType === 'JOB' ? '구인구직' : '커뮤니티'}
+                {post.boardType === 'JOB' ? (post.postType === 'RECRUITING' ? '구인글' : '구직글') : '커뮤니티글'}
               </span>
               <span className="text-xs text-text-muted">{post.authorName}</span>
               <span className="text-xs text-text-muted">·</span>
@@ -229,7 +241,10 @@ export default function PublicProfilePage() {
                 </div>
               )}
               <div>
-                <h1 className="text-3xl font-bold text-text-primary">{data.nickname}</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold text-text-primary">{data.nickname}</h1>
+                  <RoleBadge role={data.role} />
+                </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                   {data.fieldTags.map((tagName) => (
                     <span key={`field-${tagName}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold">
@@ -256,7 +271,7 @@ export default function PublicProfilePage() {
 
         {!isEditor && (
           <section className="bg-surface border border-border rounded-xl p-6">
-            <h2 className="text-xl font-bold text-text-primary mb-2">유튜버 계정</h2>
+            <h2 className="text-xl font-bold text-text-primary mb-2">크리에이터 계정</h2>
             <p className="text-sm text-text-secondary">구인과 의뢰 중심 계정입니다. 에디터 전용 전투력과 포트폴리오는 표시하지 않습니다.</p>
           </section>
         )}
@@ -352,8 +367,12 @@ export default function PublicProfilePage() {
           )}
         </section>}
 
-        {data.publicPostsVisible && (
-          <ProfilePostSection title="작성한 글" posts={data.posts ?? []} emptyMessage="아직 작성한 글이 없습니다" />
+        {data.publicJobPostsVisible && (
+          <ProfilePostSection title={isEditor ? '구직글' : '구인글'} posts={(data.posts ?? []).filter((post) => post.boardType === 'JOB')} emptyMessage="공개된 구인구직 글이 없습니다" />
+        )}
+
+        {data.publicCommunityPostsVisible && (
+          <ProfilePostSection title="커뮤니티글" posts={(data.posts ?? []).filter((post) => post.boardType === 'COMMUNITY')} emptyMessage="공개된 커뮤니티 글이 없습니다" />
         )}
 
         {data.publicLikedPostsVisible && (

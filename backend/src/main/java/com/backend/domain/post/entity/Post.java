@@ -40,6 +40,9 @@ public abstract class Post extends BaseEntity {
     @Column(name = "chat_count", nullable = false)
     private int chatCount = 0;
 
+    @Column(name = "public_visible", nullable = false)
+    private boolean publicVisible = false;
+
     @Column(name = "revision_count", nullable = false)
     private int revisionCount = 0;
 
@@ -59,5 +62,9 @@ public abstract class Post extends BaseEntity {
 
     public void setViewCount(int viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public void updatePublicVisible(boolean publicVisible) {
+        this.publicVisible = publicVisible;
     }
 }

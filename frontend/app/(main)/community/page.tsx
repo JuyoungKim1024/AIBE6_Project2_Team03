@@ -71,13 +71,13 @@ function CommunityContent() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-1">커뮤니티</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">커뮤니티</h1>
             {query ? (
               <p className="text-text-secondary text-sm">
                 <span className="text-primary font-medium">"{query}"</span> 검색 결과 {filteredPosts.length}건
               </p>
             ) : (
-              <p className="text-text-secondary text-sm">에디터와 유튜버가 함께하는 정보 공유 공간</p>
+              <p className="text-text-secondary text-sm">에디터와 크리에이터가 함께하는 정보 공유 공간</p>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ function CommunityContent() {
                     linkTo={`/community/${post.id}`}
                     type={post.category.toLowerCase() as PostType}
                     title={post.title}
-                    author={{ name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
+                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
                     categoryTags={[]}
                     toolTags={[]}
                     likes={post.likeCount}
@@ -150,7 +150,7 @@ function CommunityContent() {
               ))
             )}
           </main>
-          <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
+          <aside className="w-full lg:w-80 flex-shrink-0 min-w-0 space-y-6">
             <div className="bg-surface border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-text-primary flex items-center gap-2">실시간 시세 📊 <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span></span></h3>
