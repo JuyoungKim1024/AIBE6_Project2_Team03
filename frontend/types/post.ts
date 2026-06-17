@@ -22,6 +22,7 @@ export interface JobPostDto {
   viewCount: number;
   likeCount: number;
   chatCount: number;
+  commentCount: number;
   createdAt: string;
 }
 
@@ -32,6 +33,7 @@ export interface JobPostDetailDto extends JobPostDto {
   updatedAt: string;
 }
 
+
 export interface CommunityPostDto {
   id: string;
   author: AuthorDto;
@@ -41,6 +43,7 @@ export interface CommunityPostDto {
   viewCount: number;
   likeCount: number;
   chatCount: number;
+  commentCount: number;
   createdAt: string;
 }
 
@@ -48,6 +51,7 @@ export interface CommunityPostDetailDto extends CommunityPostDto {
   content: string;
   updatedAt: string;
 }
+
 
 export interface CommentDto {
   id: string;

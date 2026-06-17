@@ -105,13 +105,6 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            {author.avatar && (
-              <img
-                src={author.avatar}
-                alt={author.name}
-                className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
-              />
-            )}
             <UserActionMenu
               userId={author.id}
               nickname={author.name}
