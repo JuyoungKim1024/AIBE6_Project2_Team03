@@ -25,7 +25,7 @@ const mockFeaturedEditors = [
 ];
 
 const quickAccessCards = [
-  { icon: Briefcase, title: '구인구직 바로가기', desc: '검증된 유튜버와 에디터들이 모이는 곳', path: '/jobs', color: 'text-primary' },
+  { icon: Briefcase, title: '구인구직 바로가기', desc: '검증된 크리에이터와 에디터들이 모이는 곳', path: '/jobs', color: 'text-primary' },
   { icon: Sparkles, title: '맞춤매칭 시작', desc: '조건에 맞는 에디터 5명을 추천받으세요', path: '/matching', color: 'text-accent' },
   { icon: MessageSquare, title: '커뮤니티 둘러보기', desc: '단가, 팁, 포트폴리오 정보가 한 곳에', path: '/community', color: 'text-violet-400' },
 ];
@@ -43,8 +43,8 @@ export default function HomePage() {
     if (path === '/matching' && user?.role === 'EDITOR') {
       e.preventDefault();
       openModal({
-        title: '유튜버 전용 서비스',
-        message: '맞춤매칭은 유튜버 계정에서만 이용할 수 있습니다.\n에디터로 로그인된 상태에서는 접근할 수 없어요.',
+        title: '크리에이터 전용 서비스',
+        message: '맞춤매칭은 크리에이터 계정에서만 이용할 수 있습니다.\n에디터로 로그인된 상태에서는 접근할 수 없어요.',
       });
     }
   };
