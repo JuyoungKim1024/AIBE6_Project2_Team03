@@ -379,17 +379,6 @@ export default function JobDetailPage() {
                 <div className="bg-surface border border-border rounded-xl p-4 group">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      {comment.author.profileImage ? (
-                        <img
-                          src={comment.author.profileImage}
-                          alt={comment.author.nickname}
-                          className="w-7 h-7 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                          {comment.author.nickname[0]}
-                        </div>
-                      )}
                       <UserActionMenu
                         userId={comment.author.id}
                         nickname={comment.author.nickname}
@@ -506,17 +495,6 @@ export default function JobDetailPage() {
                     <div className="absolute -left-4 top-0 bottom-1/2 border-l border-b border-border/50 w-4 rounded-bl-xl" />
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {reply.author.profileImage ? (
-                          <img
-                            src={reply.author.profileImage}
-                            alt={reply.author.nickname}
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                            {reply.author.nickname[0]}
-                          </div>
-                        )}
                         <UserActionMenu
                           userId={reply.author.id}
                           nickname={reply.author.nickname}
@@ -613,7 +591,7 @@ export default function JobDetailPage() {
               </button>
               <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-text-secondary">
                 <MessageCircle size={18} />
-                <span className="text-sm font-bold">{post.chatCount}</span>
+                <span className="text-sm font-bold">{comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)}</span>
               </div>
             </div>
             <button

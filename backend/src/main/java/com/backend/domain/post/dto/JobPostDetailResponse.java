@@ -22,6 +22,7 @@ public record JobPostDetailResponse(
         int viewCount,
         int likeCount,
         int chatCount,
+        int commentCount,
         Integer revisionCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -49,6 +50,7 @@ public record JobPostDetailResponse(
                 post.getViewCount(),
                 post.getLikeCount(),
                 post.getChatCount(),
+                post.getCommentCount(),
                 post.getRevisionCount(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()

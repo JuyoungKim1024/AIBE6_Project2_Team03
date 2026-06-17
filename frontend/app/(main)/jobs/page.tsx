@@ -190,7 +190,7 @@ function JobsContent() {
                   maxPrice={job.maxPrice ?? undefined}
                   priceHidden={!job.priceVisible}
                   likes={job.likeCount}
-                  comments={job.chatCount}
+                  comments={job.commentCount}
                   views={job.viewCount}
                   timeAgo={formatTimeAgo(job.createdAt)}
                   thumbnail={job.thumbnailUrl ?? undefined}

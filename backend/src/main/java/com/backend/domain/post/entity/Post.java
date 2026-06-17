@@ -40,6 +40,9 @@ public abstract class Post extends BaseEntity {
     @Column(name = "chat_count", nullable = false)
     private int chatCount = 0;
 
+    @Column(name = "comment_count", nullable = false)
+    private int commentCount = 0;
+
     @Column(name = "public_visible", nullable = false)
     private boolean publicVisible = false;
 
@@ -70,6 +73,14 @@ public abstract class Post extends BaseEntity {
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) this.likeCount--;
+    }
+
+    public void incrementCommentCount() {
+        this.commentCount++;
+    }
+
+    public void decrementCommentCount() {
+        if (this.commentCount > 0) this.commentCount--;
     }
 
     public void setViewCount(int viewCount) {

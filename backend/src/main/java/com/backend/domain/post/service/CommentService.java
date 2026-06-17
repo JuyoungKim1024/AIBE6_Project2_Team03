@@ -54,6 +54,7 @@ public class CommentService {
 
         Comment comment = new Comment(post, writer, parent, req.content());
         commentRepository.save(comment);
+        post.incrementCommentCount();
         return CommentResponse.of(comment, List.of());
     }
 
@@ -67,6 +68,7 @@ public class CommentService {
     @Transactional
     public void deleteComment(String commentId, String userId) {
         Comment comment = getOwnComment(commentId, userId);
+        comment.getPost().decrementCommentCount();
         commentRepository.delete(comment);
     }
 
