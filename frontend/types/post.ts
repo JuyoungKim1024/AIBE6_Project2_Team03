@@ -28,6 +28,7 @@ export interface JobPostDto {
 export interface JobPostDetailDto extends JobPostDto {
   content: string;
   portfolioId: string | null;
+  revisionCount: number | null;
   updatedAt: string;
 }
 

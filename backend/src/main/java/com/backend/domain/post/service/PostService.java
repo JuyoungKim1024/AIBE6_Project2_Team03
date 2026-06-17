@@ -33,7 +33,7 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         JobPost post = new JobPost(
-                author, req.title(), req.content(), null,
+                author, req.title(), req.content(), req.thumbnailUrl(),
                 req.minPrice(), req.maxPrice(), req.priceVisible(), req.postType()
         );
         jobPostRepository.save(post);
@@ -73,4 +73,5 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
         return CommunityPostDetailResponse.from(post);
     }
+
 }

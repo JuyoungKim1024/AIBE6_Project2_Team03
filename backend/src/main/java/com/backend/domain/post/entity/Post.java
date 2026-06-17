@@ -40,6 +40,9 @@ public abstract class Post extends BaseEntity {
     @Column(name = "chat_count", nullable = false)
     private int chatCount = 0;
 
+    @Column(name = "revision_count", nullable = false)
+    private int revisionCount = 0;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostTag> tags = new ArrayList<>();
 

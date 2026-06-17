@@ -39,6 +39,8 @@ export default function JobsWritePage() {
   const [selectedDesignTools, setSelectedDesignTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [revisionCount, setRevisionCount] = useState<number | null>(null);
+  const [unlimitedRevision, setUnlimitedRevision] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const priceRangeError = !priceHidden && minPrice > maxPrice;
   const priceSectionRef = useRef<HTMLDivElement>(null);
@@ -127,9 +129,14 @@ export default function JobsWritePage() {
             ...(selectedVideoTools.includes("기타") || selectedDesignTools.includes("기타") ? ["기타"] : []),
           ],
           portfolioId: selectedPortfolioId,
+          revisionCount: unlimitedRevision ? null : revisionCount,
         }),
       });
-      if (!res.ok) throw new Error("등록 실패");
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("등록 실패:", res.status, errText);
+        throw new Error("등록 실패");
+      }
       router.push(`/jobs?tab=${type}`);
     } catch (err) {
       console.error(err);
@@ -279,6 +286,53 @@ export default function JobsWritePage() {
                   <span className="font-sans text-sm font-normal text-text-muted">
                     /분
                   </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 수정 횟수 */}
+          <div className="bg-surface border border-border rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-bold text-text-primary">
+                수정 횟수
+              </label>
+              <button
+                onClick={() => setUnlimitedRevision(!unlimitedRevision)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${unlimitedRevision ? "bg-primary/10 text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+              >
+                무제한
+              </button>
+            </div>
+            {unlimitedRevision ? (
+              <div className="inline-flex items-center rounded-full bg-surface border border-transparent px-3 py-1 text-text-secondary opacity-70 text-sm font-medium w-max">
+                무제한
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                {[1, 2, 3, 5, 10].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setRevisionCount(n)}
+                    className={`w-12 h-10 rounded-lg text-sm font-bold border transition-all ${revisionCount === n ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
+                  >
+                    {n}회
+                  </button>
+                ))}
+                <div className="flex items-center gap-1.5 bg-surface-elevated border border-border rounded-lg px-3 h-10 focus-within:border-primary transition-colors">
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="직접"
+                    value={revisionCount !== null && ![1,2,3,5,10].includes(revisionCount) ? revisionCount : ""}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setRevisionCount(v > 0 ? v : null);
+                    }}
+                    className="w-12 bg-transparent text-sm text-text-primary font-mono focus:outline-none"
+                  />
+                  <span className="text-sm text-text-muted">회</span>
                 </div>
               </div>
             )}

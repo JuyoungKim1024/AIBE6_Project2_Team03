@@ -181,7 +181,9 @@ export default function JobDetailPage() {
     {
       icon: RotateCcw,
       label: "수정 횟수",
-      value: "-",
+      value: post.revisionCount === null || post.revisionCount === undefined
+        ? "무제한"
+        : `${post.revisionCount}회`,
     },
   ];
 
