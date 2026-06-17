@@ -130,6 +130,20 @@ export default function EditorDetailPage() {
               </div>
             )}
 
+            {/* 콘텐츠 유형 태그 */}
+            {editor.videoLengths && editor.videoLengths.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">콘텐츠 유형</p>
+                <div className="flex flex-wrap gap-2">
+                  {editor.videoLengths.map((v) => (
+                    <span key={v} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold">
+                      {v}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 툴 태그 */}
             {editor.tools.length > 0 && (
               <div>
