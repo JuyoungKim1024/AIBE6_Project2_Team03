@@ -203,7 +203,7 @@ export default function JobDetailPage() {
           className="mb-6"
         >
           <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-accent/10 text-accent">
+            <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${post.postType === "RECRUITING" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"}`}>
               {postTypeLabel}
             </span>
             {post.fieldTags.map((tag) => (

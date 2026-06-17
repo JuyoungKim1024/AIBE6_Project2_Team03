@@ -31,6 +31,14 @@ function CommunityContent() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  useEffect(() => {
+    if (!isModalOpen) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [isModalOpen]);
+
+  useEffect(() => {
     setLoading(true);
     const request =
       activeCategory === 'all'
