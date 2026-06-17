@@ -58,13 +58,17 @@ export function SearchBar() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [categoryDropdownOpen, query]);
 
-  const navigate = (url: string) => { router.push(url); router.refresh(); };
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.replace(/\s+/g, ' ').trim();
     inputRef.current?.blur();
-    navigate(trimmed ? `/${category}?q=${encodeURIComponent(trimmed)}` : `/${category}`);
+    const target = trimmed ? `/${category}?q=${encodeURIComponent(trimmed)}` : `/${category}`;
+    const isSameUrl = window.location.pathname + window.location.search === target;
+    if (isSameUrl) {
+      router.refresh();
+    } else {
+      router.push(target);
+    }
   };
 
   const selectedLabel = categoryOptions.find((o) => o.value === category)!.label;
