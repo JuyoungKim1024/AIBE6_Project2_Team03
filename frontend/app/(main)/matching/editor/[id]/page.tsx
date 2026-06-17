@@ -22,7 +22,7 @@ export default function EditorDetailPage() {
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/matching/editors/${id}`)
       .then((res) => {
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then(setEditor)
