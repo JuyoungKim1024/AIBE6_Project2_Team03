@@ -3,8 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
+import { RankBadge } from '@/components/common/RankBadge';
 import { TrustTemperature } from '@/components/profile/TrustTemperature';
+import type { RankTier } from '@/types/user';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -51,6 +53,8 @@ type PublicProfile = {
   fieldTags: string[];
   toolTags: string[];
   battlePower: number;
+  completedProjectCount: number;
+  reviewCount: number;
   portfolios: Portfolio[];
   reviews: Review[];
   recentDeals: Deal[];
@@ -63,6 +67,22 @@ type PublicProfile = {
 };
 
 const reviewsPerPage = 5;
+
+const rankGuide: { tier: RankTier; label: string; condition: string }[] = [
+  { tier: 'bronze', label: '브론즈', condition: '기본 등급' },
+  { tier: 'silver', label: '실버', condition: '프로젝트 1개 완료 + 리뷰 1개' },
+  { tier: 'gold', label: '골드', condition: '전투력 50+ / 프로젝트 5개 / 리뷰 5개' },
+  { tier: 'platinum', label: '플래티넘', condition: '전투력 70+ / 프로젝트 15개 / 리뷰 15개' },
+  { tier: 'diamond', label: '다이아몬드', condition: '전투력 90+ / 프로젝트 30개 / 리뷰 30개' },
+];
+
+function getRankTier(battlePower: number, completedProjectCount: number, reviewCount: number): RankTier {
+  if (battlePower >= 90 && completedProjectCount >= 30 && reviewCount >= 30) return 'diamond';
+  if (battlePower >= 70 && completedProjectCount >= 15 && reviewCount >= 15) return 'platinum';
+  if (battlePower >= 50 && completedProjectCount >= 5 && reviewCount >= 5) return 'gold';
+  if (completedProjectCount >= 1 && reviewCount >= 1) return 'silver';
+  return 'bronze';
+}
 
 const projectStatusLabel: Record<string, string> = {
   WAITING: '대기',
@@ -80,6 +100,28 @@ function RoleBadge({ role }: { role: PublicProfile['role'] }) {
     return <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">에디터</span>;
   }
   return null;
+}
+
+function RankLegend() {
+  return (
+    <div className="relative group">
+      <button type="button" className="w-7 h-7 rounded-full border border-border bg-surface-elevated text-text-muted hover:text-text-primary hover:border-primary/50 flex items-center justify-center transition-colors" aria-label="등급 조건 보기">
+        <HelpCircle size={15} />
+      </button>
+      <div className="pointer-events-none absolute right-0 top-full mt-2 w-72 rounded-xl border border-border bg-surface p-4 shadow-2xl opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0 transition-all z-50">
+        <div className="font-bold text-text-primary mb-1">등업 조건</div>
+        <p className="text-xs text-text-muted mb-3">조건을 모두 만족하면 해당 등급으로 표시됩니다.</p>
+        <div className="space-y-2">
+          {rankGuide.map((rank) => (
+            <div key={rank.tier} className="flex items-center justify-between gap-3">
+              <RankBadge tier={rank.tier} size="sm" />
+              <span className="text-xs text-text-secondary flex-shrink-0">{rank.condition}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ProfilePostSection({ title, posts, emptyMessage }: { title: string; posts: ProfilePost[]; emptyMessage: string }) {
@@ -260,7 +302,15 @@ export default function PublicProfilePage() {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              {isEditor && <TrustTemperature temp={data.battlePower} />}
+              {isEditor && (
+                <div className="flex flex-col items-start gap-2">
+                  <TrustTemperature temp={data.battlePower} />
+                  <div className="flex items-center gap-2">
+                    <RankBadge tier={getRankTier(data.battlePower, data.completedProjectCount ?? 0, data.reviewCount ?? data.reviews.length)} size="md" />
+                    <RankLegend />
+                  </div>
+                </div>
+              )}
               <Link href={`/chat/${data.id}`} className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors">
                 <MessageCircle size={16} />
                 채팅 문의
