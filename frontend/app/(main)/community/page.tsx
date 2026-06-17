@@ -69,7 +69,7 @@ function CommunityContent() {
                 <span className="text-primary font-medium">"{query}"</span> 검색 결과 {filteredPosts.length}건
               </p>
             ) : (
-              <p className="text-text-secondary text-sm">에디터와 유튜버가 함께하는 정보 공유 공간</p>
+              <p className="text-text-secondary text-sm">에디터와 크리에이터가 함께하는 정보 공유 공간</p>
             )}
           </div>
           <div className="flex items-center gap-3">

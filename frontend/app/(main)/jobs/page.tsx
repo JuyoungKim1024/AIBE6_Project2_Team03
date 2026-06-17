@@ -74,7 +74,7 @@ function JobsContent() {
             </p>
           ) : (
             <p className="text-text-secondary text-sm">
-              검증된 유튜버와 에디터가 만나는 곳
+              검증된 크리에이터와 에디터가 만나는 곳
             </p>
           )}
         </div>

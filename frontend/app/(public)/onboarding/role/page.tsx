@@ -9,7 +9,7 @@ import { API_BASE_URL } from '@/lib/api';
 type Role = 'YOUTUBER' | 'EDITOR';
 
 const roles: { id: Role; label: string; desc: string; icon: typeof Youtube }[] = [
-  { id: 'YOUTUBER', label: '유튜버', desc: '내 채널 영상 작업을 맡길 에디터를 찾고 있어요', icon: Youtube },
+  { id: 'YOUTUBER', label: '크리에이터', desc: '내 채널 영상 작업을 맡길 에디터를 찾고 있어요', icon: Youtube },
   { id: 'EDITOR', label: '에디터', desc: '편집 실력으로 의뢰를 찾고 수익을 만들고 싶어요', icon: Scissors },
 ];
 
@@ -24,7 +24,7 @@ export default function OnboardingRolePage() {
     }
 
     if (!selectedRole) {
-      alert('유튜버 또는 에디터 중 하나를 선택해야 로그인할 수 있습니다.');
+      alert('크리에이터 또는 에디터 중 하나를 선택해야 로그인할 수 있습니다.');
       return;
     }
 
@@ -73,7 +73,7 @@ export default function OnboardingRolePage() {
         </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-2xl p-8">
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">역할을 선택해주세요</h1>
-          <p className="text-sm text-text-secondary text-center mb-6">유튜버 또는 에디터 중 하나를 선택해야 이용할 수 있어요</p>
+          <p className="text-sm text-text-secondary text-center mb-6">크리에이터 또는 에디터 중 하나를 선택해야 이용할 수 있어요</p>
           <div className="space-y-3 mb-6">
             {roles.map((role) => {
               const active = selectedRole === role.id;
