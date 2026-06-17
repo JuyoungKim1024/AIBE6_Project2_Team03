@@ -58,21 +58,16 @@ export function SearchBar() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [categoryDropdownOpen, query]);
 
+  const navigate = (url: string) => { router.push(url); router.refresh(); };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.replace(/\s+/g, ' ').trim();
     inputRef.current?.blur();
-    if (!trimmed) {
-      router.push(`/${category}`);
-      router.refresh();
-      return;
-    }
-    const target = `/${category}?q=${encodeURIComponent(trimmed)}`;
-    router.push(target);
-    router.refresh();
+    navigate(trimmed ? `/${category}?q=${encodeURIComponent(trimmed)}` : `/${category}`);
   };
 
-  const selectedLabel = categoryOptions.find((o) => o.value === category)?.label ?? '구인구직';
+  const selectedLabel = categoryOptions.find((o) => o.value === category)!.label;
 
   return (
     <div className="relative" ref={containerRef}>
