@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Eye } from "lucide-react";
+import { Heart, MessageCircle, Eye, User } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import type { PostType } from "@/types/post";
 
@@ -96,12 +96,16 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            {author.avatar && (
+            {author.avatar ? (
               <img
                 src={author.avatar}
                 alt={author.name}
-                className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
+                className="w-5 h-5 rounded-full object-cover bg-surface-elevated border border-border"
               />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-surface-elevated flex items-center justify-center border border-border flex-shrink-0">
+                <User size={11} className="text-text-secondary" />
+              </div>
             )}
             <span className="font-medium text-text-primary">{author.name}</span>
             <span className="text-text-muted text-xs">•</span>
