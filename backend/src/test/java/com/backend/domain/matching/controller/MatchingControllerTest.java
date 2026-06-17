@@ -57,7 +57,7 @@ class MatchingControllerTest {
 
         editor = new User(SocialProvider.GOOGLE, "google-ed-1", "ed@test.com", "에디터테스터", "https://example.com/avatar.jpg");
         editor.updateRole(UserRole.EDITOR);
-        editor.updateMatchingPrice(true, 15000, MatchPriceUnit.MIN);
+        editor.updateMatchingPrice(true, 15000, 50000, MatchPriceUnit.MIN);
         userRepository.saveAndFlush(editor);
 
         jdbcTemplate.update(
@@ -66,6 +66,10 @@ class MatchingControllerTest {
         );
         jdbcTemplate.update(
                 "INSERT INTO user_tags (id, user_id, tag_type, tag_name) VALUES (?, ?, 'TOOL', 'Premiere Pro')",
+                UUID.randomUUID().toString(), editor.getId()
+        );
+        jdbcTemplate.update(
+                "INSERT INTO user_tags (id, user_id, tag_type, tag_name) VALUES (?, ?, 'CONTENT_TYPE', '숏폼')",
                 UUID.randomUUID().toString(), editor.getId()
         );
         jdbcTemplate.update(
@@ -80,7 +84,7 @@ class MatchingControllerTest {
     @DisplayName("t1 카테고리와 단가 조건에 맞는 에디터 목록을 반환한다")
     void t1_searchEditors_returnsMatchingEditors() throws Exception {
         mockMvc.perform(get("/api/matching/editors")
-                        .param("category", "게임")
+                        .param("categories", "게임")
                         .param("maxPrice", "20000"))
                 .andDo(print())
                 .andExpect(handler().handlerType(MatchingController.class))
@@ -92,15 +96,30 @@ class MatchingControllerTest {
                 .andExpect(jsonPath("$[0].thumbnails[0]").value("https://example.com/thumb.jpg"))
                 .andExpect(jsonPath("$[0].categories[0]").value("게임"))
                 .andExpect(jsonPath("$[0].tools[0]").value("Premiere Pro"))
-                .andExpect(jsonPath("$[0].matchPrice").value(editor.getMatchPrice()))
-                .andExpect(jsonPath("$[0].matchPriceUnit").value("원/분"));
+                .andExpect(jsonPath("$[0].videoLengths[0]").value("숏폼"))
+                .andExpect(jsonPath("$[0].matchPriceUnit").value("분"));
+    }
+
+    @Test
+    @DisplayName("t1-2 여러 카테고리 중 하나라도 일치하는 에디터를 반환한다")
+    void t1_2_searchEditors_returnsEditorWhenAnyCategoryMatches() throws Exception {
+        mockMvc.perform(get("/api/matching/editors")
+                        .param("categories", "여행")
+                        .param("categories", "게임")
+                        .param("maxPrice", "20000"))
+                .andDo(print())
+                .andExpect(handler().handlerType(MatchingController.class))
+                .andExpect(handler().methodName("searchEditors"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").value(editor.getId()));
     }
 
     @Test
     @DisplayName("t2 단가 범위를 초과하는 에디터는 결과에서 제외된다")
     void t2_searchEditors_excludesEditorExceedingMaxPrice() throws Exception {
         mockMvc.perform(get("/api/matching/editors")
-                        .param("category", "게임")
+                        .param("categories", "게임")
                         .param("maxPrice", "10000"))
                 .andDo(print())
                 .andExpect(handler().handlerType(MatchingController.class))
@@ -114,7 +133,7 @@ class MatchingControllerTest {
     @DisplayName("t3 카테고리가 일치하지 않으면 빈 배열을 반환한다")
     void t3_searchEditors_returnsEmptyWhenCategoryNotMatched() throws Exception {
         mockMvc.perform(get("/api/matching/editors")
-                        .param("category", "뷰티")
+                        .param("categories", "뷰티")
                         .param("maxPrice", "20000"))
                 .andDo(print())
                 .andExpect(handler().handlerType(MatchingController.class))
@@ -122,6 +141,37 @@ class MatchingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    @DisplayName("t3-2 툴이 일치하지 않으면 빈 배열을 반환한다")
+    void t3_2_searchEditors_returnsEmptyWhenToolNotMatched() throws Exception {
+        mockMvc.perform(get("/api/matching/editors")
+                        .param("categories", "게임")
+                        .param("tools", "Final Cut Pro")
+                        .param("maxPrice", "20000"))
+                .andDo(print())
+                .andExpect(handler().handlerType(MatchingController.class))
+                .andExpect(handler().methodName("searchEditors"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    @DisplayName("t3-3 툴 다중선택 시 하나라도 일치하면 에디터를 반환한다")
+    void t3_3_searchEditors_returnsEditorWhenAnyToolMatches() throws Exception {
+        mockMvc.perform(get("/api/matching/editors")
+                        .param("categories", "게임")
+                        .param("tools", "Final Cut Pro")
+                        .param("tools", "Premiere Pro")
+                        .param("maxPrice", "20000"))
+                .andDo(print())
+                .andExpect(handler().handlerType(MatchingController.class))
+                .andExpect(handler().methodName("searchEditors"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").value(editor.getId()));
     }
 
     @Test
@@ -136,8 +186,8 @@ class MatchingControllerTest {
                 .andExpect(jsonPath("$.thumbnails[0]").value("https://example.com/thumb.jpg"))
                 .andExpect(jsonPath("$.categories[0]").value("게임"))
                 .andExpect(jsonPath("$.tools[0]").value("Premiere Pro"))
-                .andExpect(jsonPath("$.matchPrice").value(editor.getMatchPrice()))
-                .andExpect(jsonPath("$.matchPriceUnit").value("원/분"));
+                .andExpect(jsonPath("$.videoLengths[0]").value("숏폼"))
+                .andExpect(jsonPath("$.matchPriceUnit").value("분"));
     }
 
     @Test
@@ -173,7 +223,7 @@ class MatchingControllerTest {
     @Test
     @DisplayName("t7 matchEnabled가 false인 에디터에게 매칭 요청 시 400을 반환한다")
     void t7_sendRequest_returns400WhenEditorMatchDisabled() throws Exception {
-        editor.updateMatchingPrice(false, null, null);
+        editor.updateMatchingPrice(false, null, null, null);
         userRepository.save(editor);
 
         mockMvc.perform(post("/api/matching/requests")

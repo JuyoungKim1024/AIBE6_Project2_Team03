@@ -11,6 +11,8 @@ public record PublicProfileResponse(
         List<String> fieldTags,
         List<String> toolTags,
         int battlePower,
+        long completedProjectCount,
+        long reviewCount,
         List<PortfolioResponse> portfolios,
         List<ReviewResponse> reviews,
         List<RecentDealResponse> recentDeals,
