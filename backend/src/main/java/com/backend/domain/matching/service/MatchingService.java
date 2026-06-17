@@ -32,12 +32,12 @@ public class MatchingService {
     private final MyPageMatchRequestRepository matchRequestRepository;
 
     // GET /api/matching/editors
-    public List<BlindEditorResponse> searchEditors(String category, String tool, String videoLength, Integer minPrice, Integer maxPrice) {
+    public List<BlindEditorResponse> searchEditors(List<String> categories, List<String> tools, List<String> videoLengths, Integer minPrice, Integer maxPrice) {
         List<BlindEditorResponse> results = new ArrayList<>();
         for (User user : userRepository.findMatchableEditors(maxPrice, minPrice)) {
             if (results.size() >= MAX_RESULTS) break;
             List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(user.getId());
-            if (matchesFilters(tags, category, tool, videoLength)) {
+            if (matchesFilters(tags, categories, tools, videoLengths)) {
                 List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(user.getId());
                 results.add(BlindEditorResponse.of(user, tags, portfolios));
             }
@@ -45,26 +45,23 @@ public class MatchingService {
         return results;
     }
 
-    private boolean matchesFilters(List<UserTag> tags, String category, String tool, String videoLength) {
-        if (category != null && !category.isBlank()) {
-            boolean hasCategory = tags.stream()
-                    .filter(t -> t.getTagType() == UserTagType.FIELD)
-                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(category));
-            if (!hasCategory) return false;
+    private boolean matchesFilters(List<UserTag> tags, List<String> categories, List<String> tools, List<String> videoLengths) {
+        if (categories != null && !categories.isEmpty()) {
+            if (!hasAnyTag(tags, UserTagType.FIELD, categories)) return false;
         }
-        if (tool != null && !tool.isBlank() && !tool.equals("상관없음")) {
-            boolean hasTool = tags.stream()
-                    .filter(t -> t.getTagType() == UserTagType.TOOL)
-                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(tool));
-            if (!hasTool) return false;
+        if (tools != null && !tools.isEmpty()) {
+            if (!hasAnyTag(tags, UserTagType.TOOL, tools)) return false;
         }
-        if (videoLength != null && !videoLength.isBlank() && !videoLength.equals("상관없음")) {
-            boolean hasVideoLength = tags.stream()
-                    .filter(t -> t.getTagType() == UserTagType.CONTENT_TYPE)
-                    .anyMatch(t -> t.getTagName().equalsIgnoreCase(videoLength));
-            if (!hasVideoLength) return false;
+        if (videoLengths != null && !videoLengths.isEmpty()) {
+            if (!hasAnyTag(tags, UserTagType.CONTENT_TYPE, videoLengths)) return false;
         }
         return true;
+    }
+
+    private boolean hasAnyTag(List<UserTag> tags, UserTagType type, List<String> values) {
+        return tags.stream()
+                .filter(t -> t.getTagType() == type)
+                .anyMatch(t -> values.stream().anyMatch(v -> v.equalsIgnoreCase(t.getTagName())));
     }
 
     // GET /api/matching/editors/{editorId}

@@ -26,15 +26,15 @@ public class MatchingController {
     private final AuthService authService;
     private final MatchingService matchingService;
 
-    // GET /api/matching/editors?category=게임&tool=Premiere Pro&minPrice=5000&maxPrice=20000
+    // GET /api/matching/editors?categories=게임&categories=여행&tool=Premiere Pro&videoLengths=숏폼&videoLengths=롱폼&minPrice=5000&maxPrice=20000
     @GetMapping("/editors")
     public List<BlindEditorResponse> searchEditors(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String tool,
-            @RequestParam(required = false) String videoLength,
+            @RequestParam(required = false) List<String> categories,
+            @RequestParam(required = false) List<String> tools,
+            @RequestParam(required = false) List<String> videoLengths,
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice) {
-        return matchingService.searchEditors(category, tool, videoLength, minPrice, maxPrice);
+        return matchingService.searchEditors(categories, tools, videoLengths, minPrice, maxPrice);
     }
 
     // GET /api/matching/editors/{editorId}
