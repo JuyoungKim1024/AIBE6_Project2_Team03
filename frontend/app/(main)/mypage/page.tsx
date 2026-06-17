@@ -384,7 +384,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
     <SectionCard title={isRegistered ? '에디터 프로필 수정' : '에디터 프로필 등록'} description="분야와 툴 태그를 선택하고 공개 프로필에 노출할 포트폴리오를 등록합니다.">
       {isViewMode ? (
         <div className="space-y-8">
-          <TagSummary title="분야" values={selectedFields} />
+          <TagSummary title="콘텐츠 유형" values={selectedFields} />
           <TagSummary title="세부 분야" values={selectedDetails} />
           <TagSummary title="툴" values={selectedTools} />
           <PortfolioSummaryList portfolios={portfolios} />
@@ -404,7 +404,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         </div>
       ) : (
         <div className="space-y-8">
-          <TagGroup title="분야" options={fieldTags} selected={selectedFields} onToggle={(value) => toggleValue(value, setSelectedFields)} />
+          <TagGroup title="콘텐츠 유형" options={fieldTags} selected={selectedFields} onToggle={(value) => toggleValue(value, setSelectedFields)} />
           <TagGroup title="세부 분야" options={detailTags} selected={selectedDetails} onToggle={(value) => toggleValue(value, setSelectedDetails)} />
           <TagGroup title="영상편집 툴" options={videoTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
           <TagGroup title="디자인 툴" options={designTools} selected={selectedTools} onToggle={(value) => toggleValue(value, setSelectedTools)} />
