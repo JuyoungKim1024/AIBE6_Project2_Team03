@@ -129,7 +129,7 @@ function CommunityContent() {
                     linkTo={`/community/${post.id}`}
                     type={post.category.toLowerCase() as PostType}
                     title={post.title}
-                    author={{ name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
+                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
                     categoryTags={[]}
                     toolTags={[]}
                     likes={post.likeCount}

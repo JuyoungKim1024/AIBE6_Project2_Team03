@@ -19,6 +19,7 @@ import {
   Reply,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
+import { UserActionMenu } from "@/components/common/UserActionMenu";
 import { fetchJobPost, fetchComments, createComment, updateComment, deleteComment } from "@/lib/api/post";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
@@ -229,17 +230,7 @@ export default function JobDetailPage() {
           </h1>
 
           <div className="flex items-center gap-3 mb-6">
-            {post.author.profileImage ? (
-              <img
-                src={post.author.profileImage}
-                alt={post.author.nickname}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-sm font-bold">
-                {post.author.nickname[0]}
-              </div>
-            )}
+            <UserActionMenu userId={post.author.id} nickname={post.author.nickname} profileImage={post.author.profileImage} />
             <div className="flex items-center gap-2">
               <span className="font-bold text-text-primary">
                 {post.author.nickname}
@@ -346,17 +337,7 @@ export default function JobDetailPage() {
                 <div className="bg-surface border border-border rounded-xl p-4 group">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      {comment.author.profileImage ? (
-                        <img
-                          src={comment.author.profileImage}
-                          alt={comment.author.nickname}
-                          className="w-7 h-7 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                          {comment.author.nickname[0]}
-                        </div>
-                      )}
+                      <UserActionMenu userId={comment.author.id} nickname={comment.author.nickname} profileImage={comment.author.profileImage} size="sm" />
                       <span className="font-bold text-sm text-text-primary">
                         {comment.author.nickname}
                       </span>
@@ -464,17 +445,7 @@ export default function JobDetailPage() {
                     <div className="absolute -left-4 top-0 bottom-1/2 border-l border-b border-border/50 w-4 rounded-bl-xl" />
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {reply.author.profileImage ? (
-                          <img
-                            src={reply.author.profileImage}
-                            alt={reply.author.nickname}
-                            className="w-6 h-6 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-xs font-bold">
-                            {reply.author.nickname[0]}
-                          </div>
-                        )}
+                        <UserActionMenu userId={reply.author.id} nickname={reply.author.nickname} profileImage={reply.author.profileImage} size="sm" />
                         <span className="font-bold text-sm text-text-primary">
                           {reply.author.nickname}
                         </span>
