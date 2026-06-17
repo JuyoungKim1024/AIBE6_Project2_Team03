@@ -92,7 +92,7 @@ export default function OnboardingRolePage() {
             <Video size={32} className="text-primary" />
           </div>
           <span className="font-bold text-2xl tracking-tight text-text-primary">
-            픽<span className="text-primary">크</span>
+            크크<span className="text-primary">킄</span>
           </span>
         </div>
 
@@ -106,7 +106,7 @@ export default function OnboardingRolePage() {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-2xl p-8">
-          <h1 className="text-xl font-bold text-text-primary text-center mb-1">역할을 선택해주세요</h1>
+          <h1 className="text-xl font-bold text-text-primary text-center mb-1">크크킄에서 사용할 역할을 선택해주세요</h1>
           <p className="text-sm text-text-secondary text-center mb-6">선택한 역할에 맞춰 사용할 수 있는 기능이 달라집니다.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
