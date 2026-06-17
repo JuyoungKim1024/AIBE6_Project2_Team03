@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, Search } from 'lucide-react';
 
 type SearchCategory = 'jobs' | 'community';
@@ -19,15 +19,17 @@ function getDefaultCategory(pathname: string): SearchCategory {
 export function SearchBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [category, setCategory] = useState<SearchCategory>(getDefaultCategory(pathname));
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 페이지 이동 시 카테고리 자동 전환
+  // 페이지 이동 시 카테고리 및 검색어 동기화
   useEffect(() => {
     setCategory(getDefaultCategory(pathname));
-  }, [pathname]);
+    setQuery(searchParams.get('q') ?? '');
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

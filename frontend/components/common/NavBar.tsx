@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, MessageSquare, Video, X } from 'lucide-react';
@@ -74,7 +74,9 @@ export function NavBar() {
 
           {pathname !== '/' && (
             <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md mx-4">
-              <SearchBar />
+              <Suspense fallback={<div className="w-full h-9 rounded-xl bg-surface-elevated animate-pulse" />}>
+                <SearchBar />
+              </Suspense>
             </div>
           )}
 
