@@ -17,6 +17,7 @@ public record CommunityPostDetailResponse(
         int viewCount,
         int likeCount,
         int chatCount,
+        int commentCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -35,6 +36,7 @@ public record CommunityPostDetailResponse(
                 post.getViewCount(),
                 post.getLikeCount(),
                 post.getChatCount(),
+                post.getCommentCount(),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );

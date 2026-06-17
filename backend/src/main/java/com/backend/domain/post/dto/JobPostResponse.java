@@ -20,6 +20,7 @@ public record JobPostResponse(
         int viewCount,
         int likeCount,
         int chatCount,
+        int commentCount,
         LocalDateTime createdAt
 ) {
     public static JobPostResponse from(JobPost post) {
@@ -43,6 +44,7 @@ public record JobPostResponse(
                 post.getViewCount(),
                 post.getLikeCount(),
                 post.getChatCount(),
+                post.getCommentCount(),
                 post.getCreatedAt()
         );
     }

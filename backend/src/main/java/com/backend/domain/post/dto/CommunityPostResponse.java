@@ -16,6 +16,7 @@ public record CommunityPostResponse(
         int viewCount,
         int likeCount,
         int chatCount,
+        int commentCount,
         LocalDateTime createdAt
 ) {
     public static CommunityPostResponse from(CommunityPost post) {
@@ -32,6 +33,7 @@ public record CommunityPostResponse(
                 post.getViewCount(),
                 post.getLikeCount(),
                 post.getChatCount(),
+                post.getCommentCount(),
                 post.getCreatedAt()
         );
     }
