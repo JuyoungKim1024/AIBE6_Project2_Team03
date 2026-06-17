@@ -128,7 +128,7 @@ export default function JobDetailPage() {
   };
 
   const startChat = async () => {
-    if (!post || isStartingChat) return;
+    if (!post || isStartingChat || currentUserId === post.author.id) return;
 
     setIsStartingChat(true);
 
@@ -236,6 +236,7 @@ export default function JobDetailPage() {
   }
 
   const postTypeLabel = post.postType === "RECRUITING" ? "구인" : "구직";
+  const isMyPost = currentUserId === post.author.id;
   const priceText =
     post.priceVisible && (post.minPrice || post.maxPrice)
       ? post.minPrice && post.maxPrice
@@ -719,11 +720,11 @@ export default function JobDetailPage() {
             </div>
             <button
               onClick={startChat}
-              disabled={isStartingChat}
-              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+              disabled={isStartingChat || isMyPost}
+              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Send size={16} />
-              채팅 문의하기
+              {isMyPost ? "내 글입니다" : "채팅 문의하기"}
             </button>
             {!(userRole === "EDITOR" && post.postType === "JOB_SEARCH") && (
               <button
