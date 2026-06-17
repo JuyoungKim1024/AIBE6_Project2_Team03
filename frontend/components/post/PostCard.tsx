@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
+import { UserActionMenu } from "@/components/common/UserActionMenu";
 import type { PostType } from "@/types/post";
 
 export type { PostType };
@@ -14,7 +15,7 @@ export interface PostCardProps {
   type: PostType;
   title: string;
   preview?: string;
-  author: { name: string; avatar?: string };
+  author: { id?: string; name: string; avatar?: string };
   categoryTags: string[];
   toolTags: string[];
   minPrice?: number;
@@ -96,13 +97,7 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            {author.avatar && (
-              <img
-                src={author.avatar}
-                alt={author.name}
-                className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
-              />
-            )}
+            <UserActionMenu userId={author.id} nickname={author.name} profileImage={author.avatar} size="sm" />
             <span className="font-medium text-text-primary">{author.name}</span>
             <span className="text-text-muted text-xs">•</span>
             <span className="text-text-muted text-xs">{timeAgo}</span>

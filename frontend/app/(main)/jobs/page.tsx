@@ -174,7 +174,7 @@ function JobsContent() {
                   linkTo={`/jobs/${job.id}`}
                   type={activeTab as PostType}
                   title={job.title}
-                  author={{ name: job.author.nickname, avatar: job.author.profileImage ?? undefined }}
+                  author={{ id: job.author.id, name: job.author.nickname, avatar: job.author.profileImage ?? undefined }}
                   categoryTags={job.fieldTags}
                   toolTags={job.toolTags}
                   minPrice={job.minPrice ?? undefined}
