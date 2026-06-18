@@ -12,9 +12,10 @@ export interface MatchingCardProps {
   minPrice: number;
   maxPrice: number;
   priceUnit?: string;
+  showBlindBadge?: boolean;
 }
 
-export function MatchingCard({ id, thumbnails, categories, tools, videoLengths, minPrice, maxPrice, priceUnit = '분' }: MatchingCardProps) {
+export function MatchingCard({ id, thumbnails, categories, tools, videoLengths, minPrice, maxPrice, priceUnit = '분', showBlindBadge = true }: MatchingCardProps) {
   const validThumbs = thumbnails.slice(0, 2);
   const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
 
@@ -36,9 +37,11 @@ export function MatchingCard({ id, thumbnails, categories, tools, videoLengths, 
             ))}
           </div>
         )}
-        <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-md border border-white/10">
-          블라인드 프로필
-        </div>
+        {showBlindBadge && (
+          <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded-md border border-white/10">
+            블라인드 프로필
+          </div>
+        )}
       </Link>
       <div className="p-4 flex flex-col flex-grow">
         <div className="flex flex-wrap gap-1.5 mb-3">

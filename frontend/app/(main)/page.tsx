@@ -279,6 +279,7 @@ export default function HomePage() {
                         minPrice={editor.matchPriceMin ?? 0}
                         maxPrice={editor.matchPriceMax ?? 0}
                         priceUnit={editor.matchPriceUnit}
+                        showBlindBadge={false}
                       />
                     </motion.div>
                   ))}
