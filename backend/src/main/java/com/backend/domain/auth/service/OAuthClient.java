@@ -43,6 +43,9 @@ public class OAuthClient {
     }
 
     public String getAuthorizationUrl(SocialProvider provider) {
+        if (provider == SocialProvider.LOCAL) {
+            throw new IllegalArgumentException("자체 회원가입은 OAuth 로그인을 사용할 수 없습니다.");
+        }
         if (provider == SocialProvider.GOOGLE) {
             return "https://accounts.google.com/o/oauth2/v2/auth"
                     + "?client_id=" + encode(googleClientId)
@@ -59,6 +62,7 @@ public class OAuthClient {
 
     public SocialUserInfo getUserInfo(SocialProvider provider, String code) {
         return switch (provider) {
+            case LOCAL -> throw new IllegalArgumentException("자체 회원가입은 OAuth 로그인을 사용할 수 없습니다.");
             case GOOGLE -> getGoogleUserInfo(code);
             case KAKAO -> getKakaoUserInfo(code);
         };
