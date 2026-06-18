@@ -10,10 +10,9 @@ import { useAuth } from '@/hooks/useAuth';
 import type { BlindEditor } from '@/types/matching';
 import { useModal } from '@/store/modalStore';
 import { type SearchCategory, searchCategoryOptions } from '@/lib/searchCategories';
+import { API_BASE_URL } from '@/lib/api';
 
 const popularTags = ['롱폼', '숏폼', '게임', '프리미어프로', '파이널컷', '썸네일'];
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 const quickAccessCards = [
   { icon: Briefcase, title: '구인구직 바로가기', desc: '검증된 크리에이터와 에디터들이 모이는 곳', path: '/jobs', color: 'text-primary' },

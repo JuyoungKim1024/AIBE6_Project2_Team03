@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Loader2, RefreshCw } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
 import type { BlindEditor } from '@/types/matching';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/api';
 
 const CATEGORIES = ['게임', '여행', '브이로그', '반려동물', '음악', 'IT', '애니메이션', '기타'];
 const VIDEO_TOOLS = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut', '기타'];
@@ -273,6 +272,7 @@ export default function MatchingPage() {
                         minPrice={editor.matchPriceMin ?? 0}
                         maxPrice={editor.matchPriceMax ?? 0}
                         priceUnit={editor.matchPriceUnit}
+                        showBlindBadge={true}
                       />
                     </div>
                   ))}
