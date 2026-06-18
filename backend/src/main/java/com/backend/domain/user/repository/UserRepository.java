@@ -26,4 +26,7 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     @Query("SELECT DISTINCT u FROM User u JOIN Portfolio p ON p.user.id = u.id AND p.representative = true WHERE u.role = 'EDITOR' AND u.matchEnabled = true AND u.matchPriceMin IS NOT NULL AND (:maxPrice IS NULL OR u.matchPriceMin <= :maxPrice) AND (:minPrice IS NULL OR u.matchPriceMax >= :minPrice)")
     List<User> findMatchableEditors(@Param("maxPrice") Integer maxPrice, @Param("minPrice") Integer minPrice);
+
+    @Query(value = "SELECT DISTINCT u.* FROM users u JOIN portfolios p ON p.user_id = u.id AND p.is_representative = true WHERE u.role = 'EDITOR' AND u.match_enabled = true AND u.match_price_min IS NOT NULL ORDER BY RAND() LIMIT :count", nativeQuery = true)
+    List<User> findRandomMatchableEditors(@Param("count") int count);
 }
