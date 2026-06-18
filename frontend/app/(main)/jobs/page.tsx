@@ -2,7 +2,7 @@
 
 import React, { Suspense, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, X } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PostCard, PostType } from "@/components/post/PostCard";
 import { fetchJobPosts, getLikedPostIds } from "@/lib/api/post";
@@ -12,7 +12,10 @@ import { formatTimeAgo } from "@/lib/utils/time";
 
 type JobType = "hiring" | "looking";
 
-const filterChips = ["롱폼", "숏폼", "썸네일", "게임", "여행", "브이로그", "반려동물", "음악", "IT", "애니메이션", "기타"];
+const categoryChips = ["롱폼", "숏폼", "썸네일"];
+const subCategoryChips = ["게임", "여행", "브이로그", "반려동물", "음악", "IT", "애니메이션", "기타"];
+const videoToolChips = ["Premiere Pro", "Final Cut Pro", "DaVinci Resolve", "CapCut", "기타"];
+const designToolChips = ["Photoshop", "Adobe Illustrator", "Figma", "Canva", "기타"];
 
 function JobsContent() {
   const searchParams = useSearchParams();
@@ -22,6 +25,7 @@ function JobsContent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<JobType>(tabParam === "looking" ? "looking" : "hiring");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [sort, setSort] = useState("latest");
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,19 +53,29 @@ function JobsContent() {
       .finally(() => setLoading(false));
   }, [activeTab]);
 
-  const toggleFilter = (filter: string) => {
+  const toggleFilter = (group: string, chip: string) => {
+    const key = `${group}:${chip}`;
     setActiveFilters((prev) =>
-      prev.includes(filter)
-        ? prev.filter((f) => f !== filter)
-        : [...prev, filter],
+      prev.includes(key) ? prev.filter((f) => f !== key) : [...prev, key],
     );
   };
 
+  const fieldFilterValues = activeFilters
+    .filter((f) => f.startsWith("분야:") || f.startsWith("세부분야:"))
+    .map((f) => f.split(":")[1]);
+  const toolFilterValues = activeFilters
+    .filter((f) => f.startsWith("영상편집툴:") || f.startsWith("디자인툴:"))
+    .map((f) => f.split(":")[1]);
+
   const filteredJobs = jobs
     .filter((j) => {
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        j.fieldTags.some((t) => activeFilters.includes(t));
+      const matchesField =
+        fieldFilterValues.length === 0 ||
+        j.fieldTags.some((t) => fieldFilterValues.includes(t));
+      const matchesTool =
+        toolFilterValues.length === 0 ||
+        j.toolTags.some((t) => toolFilterValues.includes(t));
+      const matchesFilter = matchesField && matchesTool;
       const matchesQuery =
         query === "" ||
         j.title.includes(query) ||
@@ -81,20 +95,40 @@ function JobsContent() {
   return (
     <div className="min-h-screen">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
-            구인구직
-          </h1>
-          {query ? (
-            <p className="text-text-secondary text-sm">
-              <span className="text-primary font-medium">"{query}"</span> 검색
-              결과 {filteredJobs.length}건
-            </p>
-          ) : (
-            <p className="text-text-secondary text-sm">
-              검증된 크리에이터와 에디터가 만나는 곳
-            </p>
-          )}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">구인구직</h1>
+            {query ? (
+              <p className="text-text-secondary text-sm">
+                <span className="text-primary font-medium">"{query}"</span> 검색 결과 {filteredJobs.length}건
+              </p>
+            ) : (
+              <p className="text-text-secondary text-sm">검증된 크리에이터와 에디터가 만나는 곳</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="relative">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="appearance-none bg-surface border border-border rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="latest">최신순</option>
+                <option value="popular">인기순</option>
+                <option value="price">단가높은순</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            </div>
+            <button
+              onClick={() => {
+                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
+                router.push("/jobs/write");
+              }}
+              className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
+            >
+              <Plus size={16} />글쓰기
+            </button>
+          </div>
         </div>
         <div className="flex border-b border-border mb-6">
           {[
@@ -130,48 +164,78 @@ function JobsContent() {
             );
           })}
         </div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
-            {filterChips.map((chip) => {
-              const isActive = activeFilters.includes(chip);
-              return (
-                <button
-                  key={chip}
-                  onClick={() => toggleFilter(chip)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all ${isActive ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface border-border text-text-secondary hover:border-text-muted"}`}
-                >
-                  {chip}
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="appearance-none bg-surface border border-border rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="latest">최신순</option>
-                <option value="popular">인기순</option>
-                <option value="price">단가높은순</option>
-              </select>
-              <ChevronDown
-                size={14}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
-              />
-            </div>
+        <div className="flex flex-col gap-3 mb-6">
+          {/* Filter header */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => {
-                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
-                router.push("/jobs/write");
-              }}
-              className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
+              onClick={() => setFilterOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface text-xs font-bold text-text-secondary hover:border-text-muted transition-colors flex-shrink-0"
             >
-              <Plus size={16} />
-              글쓰기
+              <ChevronDown size={13} className={`transition-transform ${filterOpen ? "rotate-180" : ""}`} />
+              필터
+              {activeFilters.length > 0 && (
+                <span className="ml-0.5 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                  {activeFilters.length}
+                </span>
+              )}
             </button>
+            {activeFilters.length > 0 && (
+              <>
+                <div className="flex gap-1.5 flex-wrap">
+                  {activeFilters.map((f) => {
+                    const [group, chip] = f.split(":");
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => toggleFilter(group, chip)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 border border-primary/50 text-primary"
+                      >
+                        <span className="text-primary/60">{group}</span>
+                        <span className="text-primary/40">·</span>
+                        {chip}
+                        <X size={10} />
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setActiveFilters([])}
+                  className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                >
+                  초기화
+                </button>
+              </>
+            )}
           </div>
+          {/* Filter groups */}
+          {filterOpen && (
+            <div className="flex flex-col gap-3 p-4 bg-surface border border-border rounded-xl">
+              {[
+                { label: "분야", chips: categoryChips },
+                { label: "세부분야", chips: subCategoryChips },
+                { label: "영상편집툴", chips: videoToolChips },
+                { label: "디자인툴", chips: designToolChips },
+              ].map(({ label, chips }) => (
+                <div key={label} className="flex items-start gap-3">
+                  <span className="text-xs font-bold text-text-muted w-16 flex-shrink-0 pt-1.5">{label}</span>
+                  <div className="flex gap-2 flex-wrap">
+                    {chips.map((chip) => {
+                      const isActive = activeFilters.includes(`${label}:${chip}`);
+                      return (
+                        <button
+                          key={`${label}-${chip}`}
+                          onClick={() => toggleFilter(label, chip)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all ${isActive ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
+                        >
+                          {chip}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="space-y-4">
           {loading ? (
