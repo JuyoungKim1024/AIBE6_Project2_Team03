@@ -153,7 +153,10 @@ function JobsContent() {
               />
             </div>
             <button
-              onClick={() => router.push("/jobs/write")}
+              onClick={() => {
+                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
+                router.push("/jobs/write");
+              }}
               className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
             >
               <Plus size={16} />

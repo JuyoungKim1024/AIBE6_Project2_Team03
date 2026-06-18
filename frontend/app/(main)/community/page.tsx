@@ -3,8 +3,7 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { fetchCommunityPosts, getLikedPostIds } from '@/lib/api/post';
@@ -20,6 +19,7 @@ const categories = [
 
 function CommunityContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get('q') ?? '';
 
   const [activeCategory, setActiveCategory] = useState('all');
@@ -88,9 +88,15 @@ function CommunityContent() {
                 </button>
               ))}
             </div>
-            <Link href="/community/write" className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+            <button
+              onClick={() => {
+                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
+                router.push("/community/write");
+              }}
+              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+            >
               <Plus size={16} />글쓰기
-            </Link>
+            </button>
           </div>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-4 mb-2 border-b border-border">

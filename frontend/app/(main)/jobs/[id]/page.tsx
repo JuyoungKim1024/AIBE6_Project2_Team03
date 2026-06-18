@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -35,6 +35,7 @@ import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [post, setPost] = useState<JobPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [showChatPanel, setShowChatPanel] = useState(false);
@@ -85,6 +86,10 @@ export default function JobDetailPage() {
   }, [id]);
 
   const handleLike = async () => {
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
     try {
       const result = await togglePostLike(id!);
       setLiked(result.liked);
@@ -354,23 +359,32 @@ export default function JobDetailPage() {
           </h2>
 
           {/* Comment Input */}
-          <div className="bg-surface border border-border rounded-2xl p-4 mb-6 focus-within:border-primary transition-colors">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="댓글을 입력하세요..."
-              rows={3}
-              className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
-            />
-            <div className="flex justify-end pt-3 border-t border-border/50 mt-2">
-              <button
-                onClick={addComment}
-                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
-              >
-                댓글 등록
-              </button>
+          {currentUserId ? (
+            <div className="bg-surface border border-border rounded-2xl p-4 mb-6 focus-within:border-primary transition-colors">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="댓글을 입력하세요..."
+                rows={3}
+                className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
+              />
+              <div className="flex justify-end pt-3 border-t border-border/50 mt-2">
+                <button
+                  onClick={addComment}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
+                >
+                  댓글 등록
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-surface border border-border rounded-2xl p-5 mb-6 flex items-center justify-between gap-4">
+              <span className="text-sm text-text-muted">로그인 후 댓글을 작성할 수 있습니다.</span>
+              <Link href="/login" className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors whitespace-nowrap">
+                로그인
+              </Link>
+            </div>
+          )}
 
           {/* Comments */}
           <div className="space-y-4">
@@ -450,11 +464,10 @@ export default function JobDetailPage() {
                   )}
 
                   <button
-                    onClick={() =>
-                      setReplyingTo(
-                        replyingTo === comment.id ? null : comment.id,
-                      )
-                    }
+                    onClick={() => {
+                      if (!currentUserId) { router.push("/login"); return; }
+                      setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                    }}
                     className="flex items-center gap-1 text-xs font-bold text-text-muted hover:text-text-primary transition-colors"
                   >
                     <Reply size={14} /> 답글 달기

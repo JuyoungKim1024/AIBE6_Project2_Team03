@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
@@ -64,6 +65,7 @@ export function PostCard({
   onUnlike,
   initialLiked = false,
 }: PostCardProps) {
+  const router = useRouter();
   const config = typeConfig[type];
   const isJobPost = type === "hiring" || type === "looking";
   const hasPrice = isJobPost && (minPrice !== undefined || priceHidden);
@@ -74,6 +76,10 @@ export function PostCard({
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
     try {
       const result = await togglePostLike(id);
       setLiked(result.liked);
