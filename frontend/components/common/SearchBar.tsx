@@ -3,13 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, Search, X } from 'lucide-react';
-
-type SearchCategory = 'jobs' | 'community';
-
-const categoryOptions: { value: SearchCategory; label: string }[] = [
-  { value: 'jobs', label: '구인구직' },
-  { value: 'community', label: '커뮤니티' },
-];
+import { type SearchCategory, searchCategoryOptions } from '@/lib/searchCategories';
 
 function getDefaultCategory(pathname: string): SearchCategory {
   if (pathname.startsWith('/community')) return 'community';
@@ -71,7 +65,7 @@ export function SearchBar() {
     }
   };
 
-  const selectedLabel = categoryOptions.find((o) => o.value === category)!.label;
+  const selectedLabel = searchCategoryOptions.find((o) => o.value === category)!.label;
 
   return (
     <div className="relative" ref={containerRef}>
@@ -92,7 +86,7 @@ export function SearchBar() {
 
           {categoryDropdownOpen && (
             <div className="absolute top-full left-0 mt-1 w-28 bg-surface border border-border rounded-lg shadow-lg overflow-hidden z-50">
-              {categoryOptions.map((option) => (
+              {searchCategoryOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
