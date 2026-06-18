@@ -61,6 +61,7 @@ export default function JobDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedPortfolioIndex, setSelectedPortfolioIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function JobDetailPage() {
     fetchComments(id).then(setComments).catch(console.error);
     incrementPostView(id).catch(() => {});
     getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
+    setUserRole(localStorage.getItem("userRole"));
     const token = localStorage.getItem("accessToken");
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
@@ -693,13 +695,15 @@ export default function JobDetailPage() {
                 <span className="text-sm font-bold">{comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)}</span>
               </div>
             </div>
-            <button
-              onClick={() => setShowChatPanel(true)}
-              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-            >
-              <Send size={16} />
-              채팅 문의하기
-            </button>
+            {!(userRole === "EDITOR" && post.postType === "JOB_SEARCH") && (
+              <button
+                onClick={() => setShowChatPanel(true)}
+                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+              >
+                <Send size={16} />
+                채팅 문의하기
+              </button>
+            )}
           </div>
         </div>
       </div>
