@@ -37,6 +37,13 @@ public class MatchingController {
         return matchingService.searchEditors(categories, tools, videoLengths, minPrice, maxPrice);
     }
 
+    // GET /api/matching/editors/random?count=3
+    @GetMapping("/editors/random")
+    public List<BlindEditorResponse> getRandomEditors(
+            @RequestParam(defaultValue = "3") int count) {
+        return matchingService.getRandomEditors(count);
+    }
+
     // GET /api/matching/editors/{editorId}
     @GetMapping("/editors/{editorId}")
     public BlindEditorResponse getEditorDetail(@PathVariable String editorId) {
