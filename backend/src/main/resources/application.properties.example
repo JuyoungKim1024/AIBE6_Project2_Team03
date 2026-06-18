@@ -9,4 +9,16 @@ spring.datasource.password=your_password
 jwt.secret=your_jwt_secret
 jwt.expiration=86400000
 
+# Email verification
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_app_password
+MAIL_FROM=your_verified_sender@example.com
+SMTP_STARTTLS_ENABLE=true
+SMTP_SSL_ENABLE=false
+
+# HTTPS production
+COOKIE_SECURE=true
+
 # 실제 값은 application.properties에 작성 (gitignore됨)

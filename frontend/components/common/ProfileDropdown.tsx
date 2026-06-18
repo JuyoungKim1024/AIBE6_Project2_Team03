@@ -146,6 +146,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       if (accessToken) {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
