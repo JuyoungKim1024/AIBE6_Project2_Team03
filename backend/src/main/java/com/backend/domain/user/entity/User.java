@@ -65,6 +65,12 @@ public class User {
     @Column(name = "match_price_unit", length = 20)
     private MatchPriceUnit matchPriceUnit;
 
+    @Column(nullable = false)
+    private int point = 0;
+
+    @Column(name = "escrow_point", nullable = false)
+    private int escrowPoint = 0;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -122,5 +128,31 @@ public class User {
         this.matchPriceMin = matchPriceMin;
         this.matchPriceMax = matchPriceMax;
         this.matchPriceUnit = matchPriceUnit;
+    }
+
+    public void chargePoint(int amount) {
+        if (amount <= 0) throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
+        this.point += amount;
+    }
+
+    public void holdEscrow(int amount) {
+        if (amount <= 0) throw new IllegalArgumentException("에스크로 금액은 0보다 커야 합니다.");
+        if (this.point < amount) throw new IllegalStateException("포인트가 부족합니다.");
+        this.point -= amount;
+        this.escrowPoint += amount;
+    }
+
+    public void releaseEscrow(int amount, User recipient) {
+        if (amount <= 0) throw new IllegalArgumentException("정산 금액은 0보다 커야 합니다.");
+        if (this.escrowPoint < amount) throw new IllegalStateException("에스크로 잔액이 부족합니다.");
+        this.escrowPoint -= amount;
+        recipient.chargePoint(amount);
+    }
+
+    public void refundEscrow(int amount) {
+        if (amount <= 0) throw new IllegalArgumentException("환불 금액은 0보다 커야 합니다.");
+        if (this.escrowPoint < amount) throw new IllegalStateException("에스크로 잔액이 부족합니다.");
+        this.escrowPoint -= amount;
+        this.point += amount;
     }
 }
