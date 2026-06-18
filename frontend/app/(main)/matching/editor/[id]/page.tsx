@@ -6,8 +6,7 @@ import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
 import type { BlindEditor } from '@/types/matching';
 import { useAuth } from '@/hooks/useAuth';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { API_BASE_URL } from '@/lib/api';
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
 
