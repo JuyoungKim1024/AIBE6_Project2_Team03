@@ -3,6 +3,7 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
@@ -87,9 +88,9 @@ function CommunityContent() {
                 </button>
               ))}
             </div>
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+            <Link href="/community/write" className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]">
               <Plus size={16} />글쓰기
-            </button>
+            </Link>
           </div>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-4 mb-2 border-b border-border">
