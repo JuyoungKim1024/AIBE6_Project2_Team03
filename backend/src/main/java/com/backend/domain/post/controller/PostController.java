@@ -1,6 +1,7 @@
 package com.backend.domain.post.controller;
 
 import com.backend.domain.auth.service.AuthService;
+import com.backend.domain.post.dto.CommunityPostCreateRequest;
 import com.backend.domain.post.dto.CommunityPostDetailResponse;
 import com.backend.domain.post.dto.CommunityPostResponse;
 import com.backend.domain.post.dto.JobPostCreateRequest;
@@ -46,6 +47,16 @@ public class PostController {
     @GetMapping("/job/{id}")
     public ResponseEntity<JobPostDetailResponse> getJobPost(@PathVariable String id) {
         return ResponseEntity.ok(postService.getJobPost(id));
+    }
+
+    // 커뮤니티 글쓰기
+    @PostMapping("/community")
+    public ResponseEntity<Map<String, String>> createCommunityPost(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody CommunityPostCreateRequest request) {
+        String userId = authService.resolveUserId(authorization);
+        String id = postService.createCommunityPost(userId, request);
+        return ResponseEntity.ok(Map.of("id", id));
     }
 
     // 커뮤니티 목록 조회

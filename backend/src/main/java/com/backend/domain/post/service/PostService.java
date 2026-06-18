@@ -1,5 +1,6 @@
 package com.backend.domain.post.service;
 
+import com.backend.domain.post.dto.CommunityPostCreateRequest;
 import com.backend.domain.post.dto.CommunityPostDetailResponse;
 import com.backend.domain.post.dto.CommunityPostResponse;
 import com.backend.domain.post.dto.JobPostCreateRequest;
@@ -67,6 +68,23 @@ public class PostService {
         JobPost post = jobPostRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
         return JobPostDetailResponse.from(post);
+    }
+
+    @Transactional
+    public String createCommunityPost(String userId, CommunityPostCreateRequest req) {
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        CommunityPost post = new CommunityPost(
+                author, req.title(), req.content(), req.thumbnailUrl(), req.category()
+        );
+        communityPostRepository.save(post);
+
+        if (req.tags() != null) {
+            req.tags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.GENERAL, t)));
+        }
+
+        return post.getId();
     }
 
     public List<CommunityPostResponse> getCommunityPosts(CommunityPost.Category category, String q) {
