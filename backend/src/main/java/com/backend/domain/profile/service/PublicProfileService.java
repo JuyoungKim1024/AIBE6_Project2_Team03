@@ -4,34 +4,22 @@ import com.backend.domain.mypage.dto.MyPostResponse;
 import com.backend.domain.post.entity.CommunityPost;
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.Post;
-import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.post.repository.PostLikeRepository;
-import com.backend.domain.profile.dto.PortfolioResponse;
-import com.backend.domain.profile.dto.PortfolioGroupResponse;
-import com.backend.domain.profile.dto.PublicProfileResponse;
-import com.backend.domain.profile.dto.RecentDealResponse;
-import com.backend.domain.profile.dto.ReviewResponse;
-import com.backend.domain.profile.entity.Portfolio;
-import com.backend.domain.profile.entity.Project;
-import com.backend.domain.profile.entity.ProjectStatus;
-import com.backend.domain.profile.entity.Review;
-import com.backend.domain.profile.entity.UserTag;
-import com.backend.domain.profile.entity.UserTagType;
-import com.backend.domain.profile.repository.PortfolioRepository;
-import com.backend.domain.profile.repository.PortfolioGroupRepository;
-import com.backend.domain.profile.repository.ProjectRepository;
-import com.backend.domain.profile.repository.ReviewRepository;
-import com.backend.domain.profile.repository.UserTagRepository;
+import com.backend.domain.post.repository.PostRepository;
+import com.backend.domain.profile.dto.*;
+import com.backend.domain.profile.entity.*;
+import com.backend.domain.profile.repository.*;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
 import com.backend.domain.user.repository.UserRepository;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class PublicProfileService {

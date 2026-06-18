@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { parseProjectMessage, ProjectMessageCard } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
 
 type AuthUser = {
@@ -146,6 +147,16 @@ export default function ChatRoomPage() {
             <div className="space-y-3">
               {messages.map((message) => {
                 const isMine = message.senderId === user?.id;
+                const projectMessage = parseProjectMessage(message.content);
+
+                if (projectMessage) {
+                  return (
+                    <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <ProjectMessageCard project={projectMessage} />
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>

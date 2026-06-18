@@ -56,3 +56,68 @@ export async function createDirectChatRoom(targetUserId: string) {
 
   return roomId;
 }
+
+export const createChatRequest = createDirectChatRoom;
+
+export async function createPostChatRequest(
+  receiverId: string,
+  postId: string,
+  message: string,
+) {
+  const accessToken = localStorage.getItem('accessToken');
+  if (!accessToken) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
+  const me = await fetchMe(accessToken);
+  if (me.id === receiverId) {
+    throw new Error('본인에게는 문의할 수 없습니다.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/chat/requests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      roomType: 'POST',
+      receiverId,
+      postId,
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('채팅 요청을 보내지 못했습니다.');
+  }
+}
+
+export async function createDirectChatRequest(receiverId: string, message: string) {
+  const accessToken = localStorage.getItem('accessToken');
+  if (!accessToken) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
+  const me = await fetchMe(accessToken);
+  if (me.id === receiverId) {
+    throw new Error('본인에게는 DM을 보낼 수 없습니다.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/chat/requests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      roomType: 'DIRECT',
+      receiverId,
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('DM 요청을 보내지 못했습니다.');
+  }
+}

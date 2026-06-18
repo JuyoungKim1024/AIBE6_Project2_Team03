@@ -1,8 +1,10 @@
 package com.backend.domain.mypage.service;
 
+import com.backend.domain.chat.dto.ChatPostSummaryDTO;
 import com.backend.domain.chat.dto.MyChatRoomResponseDTO;
 import com.backend.domain.chat.entity.ChatMessage;
 import com.backend.domain.chat.entity.ChatParticipant;
+import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.mypage.dto.*;
@@ -21,7 +23,12 @@ import com.backend.domain.post.entity.CommunityPost;
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.post.repository.PostRepository;
-import com.backend.domain.profile.entity.Project;
+import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.project.entity.Project;
+import com.backend.domain.profile.entity.UserTag;
+import com.backend.domain.profile.entity.UserTagType;
+import com.backend.domain.profile.repository.PortfolioRepository;
+import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.ProfileRepository;
@@ -74,7 +81,7 @@ public class MyPageService {
     }
 
     public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
-        return chatParticipantRepository.findByUser_Id(userId)
+        return chatParticipantRepository.findByUser_IdAndDeletedAtIsNull(userId)
                 .stream()
                 .map(roomUser -> toChatRoomResponse(userId, roomUser))
                 .toList();
@@ -383,7 +390,9 @@ public class MyPageService {
     }
 
     private MyChatRoomResponseDTO toChatRoomResponse(String userId, ChatParticipant roomUser) {
-        String roomId = roomUser.getChatRoom().getId();
+        ChatRoom room = roomUser.getChatRoom();
+        String roomId = room.getId();
+
         String partnerName = chatParticipantRepository.findByChatRoom_Id(roomId)
                 .stream()
                 .map(ChatParticipant::getUser)
@@ -394,12 +403,37 @@ public class MyPageService {
 
         ChatMessage lastMessage = chatMessageRepository.findTopByChatRoom_IdOrderByCreatedAtDesc(roomId);
 
+        ChatPostSummaryDTO postSummary = null;
+
+
+
+        if(room.getPost() != null) {
+            Post post = room.getPost();
+
+            Integer priceMin = null;
+            Integer priceMax = null;
+
+            if(post instanceof JobPost jobPost && jobPost.isPriceVisible()) {
+                priceMin = jobPost.getMinPrice();
+                priceMax = jobPost.getMaxPrice();
+            }
+
+            postSummary = new ChatPostSummaryDTO(
+                    post.getId(),
+                    post.getTitle(),
+                    priceMin,
+                    priceMax
+            );
+        }
+
         return new MyChatRoomResponseDTO(
                 roomId,
                 partnerName,
                 lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),
                 formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
-                roomUser.getUnreadCount()
+                room.getChatRoomType(),
+                roomUser.getUnreadCount(),
+                postSummary
         );
     }
 

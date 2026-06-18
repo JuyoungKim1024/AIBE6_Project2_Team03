@@ -1,5 +1,6 @@
 'use client';
 
+import React, { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -18,6 +19,8 @@ import {
   Image as ImageIcon,
   MessageCircle,
   Plus,
+  RefreshCw,
+  Send,
   Settings,
   Tag,
   Trash2,
@@ -25,6 +28,13 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
+import {
+  parseProjectMessage,
+  ProjectMessageCard,
+  serializeProjectMessage,
+  type ProjectMessagePayload,
+} from '@/components/common/ProjectMessageCard';
+import type { ChatMessage, ChatPostSummary, MyChatRoom } from '@/types/chat';
 import {
   fetchCommunityPosts,
   fetchJobPosts,
@@ -75,12 +85,19 @@ type MyLikedPost = {
   date: string;
 };
 
-type MyChatRoom = {
+type AuthUser = {
   id: string;
-  partnerName: string;
-  lastMessage: string;
-  time: string;
-  unreadCount: number;
+  nickname: string;
+};
+
+type ChatFilter = 'ALL' | 'POST' | 'DIRECT' | 'UNREAD';
+
+type ProjectCreateForm = {
+  field: string;
+  price: string;
+  videoLength: string;
+  deadline: string;
+  memo: string;
 };
 
 type MyProject = {
@@ -126,6 +143,14 @@ const videoTools = ['Premiere Pro', 'Final Cut Pro', 'DaVinci Resolve', 'CapCut'
 const designTools = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타'];
 
 type PortfolioType = 'video' | 'image';
+
+function getTomorrowDateTimeLocalMin() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const timezoneOffsetMs = tomorrow.getTimezoneOffset() * 60 * 1000;
+  return new Date(tomorrow.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
 
 type PortfolioDraft = {
   id: string;
@@ -941,45 +966,554 @@ function LikedSection() {
 }
 
 function ChatsSection() {
+  const searchParams = useSearchParams();
+  const roomIdParam = searchParams.get('roomId');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
+  const [activeFilter, setActiveFilter] = useState<ChatFilter>('ALL');
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [projectRoomId, setProjectRoomId] = useState<string | null>(null);
+  const [projectForm, setProjectForm] = useState<ProjectCreateForm>({
+    field: '',
+    price: '',
+    videoLength: '',
+    deadline: '',
+    memo: '',
+  });
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const selectedRoom = chatRooms.find((room) => room.id === selectedRoomId);
+  const minProjectDeadline = getTomorrowDateTimeLocalMin();
+  const filteredRooms = chatRooms.filter((room) => {
+    if (activeFilter === 'POST') return room.type === 'POST';
+    if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
+    if (activeFilter === 'UNREAD') return room.unreadCount > 0;
+    return true;
+  });
+  const chatFilters: { id: ChatFilter; label: string }[] = [
+    { id: 'ALL', label: '전체' },
+    { id: 'POST', label: '문의채팅' },
+    { id: 'DIRECT', label: 'DM' },
+    { id: 'UNREAD', label: '안읽은 메시지' },
+  ];
+
+  const loadRooms = async () => {
+    setIsLoading(true);
+    try {
+      const rooms = await fetchMyPageData<MyChatRoom[]>('/api/users/me/chats');
+      setChatRooms(rooms);
+      setSelectedRoomId((current) => {
+        if (roomIdParam && rooms.some((room) => room.id === roomIdParam)) {
+          return roomIdParam;
+        }
+        if (current && rooms.some((room) => room.id === current)) {
+          return current;
+        }
+        return rooms[0]?.id ?? null;
+      });
+    } catch {
+      setChatRooms([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadMessages = async (roomId: string) => {
+    setIsLoadingMessages(true);
+    setErrorMessage('');
+    try {
+      const data = await fetchMyPageData<ChatMessage[]>(`/api/chat/rooms/${roomId}/messages`);
+      setMessages(data);
+    } catch {
+      setMessages([]);
+      setErrorMessage('메시지를 불러오지 못했습니다.');
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
 
   useEffect(() => {
-    fetchMyPageData<MyChatRoom[]>('/api/users/me/chats')
-      .then(setChatRooms)
-      .catch(() => setChatRooms([]))
-      .finally(() => setIsLoading(false));
-  }, []);
+    fetchMyPageData<AuthUser>('/api/auth/me').then(setUser).catch(() => setUser(null));
+    loadRooms();
+  }, [roomIdParam]);
+
+  useEffect(() => {
+    if (!roomIdParam || chatRooms.length === 0) return;
+    if (chatRooms.some((room) => room.id === roomIdParam)) {
+      setSelectedRoomId(roomIdParam);
+      setActiveFilter('ALL');
+    }
+  }, [chatRooms, roomIdParam]);
+
+  useEffect(() => {
+    if (!selectedRoomId) {
+      setMessages([]);
+      return;
+    }
+    loadMessages(selectedRoomId);
+  }, [selectedRoomId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!content || !selectedRoomId || !user || isSending) return;
+
+    setIsSending(true);
+    setErrorMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${selectedRoomId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content,
+          messageType: 'TEXT',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send message');
+
+      const saved = await response.json() as ChatMessage;
+      setMessages((current) => [...current, saved]);
+      setDraft('');
+      loadRooms();
+    } catch {
+      setErrorMessage('메시지를 보내지 못했습니다.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const deleteRoom = async (roomId: string) => {
+    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete room');
+
+      const nextRooms = chatRooms.filter((room) => room.id !== roomId);
+      setChatRooms(nextRooms);
+
+      if (selectedRoomId === roomId) {
+        const nextSelectedRoomId = nextRooms.find((room) => {
+          if (activeFilter === 'POST') return room.type === 'POST';
+          if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
+          if (activeFilter === 'UNREAD') return room.unreadCount > 0;
+          return true;
+        })?.id ?? null;
+
+        setSelectedRoomId(nextSelectedRoomId);
+        if (!nextSelectedRoomId) {
+          setMessages([]);
+        }
+      }
+    } catch {
+      setErrorMessage('채팅방을 삭제하지 못했습니다.');
+    }
+  };
+
+  const updateProjectForm = (key: keyof ProjectCreateForm, value: string) => {
+    setProjectForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const closeProjectForm = () => {
+    if (isCreatingProject) return;
+    setShowProjectForm(false);
+    setProjectRoomId(null);
+  };
+
+  const openProjectForm = () => {
+    const roomId = selectedRoomId ?? filteredRooms[0]?.id ?? null;
+    if (!roomId) {
+      setErrorMessage('프로젝트를 시작할 채팅방을 선택해주세요.');
+      return;
+    }
+
+    setProjectRoomId(roomId);
+    setSelectedRoomId(roomId);
+    setErrorMessage('');
+    setShowProjectForm(true);
+  };
+
+  const createProject = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!projectRoomId || !user || isCreatingProject) return;
+
+    if (projectForm.deadline && projectForm.deadline < minProjectDeadline) {
+      setErrorMessage('마감일은 내일 이후로 설정해주세요.');
+      return;
+    }
+
+    setIsCreatingProject(true);
+    setErrorMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body: JSON.stringify({
+          roomId: projectRoomId,
+          field: projectForm.field.trim(),
+          price: projectForm.price ? Number(projectForm.price) : null,
+          videoLength: projectForm.videoLength ? Number(projectForm.videoLength) : null,
+          deadline: projectForm.deadline ? projectForm.deadline : null,
+          memo: projectForm.memo.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? '프로젝트 생성에 실패했습니다.');
+      }
+      const project = await response.json() as ProjectMessagePayload;
+
+      const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${projectRoomId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content: serializeProjectMessage(project),
+          messageType: 'TEXT',
+        }),
+      });
+
+      if (!messageResponse.ok) throw new Error('프로젝트 카드를 채팅에 올리지 못했습니다.');
+      const savedMessage = await messageResponse.json() as ChatMessage;
+
+      setShowProjectForm(false);
+      setProjectRoomId(null);
+      setProjectForm({
+        field: '',
+        price: '',
+        videoLength: '',
+        deadline: '',
+        memo: '',
+      });
+      setMessages((current) => [...current, savedMessage]);
+      setSelectedRoomId(projectRoomId);
+      setErrorMessage('프로젝트를 시작했습니다.');
+      loadRooms();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '프로젝트를 시작하지 못했습니다.');
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
 
   return (
-    <SectionCard title="채팅" description="진행 중인 DM과 프로젝트 채팅을 확인합니다.">
+    <SectionCard title="채팅" description="진행 중인 DM과 프로젝트 채팅을 확인합니다." showDivider>
       {isLoading ? (
         <EmptyState message="채팅 목록을 불러오는 중입니다" />
       ) : chatRooms.length > 0 ? (
-        <div className="space-y-2">
-        {chatRooms.map((room) => (
-          <Link key={room.id} href={`/chat/${room.id}`} className="flex items-center gap-4 bg-surface-elevated border border-border rounded-xl p-4 hover:border-primary/50 transition-colors">
-            <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
-              <MessageCircle size={18} className="text-text-muted" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-bold text-text-primary">{room.partnerName}</span>
+        <div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {chatFilters.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => {
+                  setActiveFilter(filter.id);
+                  const nextRooms = chatRooms.filter((room) => {
+                    if (filter.id === 'POST') return room.type === 'POST';
+                    if (filter.id === 'DIRECT') return room.type === 'DIRECT';
+                    if (filter.id === 'UNREAD') return room.unreadCount > 0;
+                    return true;
+                  });
+                  setSelectedRoomId(nextRooms[0]?.id ?? null);
+                }}
+                className={`px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${activeFilter === filter.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary hover:text-text-primary'}`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          {filteredRooms.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+          <div className="space-y-2">
+            {filteredRooms.map((room) => (
+              <div
+                key={room.id}
+                className={`w-full flex items-center gap-4 bg-surface-elevated border rounded-xl p-4 text-left transition-colors ${selectedRoomId === room.id ? 'border-primary/60' : 'border-border hover:border-primary/50'}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedRoomId(room.id)}
+                  className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                >
+                  <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                    <MessageCircle size={18} className="text-text-muted" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-bold text-text-primary truncate">{room.partnerName}</span>
+                    </div>
+                    <p className="text-sm text-text-secondary truncate">{room.lastMessage || '아직 메시지가 없습니다'}</p>
+                    {room.type === 'POST' && <p className="mt-1 text-xs font-bold text-primary">문의채팅</p>}
+                  </div>
+                </button>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span className="text-xs text-text-muted">{room.time}</span>
+                  <div className="flex items-center gap-1">
+                    {room.unreadCount > 0 && <span className="w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{room.unreadCount}</span>}
+                    <button
+                      type="button"
+                      onClick={() => deleteRoom(room.id)}
+                      className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-accent"
+                      aria-label="채팅방 삭제"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-text-secondary truncate">{room.lastMessage || '아직 메시지가 없습니다'}</p>
-            </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <span className="text-xs text-text-muted">{room.time}</span>
-              {room.unreadCount > 0 && <span className="w-5 h-5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">{room.unreadCount}</span>}
-            </div>
-          </Link>
-        ))}
+            ))}
+          </div>
+
+          <div className="h-[560px] min-h-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
+            <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
+                  <MessageCircle size={18} className="text-text-muted" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="truncate text-base font-bold text-text-primary">{selectedRoom?.partnerName ?? '채팅방'}</h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openProjectForm}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90"
+                >
+                  <Briefcase size={14} />
+                  프로젝트 시작
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectedRoomId && loadMessages(selectedRoomId)}
+                  className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+                  aria-label="새로고침"
+                >
+                  <RefreshCw size={17} />
+                </button>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto bg-background/40 px-4 py-5">
+              {selectedRoom?.type === 'POST' && selectedRoom.post && (
+                <ChatPostCard post={selectedRoom.post} />
+              )}
+              {isLoadingMessages ? (
+                <div className="flex h-full items-center justify-center text-sm text-text-secondary">메시지를 불러오는 중입니다</div>
+              ) : errorMessage && messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-text-secondary">{errorMessage}</div>
+              ) : messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-text-secondary">아직 메시지가 없습니다</div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((message) => {
+                    const isMine = message.senderId === user?.id;
+                    const projectMessage = parseProjectMessage(message.content);
+
+                    if (projectMessage) {
+                      return (
+                        <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <ProjectMessageCard project={projectMessage} />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
+                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                          <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
+                            {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </main>
+
+            {errorMessage && messages.length > 0 && (
+              <div className="border-t border-border px-4 py-2 text-xs text-primary">{errorMessage}</div>
+            )}
+
+            <form onSubmit={sendMessage} className="border-t border-border bg-surface px-3 py-3">
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-1.5">
+                <input
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  placeholder="메시지 입력..."
+                  className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!draft.trim() || !selectedRoomId || isSending}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="메시지 보내기"
+                >
+                  ↑
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+          ) : (
+            <EmptyState message="선택한 조건의 채팅이 없습니다" />
+          )}
         </div>
       ) : (
         <EmptyState message="채팅 목록이 없습니다" />
       )}
+      {showProjectForm && projectRoomId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={closeProjectForm}
+            disabled={isCreatingProject}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm disabled:cursor-not-allowed"
+            aria-label="프로젝트 입력 닫기"
+          />
+          <form
+            onSubmit={createProject}
+            className="relative w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+          >
+            <h3 className="text-lg font-bold text-text-primary">프로젝트 시작</h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              작업 조건을 입력해 프로젝트를 생성합니다.
+            </p>
+
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="작업 분야">
+                <input
+                  value={projectForm.field}
+                  onChange={(event) => updateProjectForm('field', event.target.value)}
+                  className="form-input"
+                  placeholder="예: 숏폼 편집"
+                />
+              </Field>
+              <Field label="금액">
+                <input
+                  type="number"
+                  min="0"
+                  value={projectForm.price}
+                  onChange={(event) => updateProjectForm('price', event.target.value)}
+                  className="form-input"
+                  placeholder="예: 150000"
+                />
+              </Field>
+              <Field label="영상 길이(분)">
+                <input
+                  type="number"
+                  min="0"
+                  value={projectForm.videoLength}
+                  onChange={(event) => updateProjectForm('videoLength', event.target.value)}
+                  className="form-input"
+                  placeholder="예: 10"
+                />
+              </Field>
+              <Field label="마감일">
+                <input
+                  type="datetime-local"
+                  min={minProjectDeadline}
+                  value={projectForm.deadline}
+                  onChange={(event) => updateProjectForm('deadline', event.target.value)}
+                  className="form-input"
+                />
+              </Field>
+            </div>
+
+            <div className="mt-4">
+              <Field label="메모">
+                <textarea
+                  value={projectForm.memo}
+                  onChange={(event) => updateProjectForm('memo', event.target.value)}
+                  rows={4}
+                  className="form-input resize-none"
+                  placeholder="작업 범위, 참고사항 등을 입력하세요."
+                />
+              </Field>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={closeProjectForm}
+                disabled={isCreatingProject}
+                className="flex-1 rounded-xl bg-surface-elevated py-2.5 text-sm font-bold text-text-primary transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={isCreatingProject}
+                className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCreatingProject ? '생성 중...' : '프로젝트 시작'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </SectionCard>
   );
+}
+
+function ChatPostCard({ post }: { post: ChatPostSummary }) {
+  const priceText = formatChatPostPrice(post.priceMin, post.priceMax);
+  const deadlineText = post.deadline
+    ? new Date(post.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+    : '마감기한 없음';
+
+  return (
+    <Link href={`/jobs/${post.id}`} className="mb-4 block rounded-xl border border-border bg-surface p-4 hover:border-primary/50 transition-colors">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-xs font-bold text-primary">게시글 문의</span>
+        <span className="text-xs text-text-muted">{deadlineText}</span>
+      </div>
+      <h4 className="truncate text-sm font-bold text-text-primary">{post.title}</h4>
+      <p className="mt-1 text-xs text-text-secondary">{priceText}</p>
+    </Link>
+  );
+}
+
+function formatChatPostPrice(minPrice: number | null, maxPrice: number | null) {
+  if (minPrice && maxPrice) {
+    return `₩${minPrice.toLocaleString('ko-KR')} ~ ₩${maxPrice.toLocaleString('ko-KR')}`;
+  }
+  if (minPrice || maxPrice) {
+    return `₩${(minPrice ?? maxPrice)!.toLocaleString('ko-KR')}`;
+  }
+  return '단가 미정';
 }
 
 function ProjectsSection() {
@@ -1836,13 +2370,20 @@ function PlaceholderSection({ title, description }: { title: string; description
   );
 }
 
-function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function SectionCard({ title, description, children, showDivider = false }: { title: string; description?: string; children: React.ReactNode; showDivider?: boolean }) {
   return (
     <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-xl p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
-        {description && <p className="text-sm text-text-secondary mt-1">{description}</p>}
-      </div>
+      {showDivider ? (
+        <div className="mb-5 border-b border-border pb-4">
+          <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
+          {description && <p className="text-sm text-text-secondary mt-1">{description}</p>}
+        </div>
+      ) : (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-text-primary">{title}</h2>
+          {description && <p className="text-sm text-text-secondary mt-1">{description}</p>}
+        </div>
+      )}
       {children}
     </motion.section>
   );

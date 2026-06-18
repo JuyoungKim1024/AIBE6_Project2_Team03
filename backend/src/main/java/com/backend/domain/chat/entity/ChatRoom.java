@@ -21,6 +21,11 @@ public class ChatRoom extends BaseEntity {
     @JoinColumn(name = "post_id")
     private Post post;
 
+    public ChatRoom(ChatRoomType roomType, Post post) {
+        this.chatRoomType = roomType;
+        this.post = post;
+    }
+
     public ChatRoom(ChatRoomType roomType) {
         this.chatRoomType = roomType;
     }

@@ -11,6 +11,8 @@ import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.chat.type.ChatRoomType;
+import com.backend.domain.post.entity.Post;
+import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +31,12 @@ public class ChatService {
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
     private final DirectChatRoomService directChatRoomService;
+    private final PostRepository postRepository;
 
 
     @Transactional(readOnly = true)
     public List<ChatRoomResponseDTO> findRoomsByUserId(String userId) {
-        return chatParticipantRepository.findByUser_Id(userId)
+        return chatParticipantRepository.findByUser_IdAndDeletedAtIsNull(userId)
                 .stream()
                 .map(ChatParticipant::getChatRoom)
                 .map(ChatRoomResponseDTO::new)
@@ -61,7 +64,18 @@ public class ChatService {
             return createDirectRoom(user1, user2);
         }
 
-        ChatRoom chatRoom = chatRoomRepository.save(new ChatRoom(dto.roomType()));
+        ChatRoom chatRoom;
+
+        if(dto.roomType() == ChatRoomType.POST) {
+            Post post = postRepository.findById(dto.postId())
+                    .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+
+            chatRoom = chatRoomRepository.save(new ChatRoom(dto.roomType(), post));
+
+        } else {
+            chatRoom = chatRoomRepository.save(new ChatRoom(dto.roomType()));
+        }
+
 
         List<ChatParticipant> participants = dto.participantUserIds()
                 .stream()
@@ -100,6 +114,14 @@ public class ChatService {
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
 
         return new ChatRoomResponseDTO(chatRoom);
+    }
+
+    @Transactional
+    public void deleteRoomForUser(String roomId, String userId) {
+        ChatParticipant participant = chatParticipantRepository.findByChatRoom_IdAndUser_Id(roomId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방 참여자를 찾을 수 없습니다."));
+
+        participant.delete();
     }
 
 

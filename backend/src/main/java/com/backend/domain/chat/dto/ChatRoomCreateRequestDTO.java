@@ -5,5 +5,6 @@ import java.util.List;
 
 public record ChatRoomCreateRequestDTO (
         ChatRoomType roomType,
-        List<String> participantUserIds
+        List<String> participantUserIds,
+        String postId
 ){}

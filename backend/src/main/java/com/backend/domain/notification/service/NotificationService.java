@@ -1,8 +1,6 @@
 package com.backend.domain.notification.service;
 
 import com.backend.domain.chat.entity.ChatRoom;
-import com.backend.domain.chat.repository.ChatParticipantRepository;
-import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.chat.service.DirectChatRoomService;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
@@ -21,8 +19,6 @@ import java.util.List;
 public class NotificationService {
 
     private final MyPageMatchRequestRepository matchRequestRepository;
-    private final ChatParticipantRepository chatParticipantRepository;
-    private final ChatRoomRepository chatRoomRepository;
     private final DirectChatRoomService directChatRoomService;
     private final PointService pointService;
 

@@ -43,6 +43,8 @@ const typeConfig: Record<
   info: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
   rate: { label: "단가 토크", color: "text-amber-500", bg: "bg-amber-500/10" },
   portfolio: { label: "포트폴리오", color: "text-violet-400", bg: "bg-violet-400/10" },
+  rate: { label: "시세공유", color: "text-primary", bg: "bg-primary/10" },
+  portfolio: { label: "포트폴리오", color: "text-cyan-400", bg: "bg-cyan-400/10" },
   free: {
     label: "자유게시판",
     color: "text-text-secondary",

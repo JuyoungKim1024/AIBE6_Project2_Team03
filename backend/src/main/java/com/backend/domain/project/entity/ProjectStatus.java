@@ -1,4 +1,4 @@
-package com.backend.domain.profile.entity;
+package com.backend.domain.project.entity;
 
 public enum ProjectStatus {
     WAITING,

@@ -3,7 +3,8 @@
 import React, { MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
-import { createDirectChatRoom } from '@/lib/api/chat';
+import { createDirectChatRequest } from '@/lib/api/chat';
+import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 
 type UserDmDropdownProps = {
   targetUserId: string;
@@ -15,6 +16,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
   const router = useRouter();
   const ref = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -39,18 +41,24 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
     setOpen((current) => !current);
   };
 
-  const startDm = async (event: MouseEvent<HTMLButtonElement>) => {
+  const openRequestModal = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    setErrorMessage('');
+    setShowRequestModal(true);
+  };
+
+  const submitDmRequest = async (message: string) => {
     if (isCreating) return;
 
     setIsCreating(true);
     setErrorMessage('');
 
     try {
-      const roomId = await createDirectChatRoom(targetUserId);
+      await createDirectChatRequest(targetUserId, message);
       setOpen(false);
-      router.push(`/chat/${roomId}`);
+      setShowRequestModal(false);
+      setErrorMessage('DM 요청을 보냈습니다.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'DM을 시작하지 못했습니다.';
       if (message.includes('로그인')) {
@@ -85,15 +93,23 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
         <span className="absolute left-0 top-full z-50 mt-2 w-44 rounded-xl border border-border bg-surface p-1.5 shadow-2xl">
           <button
             type="button"
-            onClick={startDm}
+            onClick={openRequestModal}
             disabled={isCreating}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold text-text-primary hover:bg-surface-elevated disabled:cursor-not-allowed disabled:opacity-60"
           >
             <MessageCircle size={15} className="text-primary" />
-            {isCreating ? '생성 중...' : 'DM 보내기'}
+            {isCreating ? '요청 중...' : 'DM 요청하기'}
           </button>
           {errorMessage && <span className="block px-3 pb-2 text-xs text-primary">{errorMessage}</span>}
         </span>
+      )}
+      {showRequestModal && (
+        <DirectChatRequestModal
+          targetName={targetName}
+          isSubmitting={isCreating}
+          onClose={() => setShowRequestModal(false)}
+          onSubmit={submitDmRequest}
+        />
       )}
     </span>
   );

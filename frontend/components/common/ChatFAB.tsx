@@ -6,7 +6,8 @@ import { ChevronLeft, MessageSquare, RefreshCw, Send, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
-import { createDirectChatRoom } from '@/lib/api/chat';
+import { createDirectChatRequest } from '@/lib/api/chat';
+import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 import type { ChatMessage } from '@/types/chat';
 
 type AuthUser = {
@@ -34,13 +35,14 @@ export function ChatFAB() {
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isRequestingDm, setIsRequestingDm] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { activeDMUser, closeDM } = useDM();
 
   const isDMActive = activeDMUser !== null;
-  const showPopup = isOpen || isDMActive;
+  const showPopup = isOpen;
   const activeRoom = chatRooms.find((chat) => chat.id === activeRoomId);
-  const activePartnerName = activeRoom?.partnerName ?? activeDMUser?.name ?? '채팅방';
+  const activePartnerName = activeRoom?.partnerName ?? '채팅방';
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -111,25 +113,6 @@ export function ChatFAB() {
   }, [accessToken, router, showPopup]);
 
   useEffect(() => {
-    if (!showPopup || !activeDMUser) return;
-
-    createDirectChatRoom(activeDMUser.id)
-      .then((roomId) => {
-        setActiveRoomId(roomId);
-        setIsOpen(true);
-        return loadRooms().then(() => loadMessages(roomId));
-      })
-      .catch((error) => {
-        const message = error instanceof Error ? error.message : 'DM을 시작하지 못했습니다.';
-        if (message.includes('로그인')) {
-          router.push('/login');
-          return;
-        }
-        setErrorMessage(message);
-      });
-  }, [activeDMUser, router, showPopup]);
-
-  useEffect(() => {
     if (!showPopup || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
   }, [activeRoomId, isDMActive, showPopup]);
@@ -146,6 +129,27 @@ export function ChatFAB() {
   const openRoom = (roomId: string) => {
     setActiveRoomId(roomId);
     if (isDMActive) closeDM();
+  };
+
+  const submitDmRequest = async (message: string) => {
+    if (!activeDMUser || isRequestingDm) return;
+
+    setIsRequestingDm(true);
+    setErrorMessage('');
+    try {
+      await createDirectChatRequest(activeDMUser.id, message);
+      closeDM();
+      setErrorMessage('DM 요청을 보냈습니다.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'DM 요청을 보내지 못했습니다.';
+      if (message.includes('로그인')) {
+        router.push('/login');
+        return;
+      }
+      setErrorMessage(message);
+    } finally {
+      setIsRequestingDm(false);
+    }
   };
 
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -178,6 +182,14 @@ export function ChatFAB() {
 
   return (
     <>
+      {activeDMUser && (
+        <DirectChatRequestModal
+          targetName={activeDMUser.name}
+          isSubmitting={isRequestingDm}
+          onClose={closeDM}
+          onSubmit={submitDmRequest}
+        />
+      )}
       <AnimatePresence>
         {showPopup && (
           <motion.div
