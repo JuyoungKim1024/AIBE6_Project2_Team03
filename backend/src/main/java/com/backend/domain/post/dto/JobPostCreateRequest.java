@@ -14,5 +14,6 @@ public record JobPostCreateRequest(
         boolean priceVisible,
         Integer revisionCount,
         List<String> fieldTags,
-        List<String> toolTags
+        List<String> toolTags,
+        List<String> portfolioIds
 ) {}

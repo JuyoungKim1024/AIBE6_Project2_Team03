@@ -41,7 +41,7 @@ function JobsWriteContent() {
   const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
   const [selectedDesignTools, setSelectedDesignTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [selectedPortfolioIds, setSelectedPortfolioIds] = useState<string[]>([]);
   const [revisionCount, setRevisionCount] = useState<number | null>(null);
   const [customRevisionInput, setCustomRevisionInput] = useState("");
   const [unlimitedRevision, setUnlimitedRevision] = useState(false);
@@ -64,7 +64,7 @@ function JobsWriteContent() {
     selectedSubCategory: [...selectedSubCategory].sort(),
     selectedVideoTools: [...selectedVideoTools].sort(),
     selectedDesignTools: [...selectedDesignTools].sort(),
-    selectedPortfolioId,
+    selectedPortfolioIds: [...selectedPortfolioIds].sort(),
   });
   const priceSectionRef = useRef<HTMLDivElement>(null);
   const revisionSectionRef = useRef<HTMLDivElement>(null);
@@ -103,7 +103,7 @@ function JobsWriteContent() {
           const fetchedSubCategory = post.fieldTags.filter((t) => subCategoryTags.includes(t));
           const fetchedVideoTools = post.toolTags.filter((t) => videoToolTags.includes(t));
           const fetchedDesignTools = post.toolTags.filter((t) => designToolTags.includes(t));
-          const fetchedPortfolioId = post.portfolioId ?? null;
+          const fetchedPortfolioIds = (post.portfolios ?? []).map((p: { id: string }) => p.id);
           const fetchedUnlimited = post.revisionCount === null;
           const fetchedRevisionCount = post.revisionCount;
 
@@ -117,7 +117,7 @@ function JobsWriteContent() {
           setSelectedSubCategory(fetchedSubCategory);
           setSelectedVideoTools(fetchedVideoTools);
           setSelectedDesignTools(fetchedDesignTools);
-          setSelectedPortfolioId(fetchedPortfolioId);
+          setSelectedPortfolioIds(fetchedPortfolioIds);
           if (fetchedUnlimited) {
             setUnlimitedRevision(true);
           } else {
@@ -140,7 +140,7 @@ function JobsWriteContent() {
             selectedSubCategory: [...fetchedSubCategory].sort(),
             selectedVideoTools: [...fetchedVideoTools].sort(),
             selectedDesignTools: [...fetchedDesignTools].sort(),
-            selectedPortfolioId: fetchedPortfolioId,
+            selectedPortfolioIds: [...fetchedPortfolioIds].sort(),
           }));
         })
         .catch(console.error)
@@ -204,8 +204,8 @@ function JobsWriteContent() {
       revisionCount: unlimitedRevision ? null : revisionCount,
     };
     const body = editId
-      ? JSON.stringify(commonFields)
-      : JSON.stringify({ ...commonFields, postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH", portfolioId: selectedPortfolioId });
+      ? JSON.stringify({ ...commonFields, portfolioIds: selectedPortfolioIds })
+      : JSON.stringify({ ...commonFields, postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH", portfolioIds: selectedPortfolioIds });
     try {
       const url = editId
         ? `${API_BASE_URL}/api/posts/job/${editId}`
@@ -512,31 +512,36 @@ function JobsWriteContent() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {portfolios.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setSelectedPortfolioId(selectedPortfolioId === p.id ? null : p.id)}
-                      className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                        selectedPortfolioId === p.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-surface hover:border-text-muted"
-                      }`}
-                    >
-                      {p.url && (
-                        <img src={p.url} alt={p.title} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-text-primary truncate">{p.title}</div>
-                        {p.representative && (
-                          <div className="text-xs text-primary mt-0.5">대표 포트폴리오</div>
+                  {portfolios.map((p) => {
+                    const selected = selectedPortfolioIds.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedPortfolioIds((prev) =>
+                            prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-surface hover:border-text-muted"
+                        }`}
+                      >
+                        {p.url && (
+                          <img src={p.url} alt={p.title} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                         )}
-                      </div>
-                      {selectedPortfolioId === p.id && (
-                        <CheckCircle2 size={18} className="text-primary flex-shrink-0" />
-                      )}
-                    </button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-text-primary truncate">{p.title}</div>
+                          {p.representative && (
+                            <div className="text-xs text-primary mt-0.5">대표 포트폴리오</div>
+                          )}
+                        </div>
+                        {selected && <CheckCircle2 size={18} className="text-primary flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

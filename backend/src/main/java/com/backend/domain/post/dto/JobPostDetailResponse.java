@@ -2,6 +2,7 @@ package com.backend.domain.post.dto;
 
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.PostTag;
+import com.backend.domain.profile.entity.Portfolio;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +16,7 @@ public record JobPostDetailResponse(
         Integer maxPrice,
         boolean priceVisible,
         JobPost.PostType postType,
-        String portfolioId,
+        List<AttachedPortfolio> portfolios,
         List<String> fieldTags,
         List<String> toolTags,
         String thumbnailUrl,
@@ -27,6 +28,14 @@ public record JobPostDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
+    public record AttachedPortfolio(String id, String title, String url, String type) {
+        public static AttachedPortfolio from(Portfolio p) {
+            String url = p.getThumbnailUrl() != null ? p.getThumbnailUrl() : p.getImageUrl();
+            String type = p.getImageUrl() != null && p.getThumbnailUrl() == null ? "image" : "video";
+            return new AttachedPortfolio(p.getId(), p.getTitle(), url, type);
+        }
+    }
+
     public static JobPostDetailResponse from(JobPost post) {
         return new JobPostDetailResponse(
                 post.getId(),
@@ -37,7 +46,7 @@ public record JobPostDetailResponse(
                 post.getMaxPrice(),
                 post.isPriceVisible(),
                 post.getPostType(),
-                post.getPortfolioId(),
+                post.getPortfolios().stream().map(AttachedPortfolio::from).toList(),
                 post.getTags().stream()
                         .filter(t -> t.getTagType() == PostTag.TagType.FIELD)
                         .map(PostTag::getTagName)

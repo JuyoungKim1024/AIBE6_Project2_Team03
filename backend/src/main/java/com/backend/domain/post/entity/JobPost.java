@@ -1,10 +1,14 @@
 package com.backend.domain.post.entity;
 
+import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @DiscriminatorValue("JOB")
@@ -29,10 +33,13 @@ public class JobPost extends Post {
     @Column(name = "post_type")
     private PostType postType;
 
-    @Column(name = "portfolio_id", columnDefinition = "CHAR(36)")
-    private String portfolioId;
-
-
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "job_post_portfolios",
+            joinColumns = @JoinColumn(name = "post_id"),
+            inverseJoinColumns = @JoinColumn(name = "portfolio_id")
+    )
+    private List<Portfolio> portfolios = new ArrayList<>();
 
     public JobPost(User author, String title, String content, String thumbnailUrl,
                    Integer minPrice, Integer maxPrice, boolean priceVisible, PostType postType) {

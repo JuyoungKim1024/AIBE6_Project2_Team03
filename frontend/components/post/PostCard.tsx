@@ -112,6 +112,11 @@ export function PostCard({
           >
             {config.label}
           </span>
+          {isOwn && (
+            <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+              내 글
+            </span>
+          )}
           <div className="flex items-center gap-2 text-sm">
             <UserActionMenu
               userId={author.id}

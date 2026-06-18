@@ -11,5 +11,6 @@ public record JobPostUpdateRequest(
         boolean priceVisible,
         Integer revisionCount,
         List<String> fieldTags,
-        List<String> toolTags
+        List<String> toolTags,
+        List<String> portfolioIds
 ) {}

@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { fetchCommunityPosts, getLikedPostIds } from '@/lib/api/post';
+import { API_BASE_URL } from '@/lib/api';
 import { CommunityPostDto } from '@/types/post';
 import { formatTimeAgo } from '@/lib/utils/time';
 import type { PostType } from '@/types/post';
@@ -28,10 +29,20 @@ function CommunityContent() {
   const [posts, setPosts] = useState<CommunityPostDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((user) => user && setCurrentUserId(user.id))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -133,6 +144,7 @@ function CommunityContent() {
                     timeAgo={formatTimeAgo(post.createdAt)}
                     thumbnail={post.thumbnailUrl ?? undefined}
                     initialLiked={likedIds.has(post.id)}
+                    isOwn={currentUserId === post.author.id}
                   />
                 </motion.div>
               ))

@@ -17,6 +17,8 @@ import com.backend.domain.post.repository.CommunityPostRepository;
 import com.backend.domain.post.repository.JobPostRepository;
 import com.backend.domain.post.repository.PostLikeRepository;
 import com.backend.domain.post.repository.PostRepository;
+import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.profile.repository.PortfolioRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -37,6 +39,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
+    private final PortfolioRepository portfolioRepository;
     private final EntityManager entityManager;
 
     @Transactional
@@ -56,6 +59,10 @@ public class PostService {
         }
         if (req.toolTags() != null) {
             req.toolTags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.TOOL, t)));
+        }
+        if (req.portfolioIds() != null && !req.portfolioIds().isEmpty()) {
+            portfolioRepository.findAllById(req.portfolioIds())
+                    .forEach(p -> post.getPortfolios().add(p));
         }
 
         return post.getId();
@@ -107,6 +114,13 @@ public class PostService {
             req.fieldTags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.FIELD, t)));
         if (req.toolTags() != null)
             req.toolTags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.TOOL, t)));
+
+        post.getPortfolios().clear();
+        entityManager.flush();
+        if (req.portfolioIds() != null && !req.portfolioIds().isEmpty()) {
+            portfolioRepository.findAllById(req.portfolioIds())
+                    .forEach(p -> post.getPortfolios().add(p));
+        }
     }
 
     @Transactional
