@@ -219,7 +219,7 @@ export default function HomePage() {
             <div className="flex justify-between items-end mb-10">
               <div>
                 <h2 className="text-3xl font-bold text-text-primary mb-2">지금 추천하는 에디터</h2>
-                <p className="text-text-secondary">새로고침할 때마다 새로운 에디터를 만나보세요.</p>
+                <p className="text-text-secondary">매번 다른 에디터를 추천해드려요.</p>
               </div>
               <motion.button
                 onClick={fetchRandomEditors}
