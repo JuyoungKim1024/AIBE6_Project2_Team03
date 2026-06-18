@@ -2,6 +2,12 @@ package com.backend.domain.auth.controller;
 
 import com.backend.domain.auth.dto.AuthResponse;
 import com.backend.domain.auth.dto.DeleteAccountRequest;
+import com.backend.domain.auth.dto.EmailVerificationRequest;
+import com.backend.domain.auth.dto.EmailVerificationResponse;
+import com.backend.domain.auth.dto.EmailVerificationCompleteResponse;
+import com.backend.domain.auth.dto.EmailVerificationSendRequest;
+import com.backend.domain.auth.dto.LocalLoginRequest;
+import com.backend.domain.auth.dto.LocalSignupRequest;
 import com.backend.domain.auth.dto.LogoutRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.RoleUpdateRequest;
@@ -9,9 +15,13 @@ import com.backend.domain.auth.dto.UserResponse;
 import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.user.entity.SocialProvider;
 import java.net.URI;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,10 +39,19 @@ public class AuthController {
 
     private final AuthService authService;
     private final String frontendUrl;
+    private final boolean secureCookie;
+    private final long refreshTokenValiditySeconds;
 
-    public AuthController(AuthService authService, @Value("${app.frontend-url}") String frontendUrl) {
+    public AuthController(
+            AuthService authService,
+            @Value("${app.frontend-url}") String frontendUrl,
+            @Value("${app.cookie.secure:false}") boolean secureCookie,
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds
+    ) {
         this.authService = authService;
         this.frontendUrl = frontendUrl;
+        this.secureCookie = secureCookie;
+        this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
     }
 
     @GetMapping("/auth/{provider}/login")
@@ -55,7 +74,40 @@ public class AuthController {
                 .build()
                 .toUri();
 
-        return ResponseEntity.status(302).location(redirectUri).build();
+        return ResponseEntity.status(302)
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(response.refreshToken()).toString())
+                .location(redirectUri)
+                .build();
+    }
+
+    @PostMapping("/auth/local/signup/request")
+    public EmailVerificationResponse requestLocalSignup(@RequestBody EmailVerificationSendRequest request) {
+        return authService.requestLocalSignup(request);
+    }
+
+    @PostMapping("/auth/local/signup/verify")
+    public EmailVerificationCompleteResponse verifyLocalSignup(@RequestBody EmailVerificationRequest request) {
+        return authService.verifyLocalSignup(request);
+    }
+
+    @PostMapping("/auth/local/signup/complete")
+    public ResponseEntity<AuthResponse> completeLocalSignup(@RequestBody LocalSignupRequest request) {
+        AuthResponse response = authService.completeLocalSignup(request);
+        return withRefreshCookie(response);
+    }
+
+    @PostMapping("/auth/local/login")
+    public ResponseEntity<AuthResponse> localLogin(@RequestBody LocalLoginRequest request) {
+        AuthResponse response = authService.localLogin(request);
+        return withRefreshCookie(response);
+    }
+
+    @PostMapping("/auth/refresh")
+    public ResponseEntity<AuthResponse> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        AuthResponse response = authService.refresh(refreshToken);
+        return withRefreshCookie(response);
     }
 
     @PostMapping("/auth/logout")
@@ -64,7 +116,9 @@ public class AuthController {
             @RequestBody(required = false) LogoutRequest request
     ) {
         authService.logout(authorizationHeader, request == null ? null : request.refreshToken());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .build();
     }
 
     @GetMapping("/auth/me")
@@ -94,6 +148,34 @@ public class AuthController {
             @RequestBody DeleteAccountRequest request
     ) {
         authService.deleteAccount(authService.resolveUserId(authorizationHeader), request.confirmation());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .build();
+    }
+
+    private ResponseEntity<AuthResponse> withRefreshCookie(AuthResponse response) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(response.refreshToken()).toString())
+                .body(response);
+    }
+
+    private ResponseCookie refreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(Duration.ofSeconds(refreshTokenValiditySeconds))
+                .build();
+    }
+
+    private ResponseCookie clearRefreshTokenCookie() {
+        return ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(Duration.ZERO)
+                .build();
     }
 }

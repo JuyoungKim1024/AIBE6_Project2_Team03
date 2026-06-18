@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByProviderAndSocialId(SocialProvider provider, String socialId);
 
+    Optional<User> findByProviderEmailIgnoreCase(String providerEmail);
+
+    boolean existsByProviderEmailIgnoreCase(String providerEmail);
+
     boolean existsByNickname(String nickname);
 
     boolean existsByNicknameAndIdNot(String nickname, String id);

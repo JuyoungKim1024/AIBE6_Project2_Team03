@@ -1,13 +1,21 @@
 package com.backend.domain.auth.service;
 
 import com.backend.domain.auth.dto.AuthResponse;
+import com.backend.domain.auth.dto.EmailVerificationRequest;
+import com.backend.domain.auth.dto.EmailVerificationResponse;
+import com.backend.domain.auth.dto.EmailVerificationCompleteResponse;
+import com.backend.domain.auth.dto.EmailVerificationSendRequest;
+import com.backend.domain.auth.dto.LocalLoginRequest;
+import com.backend.domain.auth.dto.LocalSignupRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.SocialUserInfo;
 import com.backend.domain.auth.dto.UserResponse;
 import com.backend.domain.auth.entity.AuthLogoutToken;
 import com.backend.domain.auth.entity.AuthRefreshToken;
+import com.backend.domain.auth.entity.EmailVerification;
 import com.backend.domain.auth.repository.AuthLogoutTokenRepository;
 import com.backend.domain.auth.repository.AuthRefreshTokenRepository;
+import com.backend.domain.auth.repository.EmailVerificationRepository;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.SocialProvider;
 import com.backend.domain.user.entity.User;
@@ -18,11 +26,18 @@ import jakarta.transaction.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Locale;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    private static final int EMAIL_VERIFICATION_SECONDS = 300;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,64}$");
 
     private final OAuthClient oAuthClient;
     private final JwtTokenProvider jwtTokenProvider;
@@ -30,6 +45,9 @@ public class AuthService {
     private final ProfileRepository profileRepository;
     private final AuthRefreshTokenRepository refreshTokenRepository;
     private final AuthLogoutTokenRepository logoutTokenRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
+    private final VerificationMailService verificationMailService;
+    private final PasswordEncoder passwordEncoder;
     private final long refreshTokenValiditySeconds;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -40,6 +58,9 @@ public class AuthService {
             ProfileRepository profileRepository,
             AuthRefreshTokenRepository refreshTokenRepository,
             AuthLogoutTokenRepository logoutTokenRepository,
+            EmailVerificationRepository emailVerificationRepository,
+            VerificationMailService verificationMailService,
+            PasswordEncoder passwordEncoder,
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds
     ) {
         this.oAuthClient = oAuthClient;
@@ -48,6 +69,9 @@ public class AuthService {
         this.profileRepository = profileRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.logoutTokenRepository = logoutTokenRepository;
+        this.emailVerificationRepository = emailVerificationRepository;
+        this.verificationMailService = verificationMailService;
+        this.passwordEncoder = passwordEncoder;
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
     }
 
@@ -63,23 +87,130 @@ public class AuthService {
                     existingUser.updateSocialProfile(userInfo.email(), userInfo.nickname(), userInfo.profileImage());
                     return existingUser;
                 })
-                .orElseGet(() -> userRepository.save(new User(
-                        provider,
-                        userInfo.socialId(),
-                        userInfo.email(),
-                        createRandomNickname(),
-                        userInfo.profileImage()
-                )));
+                .orElseGet(() -> {
+                    String normalizedEmail = normalizeEmail(userInfo.email());
+                    String email = normalizedEmail.isBlank() ? null : normalizedEmail;
+                    if (email != null && userRepository.existsByProviderEmailIgnoreCase(email)) {
+                        throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+                    }
+                    return userRepository.save(new User(
+                            provider,
+                            userInfo.socialId(),
+                            email,
+                            createRandomNickname(),
+                            userInfo.profileImage()
+                    ));
+                });
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
-        String refreshToken = createRefreshToken();
-        refreshTokenRepository.save(new AuthRefreshToken(
-                user,
-                refreshToken,
-                LocalDateTime.now().plusSeconds(refreshTokenValiditySeconds)
+        return issueTokens(user);
+    }
+
+    @Transactional
+    public EmailVerificationResponse requestLocalSignup(EmailVerificationSendRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        if (userRepository.existsByProviderEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        emailVerificationRepository.findByEmailIgnoreCase(email).ifPresent(existing -> {
+            if (existing.getExpiresAt().isAfter(LocalDateTime.now().plusSeconds(240))) {
+                throw new IllegalArgumentException("인증 메일은 60초 후 다시 요청할 수 있습니다.");
+            }
+        });
+        emailVerificationRepository.deleteByEmailIgnoreCase(email);
+        emailVerificationRepository.flush();
+
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+        emailVerificationRepository.save(new EmailVerification(
+                email,
+                passwordEncoder.encode(code),
+                LocalDateTime.now().plusSeconds(EMAIL_VERIFICATION_SECONDS)
         ));
+        verificationMailService.sendSignupCode(email, code);
+        return new EmailVerificationResponse(EMAIL_VERIFICATION_SECONDS);
+    }
 
-        return AuthResponse.of(accessToken, refreshToken, user, isOnboardingRequired(user));
+    public EmailVerificationCompleteResponse verifyLocalSignup(EmailVerificationRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        String code = request.code() == null ? "" : request.code().trim();
+        EmailVerification verification = emailVerificationRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("이메일 인증 요청을 먼저 진행해주세요."));
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            emailVerificationRepository.delete(verification);
+            throw new IllegalArgumentException("인증번호가 만료되었습니다. 다시 요청해주세요.");
+        }
+        if (verification.getAttemptCount() >= 5) {
+            emailVerificationRepository.delete(verification);
+            throw new IllegalArgumentException("인증 시도 횟수를 초과했습니다. 다시 요청해주세요.");
+        }
+        if (!code.matches("^\\d{6}$") || !passwordEncoder.matches(code, verification.getCodeHash())) {
+            verification.incrementAttemptCount();
+            emailVerificationRepository.save(verification);
+            throw new IllegalArgumentException("인증번호가 올바르지 않습니다.");
+        }
+        String verificationToken = createRefreshToken();
+        verification.completeVerification(passwordEncoder.encode(verificationToken));
+        emailVerificationRepository.save(verification);
+        return new EmailVerificationCompleteResponse(verificationToken);
+    }
+
+    @Transactional
+    public AuthResponse completeLocalSignup(LocalSignupRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        validatePassword(request.password());
+        if (request.verificationToken() == null || request.verificationToken().isBlank()) {
+            throw new IllegalArgumentException("이메일 인증을 완료해주세요.");
+        }
+        if (userRepository.existsByProviderEmailIgnoreCase(email)) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        EmailVerification verification = emailVerificationRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("이메일 인증을 완료해주세요."));
+        if (verification.getVerifiedAt() == null || verification.getSignupTokenHash() == null
+                || verification.getVerifiedAt().isBefore(LocalDateTime.now().minusMinutes(10))
+                || !passwordEncoder.matches(request.verificationToken(), verification.getSignupTokenHash())) {
+            throw new IllegalArgumentException("이메일 인증 정보가 만료되었습니다. 다시 인증해주세요.");
+        }
+
+        User user = userRepository.save(new User(email, passwordEncoder.encode(request.password()), createRandomNickname()));
+        emailVerificationRepository.delete(verification);
+        return issueTokens(user);
+    }
+
+    @Transactional
+    public AuthResponse localLogin(LocalLoginRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        if (request.password() == null || request.password().isBlank()) {
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+        User user = userRepository.findByProviderEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
+        if (user.getProvider() != SocialProvider.LOCAL) {
+            throw new IllegalArgumentException("소셜 로그인으로 가입된 이메일입니다.");
+        }
+        if (!user.isEmailVerified() || user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+        return issueTokens(user);
+    }
+
+    @Transactional
+    public AuthResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new IllegalArgumentException("리프레시 토큰이 필요합니다.");
+        }
+        AuthRefreshToken storedToken = refreshTokenRepository.findByRefreshTokenAndRevokedFalse(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다."));
+        if (storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            storedToken.revoke();
+            throw new IllegalArgumentException("리프레시 토큰이 만료되었습니다.");
+        }
+        storedToken.revoke();
+        return issueTokens(storedToken.getUser());
     }
 
     @Transactional
@@ -185,6 +316,35 @@ public class AuthService {
         byte[] bytes = new byte[48];
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private AuthResponse issueTokens(User user) {
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId());
+        String refreshToken = createRefreshToken();
+        refreshTokenRepository.save(new AuthRefreshToken(
+                user,
+                refreshToken,
+                LocalDateTime.now().plusSeconds(refreshTokenValiditySeconds)
+        ));
+        return AuthResponse.of(accessToken, refreshToken, user, isOnboardingRequired(user));
+    }
+
+    private String normalizeAndValidateEmail(String email) {
+        String normalized = normalizeEmail(email);
+        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("올바른 이메일 형식을 입력해주세요.");
+        }
+        return normalized;
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new IllegalArgumentException("비밀번호는 영문 대문자, 소문자, 숫자를 포함한 8자 이상이어야 합니다.");
+        }
     }
 
     private String createRandomNickname(String userId) {

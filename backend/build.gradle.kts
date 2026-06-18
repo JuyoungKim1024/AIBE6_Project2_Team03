@@ -34,6 +34,7 @@ dependencies {
 	runtimeOnly("com.h2database:h2")
 	// Security
 	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.boot:spring-boot-starter-mail")
 
     //WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")

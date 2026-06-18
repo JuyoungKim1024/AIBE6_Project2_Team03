@@ -33,6 +33,12 @@ public class User {
     @Column(name = "provider_email")
     private String providerEmail;
 
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @Column(nullable = false, length = 50)
     private String nickname;
 
@@ -71,6 +77,16 @@ public class User {
         this.providerEmail = providerEmail;
         this.nickname = nickname;
         this.profileImage = profileImage;
+        this.emailVerified = provider != SocialProvider.LOCAL;
+    }
+
+    public User(String email, String passwordHash, String nickname) {
+        this.provider = SocialProvider.LOCAL;
+        this.socialId = email;
+        this.providerEmail = email;
+        this.passwordHash = passwordHash;
+        this.nickname = nickname;
+        this.emailVerified = true;
     }
 
     @PrePersist
