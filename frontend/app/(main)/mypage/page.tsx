@@ -9,6 +9,7 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Coins,
   FileText,
   Film,
   FolderOpen,
@@ -22,12 +23,12 @@ import {
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
 
-type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing';
+type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
 type UserRole = 'YOUTUBER' | 'EDITOR' | null;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
-const sectionIds: Section[] = ['editor-profile', 'posts', 'liked', 'chats', 'portfolio', 'projects', 'pricing'];
+const sectionIds: Section[] = ['editor-profile', 'posts', 'liked', 'chats', 'portfolio', 'projects', 'pricing', 'point'];
 
 const sidebarItems: { id: SidebarItemId; label: string; icon: any; hasDot?: boolean; editorOnly?: boolean }[] = [
   { id: 'editor-profile', label: '에디터 프로필 등록', icon: Tag, editorOnly: true },
@@ -37,6 +38,7 @@ const sidebarItems: { id: SidebarItemId; label: string; icon: any; hasDot?: bool
   { id: 'portfolio', label: '포트폴리오 관리', icon: FolderOpen, editorOnly: true },
   { id: 'projects', label: '프로젝트 관리', icon: Briefcase },
   { id: 'pricing', label: '맞춤매칭 단가 설정', icon: Wallet, editorOnly: true },
+  { id: 'point', label: '포인트', icon: Coins },
   { id: 'settings', label: '설정', icon: Settings },
 ];
 
@@ -1308,6 +1310,172 @@ function PricingSection({ userId }: { userId: string | null }) {
   );
 }
 
+type PointTransaction = {
+  id: string;
+  amount: number;
+  type: 'CHARGE' | 'ESCROW_HOLD' | 'ESCROW_RELEASE' | 'ESCROW_REFUND';
+  description: string;
+  matchRequestId: string | null;
+  createdAt: string;
+};
+
+const transactionTypeLabel: Record<PointTransaction['type'], string> = {
+  CHARGE: '충전',
+  ESCROW_HOLD: '거래 보증 차감',
+  ESCROW_RELEASE: '작업 완료 지급',
+  ESCROW_REFUND: '거래 취소 환불',
+};
+
+const transactionTypeClass: Record<PointTransaction['type'], string> = {
+  CHARGE: 'bg-primary/10 text-primary',
+  ESCROW_HOLD: 'bg-amber-500/10 text-amber-500',
+  ESCROW_RELEASE: 'bg-emerald-500/10 text-emerald-500',
+  ESCROW_REFUND: 'bg-cyan-400/10 text-cyan-400',
+};
+
+const CHARGE_PRESETS = [1000, 5000, 10000, 30000, 50000, 100000];
+
+function PointSection() {
+  const [point, setPoint] = useState(0);
+  const [escrowPoint, setEscrowPoint] = useState(0);
+  const [transactions, setTransactions] = useState<PointTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [isCharging, setIsCharging] = useState(false);
+  const [chargeError, setChargeError] = useState('');
+
+  const loadData = () => {
+    Promise.all([
+      fetchMyPageData<{ point: number; escrowPoint: number }>('/api/point'),
+      fetchMyPageData<PointTransaction[]>('/api/point/transactions'),
+    ])
+      .then(([balance, txList]) => {
+        setPoint(balance.point);
+        setEscrowPoint(balance.escrowPoint);
+        setTransactions(txList);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleCharge = async () => {
+    const amount = Number(chargeAmount);
+    if (!amount || amount <= 0) { setChargeError('충전 금액을 입력해주세요.'); return; }
+    setIsCharging(true);
+    setChargeError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/point/charge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
+        body: JSON.stringify({ amount }),
+      });
+      if (!res.ok) throw new Error('충전에 실패했습니다.');
+      const balance = await res.json();
+      setPoint(balance.point);
+      setEscrowPoint(balance.escrowPoint);
+      setChargeAmount('');
+      loadData();
+    } catch (e) {
+      setChargeError(e instanceof Error ? e.message : '충전에 실패했습니다.');
+    } finally {
+      setIsCharging(false);
+    }
+  };
+
+  const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
+
+  return (
+    <SectionCard title="포인트" description="포인트를 충전하고 보유 잔액과 거래 내역을 확인합니다.">
+      {isLoading ? (
+        <EmptyState message="포인트 정보를 불러오는 중입니다" />
+      ) : (
+        <div className="space-y-6">
+          {/* 잔액 카드 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-xl bg-primary/10 border border-primary/30 p-5">
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">보유 포인트</p>
+              <p className="text-3xl font-extrabold text-text-primary">{fmt(point)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
+            </div>
+            <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-5">
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">거래 중 보관</p>
+              <p className="text-3xl font-extrabold text-text-primary">{fmt(escrowPoint)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
+              <p className="text-xs text-text-muted mt-1">작업 완료 확인 시 에디터에게 지급됩니다</p>
+            </div>
+          </div>
+
+          {/* 충전 */}
+          <div className="rounded-xl bg-surface-elevated border border-border p-5 space-y-4">
+            <h3 className="text-sm font-bold text-text-primary">포인트 충전</h3>
+            <div className="flex flex-wrap gap-2">
+              {CHARGE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setChargeAmount(String((Number(chargeAmount) || 0) + preset))}
+                  className="px-3 py-2 rounded-lg border border-border bg-surface text-sm text-text-secondary hover:border-primary/50 hover:text-text-primary transition-colors"
+                >
+                  +{fmt(preset)}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="1"
+                value={chargeAmount}
+                onChange={(e) => { setChargeAmount(e.target.value); setChargeError(''); }}
+                onWheel={(e) => e.currentTarget.blur()}
+                placeholder="충전할 포인트 입력"
+                className="flex-1 px-4 py-3 rounded-xl border border-border bg-surface text-text-primary text-sm focus:outline-none focus:border-primary"
+              />
+              <button
+                onClick={handleCharge}
+                disabled={isCharging}
+                className="px-6 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              >
+                {isCharging ? '충전 중...' : '충전하기'}
+              </button>
+            </div>
+            {chargeAmount && Number(chargeAmount) > 0 && (
+              <p className="text-xs text-text-secondary">충전 후 잔액: {fmt(point + Number(chargeAmount))}P</p>
+            )}
+            {chargeError && <p className="text-xs text-accent">{chargeError}</p>}
+          </div>
+
+          {/* 거래 내역 */}
+          <div>
+            <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-4">거래 내역</h3>
+            {transactions.length > 0 ? (
+              <div className="space-y-2">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between gap-4 rounded-xl bg-surface-elevated border border-border p-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold ${transactionTypeClass[tx.type]}`}>
+                        {transactionTypeLabel[tx.type]}
+                      </span>
+                      <span className="text-sm text-text-secondary truncate">{tx.description}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`font-bold text-sm ${tx.type === 'ESCROW_HOLD' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                        {tx.type === 'ESCROW_HOLD' ? '-' : '+'}{fmt(tx.amount)}P
+                      </p>
+                      <p className="text-xs text-text-muted mt-0.5">{tx.createdAt}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="거래 내역이 없습니다" />
+            )}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 function PlaceholderSection({ title, description }: { title: string; description: string }) {
   return (
     <SectionCard title={title} description={description}>
@@ -1492,6 +1660,7 @@ function MypageContent() {
             {activeSection === 'portfolio' && <PortfolioManagementSection userId={userId} />}
             {activeSection === 'projects' && <ProjectsSection />}
             {activeSection === 'pricing' && <PricingSection userId={userId} />}
+            {activeSection === 'point' && <PointSection />}
           </div>
         </div>
       </div>
