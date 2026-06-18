@@ -29,6 +29,7 @@ export interface PostCardProps {
   thumbnail?: string;
   onUnlike?: (id: string) => void;
   initialLiked?: boolean;
+  isOwn?: boolean;
 }
 
 const typeConfig: Record<
@@ -64,6 +65,7 @@ export function PostCard({
   thumbnail,
   onUnlike,
   initialLiked = false,
+  isOwn = false,
 }: PostCardProps) {
   const router = useRouter();
   const config = typeConfig[type];
@@ -101,7 +103,7 @@ export function PostCard({
   return (
     <Link
       href={linkTo}
-      className={`block bg-surface rounded-xl border p-5 transition-all hover:border-primary/50 ${isDeprioritized ? "border-border/40 opacity-75 hover:opacity-100" : "border-border"}`}
+      className={`block rounded-xl border p-5 transition-all hover:border-primary/50 ${isOwn ? "bg-primary/[0.04] border-primary/25" : "bg-surface " + (isDeprioritized ? "border-border/40 opacity-75 hover:opacity-100" : "border-border")}`}
     >
       <div className="flex justify-between items-start mb-3 gap-4">
         <div className="flex items-center gap-3 flex-wrap">

@@ -91,7 +91,9 @@ public abstract class Post extends BaseEntity {
         this.publicVisible = publicVisible;
     }
 
-    public void incrementRevisionCount() {
-        this.revisionCount++;
+    protected void updateBase(String title, String content, String thumbnailUrl) {
+        this.title = title;
+        this.content = content;
+        this.thumbnailUrl = thumbnailUrl;
     }
 }

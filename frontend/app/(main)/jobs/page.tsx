@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { PostCard, PostType } from "@/components/post/PostCard";
 import { fetchJobPosts, getLikedPostIds } from "@/lib/api/post";
 import { JobPostDto } from "@/types/post";
+import { API_BASE_URL } from "@/lib/api";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 type JobType = "hiring" | "looking";
@@ -25,10 +26,18 @@ function JobsContent() {
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      fetch(`${API_BASE_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.ok ? r.json() : null)
+        .then((user) => user && setCurrentUserId(user.id))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -198,6 +207,7 @@ function JobsContent() {
                   timeAgo={formatTimeAgo(job.createdAt)}
                   thumbnail={job.thumbnailUrl ?? undefined}
                   initialLiked={likedIds.has(job.id)}
+                  isOwn={!!currentUserId && job.author.id === currentUserId}
                 />
               </motion.div>
             ))

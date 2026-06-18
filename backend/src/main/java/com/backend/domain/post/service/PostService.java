@@ -3,7 +3,9 @@ package com.backend.domain.post.service;
 import com.backend.domain.post.dto.CommunityPostCreateRequest;
 import com.backend.domain.post.dto.CommunityPostDetailResponse;
 import com.backend.domain.post.dto.CommunityPostResponse;
+import com.backend.domain.post.dto.CommunityPostUpdateRequest;
 import com.backend.domain.post.dto.JobPostCreateRequest;
+import com.backend.domain.post.dto.JobPostUpdateRequest;
 import com.backend.domain.post.dto.JobPostDetailResponse;
 import com.backend.domain.post.dto.JobPostResponse;
 import com.backend.domain.post.entity.CommunityPost;
@@ -17,6 +19,7 @@ import com.backend.domain.post.repository.PostLikeRepository;
 import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +37,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
+    private final EntityManager entityManager;
 
     @Transactional
     public String createJobPost(String userId, JobPostCreateRequest req) {
@@ -85,6 +89,57 @@ public class PostService {
         }
 
         return post.getId();
+    }
+
+    @Transactional
+    public void updateJobPost(String postId, String userId, JobPostUpdateRequest req) {
+        JobPost post = jobPostRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!post.getAuthor().getId().equals(userId))
+            throw new IllegalArgumentException("수정 권한이 없습니다.");
+
+        post.update(req.title(), req.content(), req.thumbnailUrl(),
+                req.minPrice(), req.maxPrice(), req.priceVisible(), req.revisionCount());
+
+        post.getTags().clear();
+        entityManager.flush();
+        if (req.fieldTags() != null)
+            req.fieldTags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.FIELD, t)));
+        if (req.toolTags() != null)
+            req.toolTags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.TOOL, t)));
+    }
+
+    @Transactional
+    public void deleteJobPost(String postId, String userId) {
+        JobPost post = jobPostRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!post.getAuthor().getId().equals(userId))
+            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        jobPostRepository.delete(post);
+    }
+
+    @Transactional
+    public void updateCommunityPost(String postId, String userId, CommunityPostUpdateRequest req) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!post.getAuthor().getId().equals(userId))
+            throw new IllegalArgumentException("수정 권한이 없습니다.");
+
+        post.update(req.title(), req.content(), req.thumbnailUrl(), req.category());
+
+        post.getTags().clear();
+        entityManager.flush();
+        if (req.tags() != null)
+            req.tags().forEach(t -> post.getTags().add(new PostTag(post, PostTag.TagType.GENERAL, t)));
+    }
+
+    @Transactional
+    public void deleteCommunityPost(String postId, String userId) {
+        CommunityPost post = communityPostRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!post.getAuthor().getId().equals(userId))
+            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        communityPostRepository.delete(post);
     }
 
     public List<CommunityPostResponse> getCommunityPosts(CommunityPost.Category category, String q) {

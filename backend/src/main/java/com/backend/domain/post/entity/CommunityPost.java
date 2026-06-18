@@ -25,4 +25,9 @@ public class CommunityPost extends Post {
         super(author, title, content, thumbnailUrl);
         this.category = category;
     }
+
+    public void update(String title, String content, String thumbnailUrl, Category category) {
+        updateBase(title, content, thumbnailUrl);
+        this.category = category;
+    }
 }

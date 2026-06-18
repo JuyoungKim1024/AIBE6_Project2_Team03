@@ -4,7 +4,9 @@ import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.post.dto.CommunityPostCreateRequest;
 import com.backend.domain.post.dto.CommunityPostDetailResponse;
 import com.backend.domain.post.dto.CommunityPostResponse;
+import com.backend.domain.post.dto.CommunityPostUpdateRequest;
 import com.backend.domain.post.dto.JobPostCreateRequest;
+import com.backend.domain.post.dto.JobPostUpdateRequest;
 import com.backend.domain.post.dto.JobPostDetailResponse;
 import com.backend.domain.post.dto.JobPostResponse;
 import com.backend.domain.post.entity.CommunityPost;
@@ -49,6 +51,27 @@ public class PostController {
         return ResponseEntity.ok(postService.getJobPost(id));
     }
 
+    // 구인/구직 수정
+    @PatchMapping("/job/{id}")
+    public ResponseEntity<Void> updateJobPost(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody JobPostUpdateRequest request) {
+        String userId = authService.resolveUserId(authorization);
+        postService.updateJobPost(id, userId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 구인/구직 삭제
+    @DeleteMapping("/job/{id}")
+    public ResponseEntity<Void> deleteJobPost(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorization) {
+        String userId = authService.resolveUserId(authorization);
+        postService.deleteJobPost(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
     // 커뮤니티 글쓰기
     @PostMapping("/community")
     public ResponseEntity<Map<String, String>> createCommunityPost(
@@ -71,6 +94,27 @@ public class PostController {
     @GetMapping("/community/{id}")
     public ResponseEntity<CommunityPostDetailResponse> getCommunityPost(@PathVariable String id) {
         return ResponseEntity.ok(postService.getCommunityPost(id));
+    }
+
+    // 커뮤니티 수정
+    @PatchMapping("/community/{id}")
+    public ResponseEntity<Void> updateCommunityPost(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody CommunityPostUpdateRequest request) {
+        String userId = authService.resolveUserId(authorization);
+        postService.updateCommunityPost(id, userId, request);
+        return ResponseEntity.ok().build();
+    }
+
+    // 커뮤니티 삭제
+    @DeleteMapping("/community/{id}")
+    public ResponseEntity<Void> deleteCommunityPost(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorization) {
+        String userId = authService.resolveUserId(authorization);
+        postService.deleteCommunityPost(id, userId);
+        return ResponseEntity.ok().build();
     }
 
     // 조회수 증가

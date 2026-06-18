@@ -220,7 +220,7 @@ export default function CommunityDetailPage() {
 
         {/* Body */}
         <div
-          className="prose prose-invert max-w-none mb-10 text-text-secondary leading-relaxed"
+          className="mb-10 text-text-secondary leading-relaxed [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-text-primary [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-text-primary [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-text-primary [&_h3]:mb-2 [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_strong]:text-text-primary [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 

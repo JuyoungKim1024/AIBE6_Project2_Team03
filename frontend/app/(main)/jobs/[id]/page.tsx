@@ -57,6 +57,7 @@ export default function JobDetailPage() {
   } | null>(null);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -84,6 +85,23 @@ export default function JobDetailPage() {
         .catch(() => {});
     }
   }, [id]);
+
+  const handleDeletePost = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/job/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("삭제 실패");
+      router.push("/jobs");
+    } catch {
+      alert("게시글 삭제에 실패했습니다.");
+    } finally {
+      setPostDeleteConfirm(false);
+    }
+  };
 
   const handleLike = async () => {
     if (!localStorage.getItem("accessToken")) {
@@ -269,21 +287,41 @@ export default function JobDetailPage() {
             {post.title}
           </h1>
 
-          <div className="flex items-center gap-3 mb-6">
-            <UserActionMenu
-              userId={post.author.id}
-              nickname={post.author.nickname}
-              profileImage={post.author.profileImage}
-            />
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-text-primary">
-                {post.author.nickname}
-              </span>
-              <span className="text-text-muted text-sm">·</span>
-              <span className="text-text-muted text-sm">
-                {formatTimeAgo(post.createdAt)}
-              </span>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <UserActionMenu
+                userId={post.author.id}
+                nickname={post.author.nickname}
+                profileImage={post.author.profileImage}
+              />
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-text-primary">
+                  {post.author.nickname}
+                </span>
+                <span className="text-text-muted text-sm">·</span>
+                <span className="text-text-muted text-sm">
+                  {formatTimeAgo(post.createdAt)}
+                </span>
+              </div>
             </div>
+            {currentUserId === post.author.id && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => router.push(`/jobs/write?edit=${id}`)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Edit2 size={14} />
+                  수정
+                </button>
+                <button
+                  onClick={() => setPostDeleteConfirm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors"
+                >
+                  <Trash2 size={14} />
+                  삭제
+                </button>
+              </div>
+            )}
           </div>
 
           {post.priceVisible && (post.minPrice || post.maxPrice) && (
@@ -308,7 +346,7 @@ export default function JobDetailPage() {
 
         {/* Body */}
         <div
-          className="prose prose-invert max-w-none mb-10 text-text-secondary leading-relaxed"
+          className="mb-10 text-text-secondary leading-relaxed [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-text-primary [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-text-primary [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-text-primary [&_h3]:mb-2 [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_strong]:text-text-primary [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
@@ -618,7 +656,45 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Post Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPostDeleteConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm bg-surface border border-border rounded-2xl p-6 text-center shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-text-primary mb-2">게시글을 삭제하시겠습니까?</h3>
+              <p className="text-sm text-text-secondary mb-6">삭제된 게시글은 복구할 수 없습니다.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPostDeleteConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-surface-elevated text-text-primary font-bold text-sm hover:bg-border transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent/90 transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Comment Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

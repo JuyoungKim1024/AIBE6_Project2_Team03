@@ -43,4 +43,12 @@ public class JobPost extends Post {
         this.postType = postType;
     }
 
+    public void update(String title, String content, String thumbnailUrl,
+                       Integer minPrice, Integer maxPrice, boolean priceVisible, Integer revisionCount) {
+        updateBase(title, content, thumbnailUrl);
+        this.minPrice = minPrice;
+        this.maxPrice = maxPrice;
+        this.priceVisible = priceVisible;
+        setRevisionCount(revisionCount);
+    }
 }
