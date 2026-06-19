@@ -6,6 +6,7 @@ import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.profile.dto.PortfolioResponse;
+import com.backend.domain.profile.dto.PortfolioGroupResponse;
 import com.backend.domain.profile.dto.PublicProfileResponse;
 import com.backend.domain.profile.dto.RecentDealResponse;
 import com.backend.domain.profile.dto.ReviewResponse;
@@ -16,6 +17,7 @@ import com.backend.domain.profile.entity.Review;
 import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.profile.repository.PortfolioRepository;
+import com.backend.domain.profile.repository.PortfolioGroupRepository;
 import com.backend.domain.profile.repository.ProjectRepository;
 import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
@@ -37,6 +39,7 @@ public class PublicProfileService {
 
     private final UserRepository userRepository;
     private final PortfolioRepository portfolioRepository;
+    private final PortfolioGroupRepository portfolioGroupRepository;
     private final UserTagRepository userTagRepository;
     private final ReviewRepository reviewRepository;
     private final ProjectRepository projectRepository;
@@ -46,6 +49,7 @@ public class PublicProfileService {
     public PublicProfileService(
             UserRepository userRepository,
             PortfolioRepository portfolioRepository,
+            PortfolioGroupRepository portfolioGroupRepository,
             UserTagRepository userTagRepository,
             ReviewRepository reviewRepository,
             ProjectRepository projectRepository,
@@ -54,6 +58,7 @@ public class PublicProfileService {
     ) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
+        this.portfolioGroupRepository = portfolioGroupRepository;
         this.userTagRepository = userTagRepository;
         this.reviewRepository = reviewRepository;
         this.projectRepository = projectRepository;
@@ -78,6 +83,7 @@ public class PublicProfileService {
                 user.getMannerScore(),
                 projectRepository.countByEditor_IdAndStatus(userId, ProjectStatus.COMPLETED),
                 reviewRepository.countByTargetUser_Id(userId),
+                getPortfolioGroups(userId),
                 getPortfolios(userId),
                 getReviews(userId),
                 getRecentDeals(userId),
@@ -134,6 +140,18 @@ public class PublicProfileService {
                 .toList();
     }
 
+    private List<PortfolioGroupResponse> getPortfolioGroups(String userId) {
+        return portfolioGroupRepository.findByUser_IdOrderByDisplayOrderAsc(userId)
+                .stream()
+                .map(group -> new PortfolioGroupResponse(
+                        group.getId(),
+                        group.getName(),
+                        group.getDisplayOrder(),
+                        group.isRepresentative()
+                ))
+                .toList();
+    }
+
     private PortfolioResponse toPortfolioResponse(Portfolio portfolio) {
         String thumbnailUrl = portfolio.getThumbnailUrl();
         if (thumbnailUrl == null || thumbnailUrl.isBlank()) {
@@ -143,7 +161,11 @@ public class PublicProfileService {
                 portfolio.getId(),
                 portfolio.getTitle(),
                 thumbnailUrl,
-                portfolio.getDisplayOrder()
+                portfolio.getImageUrl() != null && portfolio.getThumbnailUrl() == null ? "image" : "video",
+                portfolio.getDisplayOrder(),
+                portfolio.getGroup() == null ? null : portfolio.getGroup().getId(),
+                portfolio.getGroup() == null ? "기본 그룹" : portfolio.getGroup().getName(),
+                portfolio.getGroup() != null && portfolio.getGroup().isRepresentative()
         );
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -12,11 +12,14 @@ import {
   FileText,
   Film,
   FolderOpen,
+  GripVertical,
   Heart,
   Image as ImageIcon,
   MessageCircle,
+  Plus,
   Settings,
   Tag,
+  Trash2,
   Upload,
   Wallet,
 } from 'lucide-react';
@@ -124,7 +127,15 @@ type PortfolioDraft = {
   url: string;          // 서버 업로드 후 받은 URL (또는 로컬 미리보기용 objectUrl)
   isRepresentative: boolean;
   displayOrder: number;
+  groupId: string | null;
   uploading?: boolean;  // 업로드 진행 중 여부
+};
+
+type PortfolioGroupDraft = {
+  id: string;
+  name: string;
+  displayOrder: number;
+  representative: boolean;
 };
 
 function getUserStorageKey(userId: string | null | undefined, key: string) {
@@ -222,6 +233,38 @@ async function putMyPageData(path: string, body: unknown): Promise<void> {
   }
 }
 
+async function putMyPageDataWithResponse<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message ?? '저장에 실패했습니다.');
+  }
+  return response.json();
+}
+
+async function postMyPageDataWithResponse<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message ?? '저장에 실패했습니다.');
+  }
+  return response.json();
+}
+
 async function patchMyPageData<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'PATCH',
@@ -271,7 +314,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
       })
       .catch(() => {});
 
-    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number }[]>('/api/users/me/portfolios')
+    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number; groupId: string | null }[]>('/api/users/me/portfolios')
       .then((data) => {
         const loaded: PortfolioDraft[] = data.map((item) => ({
           id: item.id,
@@ -281,6 +324,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           url: item.url,
           isRepresentative: item.representative,
           displayOrder: item.displayOrder,
+          groupId: item.groupId,
         }));
         setPortfolios(loaded);
         if (loaded.length > 0) {
@@ -314,6 +358,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
         url: '',
         isRepresentative: !prev.some((p) => p.isRepresentative),
         displayOrder: prev.length + 1,
+        groupId: null,
         uploading: true,
       },
     ]);
@@ -364,6 +409,7 @@ function EditorProfileSection({ userId, onSaved }: { userId: string | null; onSa
           type: p.type,
           representative: p.isRepresentative,
           displayOrder: i + 1,
+          groupId: p.groupId,
         }))),
       ]);
       savePortfolios(userId, portfolios);
@@ -952,22 +998,50 @@ function ProjectsSection() {
 
 function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [portfolios, setPortfolios] = useState<PortfolioDraft[]>([]);
-  const [selectedOrders, setSelectedOrders] = useState<Record<PortfolioType, string[]>>({ video: [], image: [] });
+  const [groups, setGroups] = useState<PortfolioGroupDraft[]>([]);
+  const [selectedOrders, setSelectedOrders] = useState<Record<string, string[]>>({});
+  const [newGroupName, setNewGroupName] = useState('');
   const [message, setMessage] = useState('');
+  const [isGroupsLoading, setIsGroupsLoading] = useState(true);
+  const [isGroupSaving, setIsGroupSaving] = useState(false);
+  const [draggedPortfolioId, setDraggedPortfolioId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const groupSaveLockRef = useRef(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setIsGroupsLoading(false);
+      return;
+    }
 
     const applyPortfolios = (saved: PortfolioDraft[]) => {
       setPortfolios(saved);
       savePortfolios(userId, saved);
-      setSelectedOrders({
-        video: saved.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
-        image: saved.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder).map((portfolio) => portfolio.id),
+      const orders: Record<string, string[]> = {};
+      saved.forEach((portfolio) => {
+        const key = portfolio.groupId ?? 'ungrouped';
+        orders[key] = [...(orders[key] ?? []), portfolio.id];
       });
+      Object.keys(orders).forEach((key) => {
+        orders[key].sort((a, b) => {
+          const left = saved.find((portfolio) => portfolio.id === a)?.displayOrder ?? 999;
+          const right = saved.find((portfolio) => portfolio.id === b)?.displayOrder ?? 999;
+          return left - right;
+        });
+      });
+      setSelectedOrders(orders);
     };
 
-    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number }[]>('/api/users/me/portfolios')
+    setIsGroupsLoading(true);
+    fetchMyPageData<PortfolioGroupDraft[]>('/api/users/me/portfolio-groups')
+      .then(setGroups)
+      .catch(() => {
+        setGroups([]);
+        setMessage('그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      })
+      .finally(() => setIsGroupsLoading(false));
+
+    fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number; groupId: string | null }[]>('/api/users/me/portfolios')
       .then((data) => applyPortfolios(data.map((item) => ({
         id: item.id,
         type: item.type as PortfolioType,
@@ -976,34 +1050,118 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         url: item.url,
         isRepresentative: item.representative,
         displayOrder: item.displayOrder,
+        groupId: item.groupId,
       }))))
       .catch(() => applyPortfolios(loadPortfolios(userId)));
   }, [userId]);
 
-  const updatePortfolio = (id: string, patch: Partial<PortfolioDraft>) => {
-    setPortfolios((prev) => {
-      const next = prev.map((portfolio) => portfolio.id === id ? { ...portfolio, ...patch } : portfolio);
-      savePortfolios(userId, next);
-      return next;
+  const saveGroups = async (nextGroups: PortfolioGroupDraft[]) => {
+    if (groupSaveLockRef.current) {
+      throw new Error('그룹을 저장 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+
+    groupSaveLockRef.current = true;
+    setIsGroupSaving(true);
+    try {
+      const saved = await putMyPageDataWithResponse<PortfolioGroupDraft[]>('/api/users/me/portfolio-groups', nextGroups.map((group, index) => ({
+        id: group.id.startsWith('new-') ? null : group.id,
+        name: group.name,
+        displayOrder: index + 1,
+        representative: group.representative,
+      })));
+      setGroups(saved);
+      return saved;
+    } finally {
+      groupSaveLockRef.current = false;
+      setIsGroupSaving(false);
+    }
+  };
+
+  const addGroup = async () => {
+    if (isGroupsLoading || groupSaveLockRef.current) {
+      return;
+    }
+    const name = newGroupName.trim();
+    if (!name) {
+      setMessage('그룹 이름을 입력해주세요.');
+      return;
+    }
+    groupSaveLockRef.current = true;
+    setIsGroupSaving(true);
+    try {
+      const saved = await postMyPageDataWithResponse<PortfolioGroupDraft>('/api/users/me/portfolio-groups', { name });
+      setGroups((prev) => [...prev, saved].sort((a, b) => a.displayOrder - b.displayOrder));
+      setNewGroupName('');
+      setMessage('그룹이 추가되었습니다.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '그룹 추가에 실패했습니다.');
+    } finally {
+      groupSaveLockRef.current = false;
+      setIsGroupSaving(false);
+    }
+  };
+
+  const persistGroups = async () => {
+    try {
+      await saveGroups(groups);
+      setMessage('그룹 설정이 저장되었습니다.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '그룹 저장에 실패했습니다.');
+    }
+  };
+
+  const removeEmptyGroup = async (groupId: string) => {
+    if (portfolios.some((portfolio) => portfolio.groupId === groupId)) {
+      setMessage('포트폴리오가 들어 있는 그룹은 삭제할 수 없습니다.');
+      return;
+    }
+    try {
+      await saveGroups(groups.filter((group) => group.id !== groupId).map((group, index, next) => ({
+        ...group,
+        representative: next.some((item) => item.representative) ? group.representative : index === 0,
+      })));
+      setMessage('그룹이 삭제되었습니다.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '그룹 삭제에 실패했습니다.');
+    }
+  };
+
+  const changePortfolioGroup = (portfolioId: string, groupId: string | null) => {
+    setPortfolios((prev) => prev.map((portfolio) => portfolio.id === portfolioId
+      ? { ...portfolio, groupId, displayOrder: prev.filter((item) => item.groupId === groupId).length + 1 }
+      : portfolio));
+    setSelectedOrders((prev) => {
+      const next = Object.fromEntries(Object.entries(prev).map(([key, ids]) => [key, ids.filter((id) => id !== portfolioId)]));
+      const key = groupId ?? 'ungrouped';
+      return { ...next, [key]: [...(next[key] ?? []), portfolioId] };
     });
   };
 
-  const toggleOrder = (type: PortfolioType, id: string) => {
+  const dropPortfolioIntoGroup = (groupId: string) => {
+    if (!draggedPortfolioId) return;
+    changePortfolioGroup(draggedPortfolioId, groupId === 'ungrouped' ? null : groupId);
+    setDraggedPortfolioId(null);
+    setDragOverGroupId(null);
+    setMessage('포트폴리오 이동 후 그룹/순번 저장을 눌러주세요.');
+  };
+
+  const toggleOrder = (groupKey: string, id: string) => {
     setSelectedOrders((prev) => {
-      const current = prev[type];
+      const current = prev[groupKey] ?? [];
       const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
-      return { ...prev, [type]: next };
+      return { ...prev, [groupKey]: next };
     });
   };
 
   const saveOrder = async () => {
     const next = portfolios.map((portfolio) => {
-        const selectedIds = selectedOrders[portfolio.type];
+        const selectedIds = selectedOrders[portfolio.groupId ?? 'ungrouped'] ?? [];
         const index = selectedIds.indexOf(portfolio.id);
         if (index === -1) {
           return { ...portfolio, displayOrder: 999, isRepresentative: false };
         }
-        return { ...portfolio, displayOrder: index + 1, isRepresentative: index === 0 };
+        const group = groups.find((item) => item.id === portfolio.groupId);
+        return { ...portfolio, displayOrder: index + 1, isRepresentative: Boolean(group?.representative && index === 0) };
       });
     try {
       await putMyPageData('/api/users/me/portfolios', next.map((p) => ({
@@ -1012,27 +1170,96 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
         type: p.type,
         representative: p.isRepresentative,
         displayOrder: p.displayOrder,
+        groupId: p.groupId,
       })));
       savePortfolios(userId, next);
       setPortfolios(next);
-      setMessage('순번이 저장되었습니다.');
+      setMessage('그룹과 노출 순번이 저장되었습니다.');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : '저장에 실패했습니다.');
     }
   };
 
-  const videoPortfolios = portfolios.filter((portfolio) => portfolio.type === 'video').sort((a, b) => a.displayOrder - b.displayOrder);
-  const imagePortfolios = portfolios.filter((portfolio) => portfolio.type === 'image').sort((a, b) => a.displayOrder - b.displayOrder);
+  const groupSections = [
+    ...groups.map((group) => ({ id: group.id, name: group.name, representative: group.representative })),
+    { id: 'ungrouped', name: '미분류', representative: false },
+  ];
 
   return (
-    <SectionCard title="포트폴리오 관리" description="영상 포트폴리오와 이미지 포트폴리오를 클릭해 노출 순번을 지정합니다. 각 목록의 1번이 대표 포트폴리오입니다.">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <PortfolioManageColumn title="영상 포트폴리오" type="video" portfolios={videoPortfolios} selectedIds={selectedOrders.video} onToggleOrder={toggleOrder} onUpdate={updatePortfolio} />
-        <PortfolioManageColumn title="이미지 포트폴리오" type="image" portfolios={imagePortfolios} selectedIds={selectedOrders.image} onToggleOrder={toggleOrder} onUpdate={updatePortfolio} />
+    <SectionCard title="포트폴리오 관리" description="영상과 이미지를 원하는 그룹으로 묶고 그룹별 노출 순서를 지정합니다. 대표 그룹이 공개 프로필과 맞춤매칭에 우선 노출됩니다.">
+      <div className="flex flex-col sm:flex-row gap-2 mb-6">
+        <input
+          value={newGroupName}
+          onChange={(event) => setNewGroupName(event.target.value)}
+          placeholder={isGroupsLoading ? '그룹 목록 불러오는 중...' : '새 그룹 이름'}
+          disabled={isGroupsLoading || isGroupSaving}
+          className="form-input flex-1 disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={addGroup}
+          disabled={isGroupsLoading || isGroupSaving}
+          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={16} />{isGroupSaving ? '저장 중...' : '그룹 추가'}
+        </button>
       </div>
+
+      {groups.length > 0 && (
+        <div className="space-y-3 mb-8">
+          {groups.map((group) => (
+            <div key={group.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-border bg-surface-elevated p-4">
+              <input
+                value={group.name}
+                onChange={(event) => setGroups((prev) => prev.map((item) => item.id === group.id ? { ...item, name: event.target.value } : item))}
+                disabled={isGroupSaving}
+                className="form-input flex-1 disabled:opacity-60"
+              />
+              <button
+                type="button"
+                onClick={() => setGroups((prev) => prev.map((item) => ({ ...item, representative: item.id === group.id })))}
+                disabled={isGroupSaving}
+                className={`px-3 py-2 rounded-lg text-sm font-bold border disabled:opacity-50 ${group.representative ? 'border-primary bg-primary/10 text-primary' : 'border-border text-text-secondary'}`}
+              >
+                {group.representative ? '대표 그룹' : '대표로 설정'}
+              </button>
+              <button type="button" onClick={() => removeEmptyGroup(group.id)} disabled={isGroupSaving} className="w-10 h-10 flex items-center justify-center text-accent disabled:opacity-50" title="빈 그룹 삭제">
+                <Trash2 size={17} />
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={persistGroups} disabled={isGroupSaving} className="px-4 py-3 rounded-xl border border-primary text-primary text-sm font-bold disabled:opacity-50">
+            그룹 설정 저장
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-8">
+        {groupSections.map((group) => (
+          <PortfolioGroupManageSection
+            key={group.id}
+            group={group}
+            groups={groups}
+            portfolios={portfolios.filter((portfolio) => (portfolio.groupId ?? 'ungrouped') === group.id)}
+            selectedIds={selectedOrders[group.id] ?? []}
+            onToggleOrder={(id) => toggleOrder(group.id, id)}
+            onChangeGroup={changePortfolioGroup}
+            draggedPortfolioId={draggedPortfolioId}
+            isDragOver={dragOverGroupId === group.id}
+            onDragStart={setDraggedPortfolioId}
+            onDragEnd={() => {
+              setDraggedPortfolioId(null);
+              setDragOverGroupId(null);
+            }}
+            onDragOver={() => setDragOverGroupId(group.id)}
+            onDrop={() => dropPortfolioIntoGroup(group.id)}
+          />
+        ))}
+      </div>
+
       <div className="mt-6 flex items-center gap-3">
         <button type="button" onClick={saveOrder} className="px-4 py-3 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors">
-          순번 저장
+          그룹/순번 저장
         </button>
         {message && <p className="text-sm font-bold text-primary">{message}</p>}
       </div>
@@ -1040,19 +1267,71 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   );
 }
 
-function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleOrder, onUpdate }: { title: string; type: PortfolioType; portfolios: PortfolioDraft[]; selectedIds: string[]; onToggleOrder: (type: PortfolioType, id: string) => void; onUpdate: (id: string, patch: Partial<PortfolioDraft>) => void }) {
+function PortfolioGroupManageSection({
+  group,
+  groups,
+  portfolios,
+  selectedIds,
+  onToggleOrder,
+  onChangeGroup,
+  draggedPortfolioId,
+  isDragOver,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+}: {
+  group: { id: string; name: string; representative: boolean };
+  groups: PortfolioGroupDraft[];
+  portfolios: PortfolioDraft[];
+  selectedIds: string[];
+  onToggleOrder: (id: string) => void;
+  onChangeGroup: (portfolioId: string, groupId: string | null) => void;
+  draggedPortfolioId: string | null;
+  isDragOver: boolean;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDragOver: () => void;
+  onDrop: () => void;
+}) {
   return (
-    <section>
-      <h3 className="text-sm font-bold text-text-primary mb-3">{title}</h3>
+    <section
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        onDragOver();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop();
+      }}
+      className={`rounded-xl border p-4 transition-colors ${
+        isDragOver ? 'border-primary bg-primary/5' : 'border-transparent'
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="text-lg font-bold text-text-primary">{group.name}</h3>
+        {group.representative && <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold">대표 그룹</span>}
+        {isDragOver && <span className="text-xs font-bold text-primary">여기에 놓아 이동</span>}
+      </div>
       {portfolios.length > 0 ? (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {portfolios.map((portfolio) => {
             const selectedOrder = selectedIds.indexOf(portfolio.id) + 1;
             const selected = selectedOrder > 0;
             return (
-            <div key={portfolio.id} className={`rounded-xl border p-4 transition-colors ${selected ? 'bg-primary/10 border-primary' : 'bg-surface-elevated border-border'}`}>
+            <div
+              key={portfolio.id}
+              className={`rounded-xl border p-4 transition-colors ${
+                draggedPortfolioId === portfolio.id
+                  ? 'opacity-50 border-primary'
+                  : selected
+                    ? 'bg-primary/10 border-primary'
+                    : 'bg-surface-elevated border-border'
+              }`}
+            >
               <div className="flex gap-3">
-                <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+                <button type="button" onClick={() => onToggleOrder(portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
                   {portfolio.type === 'image' && portfolio.url ? (
                     <img src={portfolio.url} alt={portfolio.title} className="w-full h-full object-cover" />
                   ) : portfolio.type === 'video' && portfolio.url ? (
@@ -1067,25 +1346,41 @@ function PortfolioManageColumn({ title, type, portfolios, selectedIds, onToggleO
                   )}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-text-primary truncate">{portfolio.title}</div>
-                  <div className="text-xs text-text-muted truncate mt-1">{portfolio.fileName}</div>
-                  <button type="button" onClick={() => onToggleOrder(type, portfolio.id)} className="text-xs font-bold text-primary mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="font-bold text-text-primary truncate flex-1">{portfolio.title}</div>
+                    <span
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', portfolio.id);
+                        onDragStart(portfolio.id);
+                      }}
+                      onDragEnd={onDragEnd}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface cursor-grab active:cursor-grabbing"
+                      title="드래그하여 그룹 이동"
+                    >
+                      <GripVertical size={18} />
+                    </span>
+                  </div>
+                  <div className="text-xs text-text-muted truncate mt-1">{portfolio.type === 'video' ? '영상' : '이미지'} · {portfolio.fileName}</div>
+                  <button type="button" onClick={() => onToggleOrder(portfolio.id)} className="text-xs font-bold text-primary mt-2">
                     {selected ? '순번 해제' : '순번 지정'}
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-4">
-                {selectedOrder === 1 ? (
-                  <span className="px-3 py-2 rounded-lg text-sm font-bold bg-primary/10 text-primary border border-primary">대표</span>
-                ) : (
-                  <span className="px-3 py-2 rounded-lg text-sm font-bold border border-border bg-surface-elevated text-text-secondary">일반</span>
-                )}
-              </div>
+              <select
+                value={portfolio.groupId ?? ''}
+                onChange={(event) => onChangeGroup(portfolio.id, event.target.value || null)}
+                className="form-input mt-4"
+              >
+                <option value="">미분류</option>
+                {groups.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
             </div>
           )})}
         </div>
       ) : (
-        <EmptyState message={`${title}가 없습니다`} />
+        <EmptyState message={`${group.name}에 등록된 포트폴리오가 없습니다`} />
       )}
     </section>
   );

@@ -13,6 +13,7 @@ public record PublicProfileResponse(
         int battlePower,
         long completedProjectCount,
         long reviewCount,
+        List<PortfolioGroupResponse> portfolioGroups,
         List<PortfolioResponse> portfolios,
         List<ReviewResponse> reviews,
         List<RecentDealResponse> recentDeals,

@@ -2,8 +2,10 @@ package com.backend.domain.mypage.dto;
 
 public record PortfolioItemRequest(
         String title,
-        String url,           // 업로드된 파일 URL
-        String type,          // "video" | "image"
+        String url,
+        String type,
         boolean representative,
-        int displayOrder
-) {}
+        int displayOrder,
+        String groupId
+) {
+}

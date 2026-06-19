@@ -34,7 +34,11 @@ public record BlindEditorResponse(
                 .map(UserTag::getTagName)
                 .toList();
 
+        boolean hasGroupedPortfolio = portfolios.stream().anyMatch(portfolio -> portfolio.getGroup() != null);
         List<String> thumbnails = portfolios.stream()
+                .filter(portfolio -> !hasGroupedPortfolio
+                        || portfolio.getGroup() != null && portfolio.getGroup().isRepresentative())
+                .sorted(java.util.Comparator.comparingInt(Portfolio::getDisplayOrder))
                 .map(p -> p.getThumbnailUrl() != null ? p.getThumbnailUrl() : p.getImageUrl())
                 .filter(url -> url != null && !url.isBlank())
                 .limit(2)

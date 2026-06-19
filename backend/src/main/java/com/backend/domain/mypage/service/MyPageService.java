@@ -7,9 +7,11 @@ import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.mypage.dto.*;
 import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.profile.entity.PortfolioGroup;
 import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.profile.repository.PortfolioRepository;
+import com.backend.domain.profile.repository.PortfolioGroupRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
@@ -44,6 +46,7 @@ public class MyPageService {
     private final ProfileRepository profileRepository;
     private final UserTagRepository userTagRepository;
     private final PortfolioRepository portfolioRepository;
+    private final PortfolioGroupRepository portfolioGroupRepository;
     private final PostRepository postRepository;
 
     public MyPageService(
@@ -55,6 +58,7 @@ public class MyPageService {
             ProfileRepository profileRepository,
             UserTagRepository userTagRepository,
             PortfolioRepository portfolioRepository,
+            PortfolioGroupRepository portfolioGroupRepository,
             PostRepository postRepository
     ) {
         this.chatParticipantRepository = chatParticipantRepository;
@@ -65,6 +69,7 @@ public class MyPageService {
         this.profileRepository = profileRepository;
         this.userTagRepository = userTagRepository;
         this.portfolioRepository = portfolioRepository;
+        this.portfolioGroupRepository = portfolioGroupRepository;
         this.postRepository = postRepository;
     }
 
@@ -193,18 +198,100 @@ public class MyPageService {
                 .toList();
     }
 
+    public List<PortfolioGroupResponse> getPortfolioGroups(String userId) {
+        return portfolioGroupRepository.findByUser_IdOrderByDisplayOrderAsc(userId)
+                .stream()
+                .map(PortfolioGroupResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public PortfolioGroupResponse createPortfolioGroup(String userId, PortfolioGroupCreateRequest request) {
+        String name = request.name() == null ? "" : request.name().trim();
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("그룹 이름을 입력해주세요.");
+        }
+
+        List<PortfolioGroup> groups = portfolioGroupRepository.findByUser_IdOrderByDisplayOrderAsc(userId);
+        int nextDisplayOrder = groups.stream()
+                .mapToInt(PortfolioGroup::getDisplayOrder)
+                .max()
+                .orElse(0) + 1;
+        PortfolioGroup group = new PortfolioGroup(
+                getUser(userId),
+                name,
+                nextDisplayOrder,
+                groups.isEmpty()
+        );
+        return PortfolioGroupResponse.from(portfolioGroupRepository.save(group));
+    }
+
+    @Transactional
+    public List<PortfolioGroupResponse> savePortfolioGroups(String userId, List<PortfolioGroupRequest> requests) {
+        User user = getUser(userId);
+        if (!requests.isEmpty() && requests.stream().filter(PortfolioGroupRequest::representative).count() != 1) {
+            throw new IllegalArgumentException("대표 그룹을 하나 선택해주세요.");
+        }
+
+        java.util.Map<String, PortfolioGroup> existingById = portfolioGroupRepository
+                .findByUser_IdOrderByDisplayOrderAsc(userId)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(PortfolioGroup::getId, group -> group));
+        List<PortfolioGroup> savedGroups = new java.util.ArrayList<>();
+
+        for (PortfolioGroupRequest request : requests) {
+            String name = request.name() == null ? "" : request.name().trim();
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("그룹 이름을 입력해주세요.");
+            }
+            PortfolioGroup group = request.id() == null ? null : existingById.remove(request.id());
+            if (group == null) {
+                group = new PortfolioGroup(user, name, request.displayOrder(), request.representative());
+            } else {
+                group.update(name, request.displayOrder(), request.representative());
+            }
+            savedGroups.add(portfolioGroupRepository.save(group));
+        }
+
+        existingById.values().forEach(portfolioGroupRepository::delete);
+        portfolioGroupRepository.flush();
+        applyRepresentativeGroup(userId);
+        return savedGroups.stream()
+                .sorted(java.util.Comparator.comparingInt(PortfolioGroup::getDisplayOrder))
+                .map(PortfolioGroupResponse::from)
+                .toList();
+    }
+
     @Transactional
     public void savePortfolios(String userId, List<PortfolioItemRequest> items) {
         User user = getUser(userId);
         portfolioRepository.deleteByUser_Id(userId);
         portfolioRepository.flush();
 
+        PortfolioGroup representativeGroup = portfolioGroupRepository
+                .findByUser_IdAndRepresentativeTrue(userId)
+                .orElse(null);
         List<Portfolio> portfolios = new java.util.ArrayList<>();
-        for (int i = 0; i < items.size(); i++) {
-            PortfolioItemRequest item = items.get(i);
+        for (PortfolioItemRequest item : items) {
+            PortfolioGroup group = item.groupId() == null ? null : portfolioGroupRepository
+                    .findByIdAndUser_Id(item.groupId(), userId)
+                    .orElseThrow(() -> new IllegalArgumentException("포트폴리오 그룹을 찾을 수 없습니다."));
             String thumbnailUrl = "video".equals(item.type()) ? item.url() : null;
             String imageUrl = "image".equals(item.type()) ? item.url() : null;
-            portfolios.add(new Portfolio(user, item.title(), thumbnailUrl, imageUrl, item.displayOrder(), item.representative()));
+            boolean representative = representativeGroup == null
+                    ? item.representative()
+                    : group != null
+                    && group.getId().equals(representativeGroup.getId())
+                    && item.displayOrder() == 1;
+            portfolios.add(new Portfolio(
+                    user,
+                    group,
+                    item.title(),
+                    thumbnailUrl,
+                    imageUrl,
+                    item.displayOrder(),
+                    representative
+            ));
         }
         portfolioRepository.saveAll(portfolios);
     }
@@ -278,6 +365,20 @@ public class MyPageService {
         return portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(userId)
                 .stream()
                 .anyMatch(Portfolio::isRepresentative);
+    }
+
+    private void applyRepresentativeGroup(String userId) {
+        PortfolioGroup representativeGroup = portfolioGroupRepository
+                .findByUser_IdAndRepresentativeTrue(userId)
+                .orElse(null);
+        List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(userId);
+        for (Portfolio portfolio : portfolios) {
+            boolean representative = representativeGroup != null
+                    && portfolio.getGroup() != null
+                    && portfolio.getGroup().getId().equals(representativeGroup.getId())
+                    && portfolio.getDisplayOrder() == 1;
+            portfolio.updateRepresentative(representative);
+        }
     }
 
     private MyChatRoomResponseDTO toChatRoomResponse(String userId, ChatParticipant roomUser) {

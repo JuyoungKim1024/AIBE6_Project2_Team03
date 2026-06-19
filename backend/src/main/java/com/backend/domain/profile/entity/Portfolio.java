@@ -29,6 +29,10 @@ public class Portfolio {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private PortfolioGroup group;
+
     @Column(nullable = false, length = 100)
     private String title;
 
@@ -50,13 +54,18 @@ public class Portfolio {
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Portfolio(User user, String title, String thumbnailUrl, String imageUrl, int displayOrder, boolean representative) {
+    public Portfolio(User user, PortfolioGroup group, String title, String thumbnailUrl, String imageUrl, int displayOrder, boolean representative) {
         this.id = UUID.randomUUID().toString();
         this.user = user;
+        this.group = group;
         this.title = title;
         this.thumbnailUrl = thumbnailUrl;
         this.imageUrl = imageUrl;
         this.displayOrder = displayOrder;
+        this.representative = representative;
+    }
+
+    public void updateRepresentative(boolean representative) {
         this.representative = representative;
     }
 }

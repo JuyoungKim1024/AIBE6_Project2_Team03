@@ -8,7 +8,8 @@ public record PortfolioItemResponse(
         String url,
         String type,
         boolean representative,
-        int displayOrder
+        int displayOrder,
+        String groupId
 ) {
     public static PortfolioItemResponse from(Portfolio portfolio) {
         String url = portfolio.getThumbnailUrl() != null ? portfolio.getThumbnailUrl() : portfolio.getImageUrl();
@@ -19,7 +20,8 @@ public record PortfolioItemResponse(
                 url,
                 type,
                 portfolio.isRepresentative(),
-                portfolio.getDisplayOrder()
+                portfolio.getDisplayOrder(),
+                portfolio.getGroup() == null ? null : portfolio.getGroup().getId()
         );
     }
 }
