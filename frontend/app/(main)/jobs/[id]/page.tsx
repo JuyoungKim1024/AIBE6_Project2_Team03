@@ -36,6 +36,7 @@ import {
 } from "@/lib/api/post";
 import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
+import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
@@ -65,7 +66,7 @@ export default function JobDetailPage() {
   const [likeCount, setLikeCount] = useState(0);
   const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [selectedPortfolioIndex, setSelectedPortfolioIndex] = useState<number | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ group: AttachedPortfolioGroup; itemIndex: number } | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -393,47 +394,45 @@ export default function JobDetailPage() {
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
-        {/* Attached Portfolios */}
-        {post.portfolios && post.portfolios.length > 0 && (
+        {/* Attached Portfolio Groups */}
+        {post.portfolioGroups && post.portfolioGroups.length > 0 && (
           <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
-            <div className="flex items-center gap-3 mb-5">
-              <h2 className="text-lg font-bold text-text-primary">포트폴리오</h2>
-              <span className="text-xs font-medium text-text-muted bg-surface-elevated px-2 py-1 rounded-md">
-                첨부된 작업물 {post.portfolios.length}개
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {post.portfolios.map((p, index) => (
-                <div
-                  key={p.id}
-                  onClick={() => setSelectedPortfolioIndex(index)}
-                  className="relative aspect-video rounded-lg overflow-hidden border border-border cursor-pointer group bg-surface-elevated"
-                >
-                  {p.url && (
-                    <img
-                      src={p.url}
-                      alt={p.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
-                    />
-                  )}
-                  {p.type === "video" && (
-                    <>
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                          <Play size={20} className="ml-1" fill="currentColor" />
-                        </div>
-                      </div>
-                      <div className="absolute top-2 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        영상
-                      </div>
-                    </>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <p className="text-white text-xs font-medium truncate">{p.title}</p>
-                  </div>
+            <h2 className="text-lg font-bold text-text-primary mb-5">포트폴리오</h2>
+            {post.portfolioGroups.map((group) => (
+              <div key={group.id} className="mb-6 last:mb-0">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-bold text-text-primary">{group.name}</span>
+                  <span className="text-xs text-text-muted bg-surface-elevated px-2 py-0.5 rounded-md">{group.items.length}개</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {group.items.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedItem({ group, itemIndex: idx })}
+                      className="relative flex-shrink-0 w-48 aspect-video rounded-xl overflow-hidden border border-border cursor-pointer group/item bg-surface-elevated"
+                    >
+                      {item.url && (
+                        <img
+                          src={item.url}
+                          alt={item.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-105 opacity-90 group-hover/item:opacity-100"
+                        />
+                      )}
+                      {item.type === "video" && (
+                        <div className="absolute inset-0 bg-black/20 group-hover/item:bg-black/40 transition-colors flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white group-hover/item:scale-110 transition-transform">
+                            <Play size={16} className="ml-0.5" fill="currentColor" />
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 translate-y-full group-hover/item:translate-y-0 transition-transform duration-300">
+                        <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -757,66 +756,61 @@ export default function JobDetailPage() {
 
       {/* Portfolio Lightbox */}
       <AnimatePresence>
-        {selectedPortfolioIndex !== null && post.portfolios && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedPortfolioIndex(null)}
-              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-4xl"
-            >
-              <button
-                onClick={() => setSelectedPortfolioIndex(null)}
-                className="absolute -top-10 right-0 p-2 text-white/70 hover:text-white transition-colors"
+        {selectedItem && (() => {
+          const { group, itemIndex } = selectedItem;
+          const item = group.items[itemIndex];
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedItem(null)}
+                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-4xl"
               >
-                <X size={24} />
-              </button>
-              <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
-                {post.portfolios[selectedPortfolioIndex].type === "video" ? (
-                  <video
-                    src={post.portfolios[selectedPortfolioIndex].url}
-                    className="w-full h-full object-contain"
-                    controls
-                    autoPlay
-                  />
-                ) : (
-                  <img
-                    src={post.portfolios[selectedPortfolioIndex].url}
-                    alt={post.portfolios[selectedPortfolioIndex].title}
-                    className="w-full h-full object-contain"
-                  />
-                )}
-                {post.portfolios.length > 1 && (
-                  <>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedPortfolioIndex((selectedPortfolioIndex - 1 + post.portfolios.length) % post.portfolios.length); }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedPortfolioIndex((selectedPortfolioIndex + 1) % post.portfolios.length); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
-                  </>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-white font-bold">{post.portfolios[selectedPortfolioIndex].title}</p>
-                <span className="text-white/50 text-sm">{selectedPortfolioIndex + 1} / {post.portfolios.length}</span>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-white/60 text-sm font-medium">{group.name}</span>
+                  <button onClick={() => setSelectedItem(null)} className="p-2 text-white/70 hover:text-white transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+                  {item.type === "video" ? (
+                    <video src={item.url} className="w-full h-full object-contain" controls autoPlay />
+                  ) : (
+                    <img src={item.url} alt={item.title} className="w-full h-full object-contain" />
+                  )}
+                  {group.items.length > 1 && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ group, itemIndex: (itemIndex - 1 + group.items.length) % group.items.length }); }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ group, itemIndex: (itemIndex + 1) % group.items.length }); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-white font-bold">{item.title}</p>
+                  <span className="text-white/50 text-sm">{itemIndex + 1} / {group.items.length}</span>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Post Delete Confirmation Modal */}

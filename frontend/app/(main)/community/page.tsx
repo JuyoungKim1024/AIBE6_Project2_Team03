@@ -10,7 +10,7 @@ import { fetchCommunityPosts, getLikedPostIds } from '@/lib/api/post';
 import { API_BASE_URL } from '@/lib/api';
 import { CommunityPostDto } from '@/types/post';
 import { formatTimeAgo } from '@/lib/utils/time';
-import type { PostType } from '@/types/post';
+import type { PostType } from '@/components/post/PostCard';
 
 const categories = [
   { id: 'all', label: '📢 전체', dot: 'bg-text-primary' },
@@ -135,7 +135,7 @@ function CommunityContent() {
                     linkTo={`/community/${post.id}`}
                     type={post.category.toLowerCase() as PostType}
                     title={post.title}
-                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined }}
+                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
                     categoryTags={[]}
                     toolTags={[]}
                     likes={post.likeCount}

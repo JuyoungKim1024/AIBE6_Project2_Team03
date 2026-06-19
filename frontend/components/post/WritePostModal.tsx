@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Paperclip, AlertCircle } from 'lucide-react';
-import type { PostType } from '@/types/post';
+import type { PostType } from '@/components/post/PostCard';
 
 interface WritePostModalProps {
   isOpen: boolean;

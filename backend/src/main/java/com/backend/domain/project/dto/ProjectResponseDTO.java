@@ -16,7 +16,8 @@ public record ProjectResponseDTO(
         int revisionCount,
         LocalDateTime deadline,
         String memo,
-        ProjectStatus status
+        ProjectStatus status,
+        String completionRequestedBy
 
 ) {
     public static ProjectResponseDTO from(Project project) {
@@ -31,7 +32,8 @@ public record ProjectResponseDTO(
                 project.getRevisionCount(),
                 project.getDeadline(),
                 project.getMemo(),
-                project.getStatus()
+                project.getStatus(),
+                project.getCompletionRequestedBy()
         );
     }
 
