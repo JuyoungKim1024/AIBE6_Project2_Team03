@@ -9,6 +9,7 @@ import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.notification.dto.NotificationResponse;
+import com.backend.domain.point.service.PointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class NotificationService {
     private final MyPageMatchRequestRepository matchRequestRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final PointService pointService;
 
     // 로그인한 에디터에게 온 WAITING 상태 매칭 요청 목록 반환
     public List<NotificationResponse> getNotifications(String userId) {
@@ -40,6 +42,7 @@ public class NotificationService {
             throw new IllegalStateException("이미 처리된 요청입니다.");
         }
         request.accept();
+        pointService.holdEscrow(request.getId());
 
         // 채팅방 생성 및 양측 유저 추가
         ChatRoom room = chatRoomRepository.save(new ChatRoom(ChatRoomType.DIRECT));
