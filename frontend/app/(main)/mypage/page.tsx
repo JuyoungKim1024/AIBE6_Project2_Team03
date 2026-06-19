@@ -25,6 +25,12 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
+import {
+  fetchCommunityPosts,
+  fetchJobPosts,
+  getLikedPostIds,
+  togglePostLike,
+} from '@/lib/api/post';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
@@ -840,22 +846,71 @@ function PostManageItem({
 function LikedSection() {
   const [likedPosts, setLikedPosts] = useState<MyLikedPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchMyPageData<MyLikedPost[]>('/api/users/me/liked-posts')
-      .then(setLikedPosts)
-      .catch(() => setLikedPosts([]))
+    Promise.all([
+      getLikedPostIds(),
+      fetchJobPosts(),
+      fetchCommunityPosts(),
+    ])
+      .then(([likedIds, jobPosts, communityPosts]) => {
+        const likedIdSet = new Set(likedIds);
+        const posts = [
+          ...jobPosts
+            .filter((post) => likedIdSet.has(post.id))
+            .map((post) => ({
+              id: post.id,
+              boardType: 'JOB' as const,
+              postType: post.postType,
+              title: post.title,
+              authorName: post.author.nickname,
+              likes: post.likeCount,
+              comments: post.commentCount,
+              views: post.viewCount,
+              date: new Date(post.createdAt).toLocaleDateString('ko-KR'),
+              createdAt: post.createdAt,
+            })),
+          ...communityPosts
+            .filter((post) => likedIdSet.has(post.id))
+            .map((post) => ({
+              id: post.id,
+              boardType: 'COMMUNITY' as const,
+              postType: null,
+              title: post.title,
+              authorName: post.author.nickname,
+              likes: post.likeCount,
+              comments: post.commentCount,
+              views: post.viewCount,
+              date: new Date(post.createdAt).toLocaleDateString('ko-KR'),
+              createdAt: post.createdAt,
+            })),
+        ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+        setLikedPosts(posts.map(({ createdAt: _createdAt, ...post }) => post));
+      })
+      .catch(() => {
+        setLikedPosts([]);
+        setError('좋아요한 게시글을 불러오지 못했습니다.');
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
   const unlikePost = async (postId: string) => {
-    await deleteMyPageData(`/api/users/me/liked-posts/${postId}`);
-    setLikedPosts((prev) => prev.filter((post) => post.id !== postId));
+    setError('');
+    try {
+      const result = await togglePostLike(postId);
+      if (!result.liked) {
+        setLikedPosts((prev) => prev.filter((post) => post.id !== postId));
+      }
+    } catch {
+      setError('좋아요 해제에 실패했습니다.');
+    }
   };
 
   return (
     <SectionCard title="좋아요한 글" description="좋아요한 게시글을 통합 조회합니다.">
       <PublicVisibilityToggle field="publicLikedPostsVisible" label="공개 프로필에 좋아요한 글 공개" />
+      {error && <p className="text-sm font-bold text-accent mb-4">{error}</p>}
       {isLoading ? (
         <EmptyState message="좋아요한 게시글을 불러오는 중입니다" />
       ) : likedPosts.length > 0 ? (
@@ -869,7 +924,9 @@ function LikedSection() {
                 <span className="text-xs text-text-muted">{post.date}</span>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <h3 className="font-bold text-text-primary">{post.title}</h3>
+                <Link href={post.boardType === 'JOB' ? `/jobs/${post.id}` : `/community/${post.id}`} className="font-bold text-text-primary hover:text-primary transition-colors">
+                  {post.title}
+                </Link>
                 <button onClick={() => unlikePost(post.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-colors">좋아요 해제</button>
               </div>
               <div className="flex items-center gap-4 text-xs text-text-muted mt-2"><span>좋아요 {post.likes}</span><span>조회 {post.views}</span><span>댓글 {post.comments}</span></div>

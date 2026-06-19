@@ -8,6 +8,13 @@ public record AuthorResponse(
         String profileImage
 ) {
     public static AuthorResponse from(User user) {
+        if (user.isDeleted()) {
+            return new AuthorResponse(
+                    user.getId(),
+                    "탈퇴한 사용자",
+                    null
+            );
+        }
         return new AuthorResponse(
                 user.getId(),
                 user.getNickname(),

@@ -5,6 +5,7 @@ import com.backend.domain.post.entity.CommunityPost;
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.post.repository.PostRepository;
+import com.backend.domain.post.repository.PostLikeRepository;
 import com.backend.domain.profile.dto.PortfolioResponse;
 import com.backend.domain.profile.dto.PortfolioGroupResponse;
 import com.backend.domain.profile.dto.PublicProfileResponse;
@@ -45,6 +46,7 @@ public class PublicProfileService {
     private final ProjectRepository projectRepository;
     private final ProfileRepository profileRepository;
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
 
     public PublicProfileService(
             UserRepository userRepository,
@@ -54,7 +56,8 @@ public class PublicProfileService {
             ReviewRepository reviewRepository,
             ProjectRepository projectRepository,
             ProfileRepository profileRepository,
-            PostRepository postRepository
+            PostRepository postRepository,
+            PostLikeRepository postLikeRepository
     ) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
@@ -64,12 +67,16 @@ public class PublicProfileService {
         this.projectRepository = projectRepository;
         this.profileRepository = profileRepository;
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
     }
 
     @Transactional(readOnly = true)
     public PublicProfileResponse getPublicProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다"));
+        if (user.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.GONE, "탈퇴한 계정입니다");
+        }
 
         Profile profile = profileRepository.findByUser_Id(userId).orElse(null);
 
@@ -91,8 +98,19 @@ public class PublicProfileService {
                 profile != null && profile.isPublicJobPostsVisible(),
                 profile != null && profile.isPublicCommunityPostsVisible(),
                 getPublicPosts(userId, profile),
-                profile != null && profile.isPublicLikedPostsVisible()
+                profile != null && profile.isPublicLikedPostsVisible(),
+                getPublicLikedPosts(userId, profile)
         );
+    }
+
+    private List<MyPostResponse> getPublicLikedPosts(String userId, Profile profile) {
+        if (profile == null || !profile.isPublicLikedPostsVisible()) {
+            return List.of();
+        }
+        return postLikeRepository.findLikedPostsByUserId(userId)
+                .stream()
+                .map(this::toMyPostResponse)
+                .toList();
     }
 
     private List<MyPostResponse> getPublicPosts(String userId, Profile profile) {
@@ -118,9 +136,10 @@ public class PublicProfileService {
                 boardType,
                 postType,
                 post.getTitle(),
+                post.getAuthor().getNickname(),
                 post.getCreatedAt() == null ? "" : post.getCreatedAt().format(DATE_FORMATTER),
                 post.getViewCount(),
-                post.getChatCount(),
+                post.getCommentCount(),
                 post.getLikeCount(),
                 post.isPublicVisible()
         );

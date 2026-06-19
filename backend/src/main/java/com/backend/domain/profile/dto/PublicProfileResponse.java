@@ -21,6 +21,7 @@ public record PublicProfileResponse(
         boolean publicJobPostsVisible,
         boolean publicCommunityPostsVisible,
         List<MyPostResponse> posts,
-        boolean publicLikedPostsVisible
+        boolean publicLikedPostsVisible,
+        List<MyPostResponse> likedPosts
 ) {
 }

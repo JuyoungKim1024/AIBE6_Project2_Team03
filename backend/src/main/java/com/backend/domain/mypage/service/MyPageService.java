@@ -353,9 +353,10 @@ public class MyPageService {
                 boardType,
                 postType,
                 post.getTitle(),
+                post.getAuthor().getNickname(),
                 formatDate(post.getCreatedAt()),
                 post.getViewCount(),
-                post.getChatCount(),
+                post.getCommentCount(),
                 post.getLikeCount(),
                 post.isPublicVisible()
         );
