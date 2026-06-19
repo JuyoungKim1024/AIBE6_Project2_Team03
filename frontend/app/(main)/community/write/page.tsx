@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
@@ -11,13 +11,35 @@ const CATEGORY_TAGS = ["꿀팁", "단축키", "오류해결", "템플릿", "협�
 
 type BoardCategory = "INFO" | "FREE";
 
-export default function CommunityWritePage() {
+function CommunityWriteContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditMode = !!editId;
+
   const [category, setCategory] = useState<BoardCategory>("INFO");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(isEditMode);
+
+  useEffect(() => {
+    if (!editId) return;
+    const token = localStorage.getItem("accessToken");
+    if (!token) { router.push("/login"); return; }
+    fetch(`${API_BASE_URL}/api/posts/community/${editId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setCategory(data.category as BoardCategory);
+        setTitle(data.title);
+        setContent(data.content);
+        setSelectedTags(data.tags ?? []);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingPost(false));
+  }, [editId, router]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -33,14 +55,14 @@ export default function CommunityWritePage() {
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
     const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      router.push("/login");
-      return;
-    }
+    if (!accessToken) { router.push("/login"); return; }
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/posts/community`, {
-        method: "POST",
+      const url = isEditMode
+        ? `${API_BASE_URL}/api/posts/community/${editId}`
+        : `${API_BASE_URL}/api/posts/community`;
+      const res = await fetch(url, {
+        method: isEditMode ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
@@ -53,8 +75,8 @@ export default function CommunityWritePage() {
           tags: selectedTags,
         }),
       });
-      if (!res.ok) throw new Error("등록 실패");
-      router.push("/community");
+      if (!res.ok) throw new Error(isEditMode ? "수정 실패" : "등록 실패");
+      router.push(isEditMode ? `/community/${editId}` : "/community");
     } catch (err) {
       console.error(err);
     } finally {
@@ -62,18 +84,28 @@ export default function CommunityWritePage() {
     }
   };
 
+  if (loadingPost) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-text-muted text-sm">불러오는 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-32">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
-            href="/community"
+            href={isEditMode ? `/community/${editId}` : "/community"}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
           >
             <ArrowLeft size={16} />
-            목록으로
+            {isEditMode ? "돌아가기" : "목록으로"}
           </Link>
-          <h1 className="text-xl font-bold text-text-primary">글 작성</h1>
+          <h1 className="text-xl font-bold text-text-primary">
+            {isEditMode ? "글 수정" : "글 작성"}
+          </h1>
           <div className="w-20" />
         </div>
 
@@ -155,6 +187,7 @@ export default function CommunityWritePage() {
             </label>
             <RichTextEditor
               placeholder="내용을 입력해주세요."
+              value={content}
               onChange={setContent}
             />
           </div>
@@ -164,10 +197,18 @@ export default function CommunityWritePage() {
             disabled={submitting || !title.trim() || !content.trim()}
             className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "등록 중..." : "등록하기"}
+            {submitting ? (isEditMode ? "수정 중..." : "등록 중...") : (isEditMode ? "수정하기" : "등록하기")}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CommunityWritePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-text-muted text-sm">불러오는 중...</div>}>
+      <CommunityWriteContent />
+    </Suspense>
   );
 }

@@ -26,9 +26,16 @@ export interface JobPostDto {
   createdAt: string;
 }
 
+export interface AttachedPortfolio {
+  id: string;
+  title: string;
+  url: string;
+  type: "image" | "video";
+}
+
 export interface JobPostDetailDto extends JobPostDto {
   content: string;
-  portfolioId: string | null;
+  portfolios: AttachedPortfolio[];
   revisionCount: number | null;
   updatedAt: string;
 }
@@ -49,6 +56,7 @@ export interface CommunityPostDto {
 
 export interface CommunityPostDetailDto extends CommunityPostDto {
   content: string;
+  tags: string[];
   updatedAt: string;
 }
 

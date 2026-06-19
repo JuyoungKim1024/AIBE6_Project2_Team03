@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { fetchJobPost } from "@/lib/api/post";
 
 const categoryTags = ["롱폼", "숏폼", "썸네일"];
 const subCategoryTags = ["게임", "여행", "브이로그", "반려동물", "IT", "애니메이션", "기타"];
@@ -22,8 +23,10 @@ interface PortfolioItem {
   representative: boolean;
 }
 
-export default function JobsWritePage() {
+function JobsWriteContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
 
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
@@ -38,12 +41,36 @@ export default function JobsWritePage() {
   const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
   const [selectedDesignTools, setSelectedDesignTools] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [selectedPortfolioIds, setSelectedPortfolioIds] = useState<string[]>([]);
   const [revisionCount, setRevisionCount] = useState<number | null>(null);
+  const [customRevisionInput, setCustomRevisionInput] = useState("");
   const [unlimitedRevision, setUnlimitedRevision] = useState(false);
+  const [revisionError, setRevisionError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editorReady, setEditorReady] = useState(false);
+  const [originalSnapshot, setOriginalSnapshot] = useState<string | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const priceRangeError = !priceHidden && minPrice > maxPrice;
+
+  const isDirty = !editId || originalSnapshot === null || originalSnapshot !== JSON.stringify({
+    title,
+    content,
+    type,
+    minPrice,
+    maxPrice,
+    priceHidden,
+    unlimitedRevision,
+    revisionCount,
+    selectedCategory: [...selectedCategory].sort(),
+    selectedSubCategory: [...selectedSubCategory].sort(),
+    selectedVideoTools: [...selectedVideoTools].sort(),
+    selectedDesignTools: [...selectedDesignTools].sort(),
+    selectedPortfolioIds: [...selectedPortfolioIds].sort(),
+  });
   const priceSectionRef = useRef<HTMLDivElement>(null);
+  const revisionSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -51,10 +78,13 @@ export default function JobsWritePage() {
 
     if (cachedRole) {
       setUserRole(cachedRole);
-      setType(cachedRole === "YOUTUBER" ? "hiring" : "looking");
+      if (!editId) setType(cachedRole === "YOUTUBER" ? "hiring" : "looking");
     }
 
-    if (!token) return;
+    if (!token) {
+      if (!editId) setEditorReady(true);
+      return;
+    }
 
     if (cachedRole === "EDITOR") {
       fetch(`${API_BASE_URL}/api/users/me/portfolios`, {
@@ -64,20 +94,73 @@ export default function JobsWritePage() {
         .then(setPortfolios)
         .catch(() => {});
     }
-  }, []);
+
+    if (editId) {
+      fetchJobPost(editId)
+        .then((post) => {
+          const postType = post.postType === "RECRUITING" ? "hiring" : "looking";
+          const fetchedMinPrice = post.minPrice ?? 10000;
+          const fetchedMaxPrice = post.maxPrice ?? 20000;
+          const fetchedPriceHidden = !post.priceVisible;
+          const fetchedCategory = post.fieldTags.filter((t) => categoryTags.includes(t));
+          const fetchedSubCategory = post.fieldTags.filter((t) => subCategoryTags.includes(t));
+          const fetchedVideoTools = post.toolTags.filter((t) => videoToolTags.includes(t));
+          const fetchedDesignTools = post.toolTags.filter((t) => designToolTags.includes(t));
+          const fetchedPortfolioIds = (post.portfolios ?? []).map((p: { id: string }) => p.id);
+          const fetchedUnlimited = post.revisionCount === null;
+          const fetchedRevisionCount = post.revisionCount;
+
+          setTitle(post.title);
+          setContent(post.content);
+          setType(postType);
+          setMinPrice(fetchedMinPrice);
+          setMaxPrice(fetchedMaxPrice);
+          setPriceHidden(fetchedPriceHidden);
+          setSelectedCategory(fetchedCategory);
+          setSelectedSubCategory(fetchedSubCategory);
+          setSelectedVideoTools(fetchedVideoTools);
+          setSelectedDesignTools(fetchedDesignTools);
+          setSelectedPortfolioIds(fetchedPortfolioIds);
+          if (fetchedUnlimited) {
+            setUnlimitedRevision(true);
+          } else {
+            setRevisionCount(fetchedRevisionCount);
+            if (fetchedRevisionCount !== null && ![0, 1, 2, 3, 5, 10].includes(fetchedRevisionCount)) {
+              setCustomRevisionInput(String(fetchedRevisionCount));
+            }
+          }
+
+          setOriginalSnapshot(JSON.stringify({
+            title: post.title,
+            content: post.content,
+            type: postType,
+            minPrice: fetchedMinPrice,
+            maxPrice: fetchedMaxPrice,
+            priceHidden: fetchedPriceHidden,
+            unlimitedRevision: fetchedUnlimited,
+            revisionCount: fetchedRevisionCount,
+            selectedCategory: [...fetchedCategory].sort(),
+            selectedSubCategory: [...fetchedSubCategory].sort(),
+            selectedVideoTools: [...fetchedVideoTools].sort(),
+            selectedDesignTools: [...fetchedDesignTools].sort(),
+            selectedPortfolioIds: [...fetchedPortfolioIds].sort(),
+          }));
+        })
+        .catch(console.error)
+        .finally(() => setEditorReady(true));
+    } else {
+      setEditorReady(true);
+    }
+  }, [editId]);
 
   const handleTypeChange = (next: "hiring" | "looking") => {
     if (!userRole) return;
     if (userRole === "YOUTUBER" && next === "looking") {
-      setRoleError(
-        "유튜버 계정으로는 구직 글을 작성할 수 없습니다. 에디터 계정으로 변경해주세요.",
-      );
+      setRoleError("유튜버 계정으로는 구직 글을 작성할 수 없습니다. 에디터 계정으로 변경해주세요.");
       return;
     }
     if (userRole === "EDITOR" && next === "hiring") {
-      setRoleError(
-        "에디터 계정으로는 구인 글을 작성할 수 없습니다. 유튜버 계정으로 변경해주세요.",
-      );
+      setRoleError("에디터 계정으로는 구인 글을 작성할 수 없습니다. 유튜버 계정으로 변경해주세요.");
       return;
     }
     setRoleError(null);
@@ -93,10 +176,33 @@ export default function JobsWritePage() {
     return match?.[1] ?? null;
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiDescription.trim()) return;
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/ai-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: aiDescription, postType: type }),
+      });
+      if (!res.ok) throw new Error("생성 실패");
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+      if (data.content) setContent(data.content);
+      setAiPanelOpen(false);
+      setAiDescription("");
+    } catch (err) {
+      console.error(err);
+      alert("AI 초안 생성에 실패했습니다.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim() || !type) return;
-    if (userRole === "EDITOR" && type === "hiring") return;
-    if (userRole === "YOUTUBER" && type === "looking") return;
+    if (!editId && userRole === "EDITOR" && type === "hiring") return;
+    if (!editId && userRole === "YOUTUBER" && type === "looking") return;
     if (priceRangeError) {
       priceSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -107,39 +213,54 @@ export default function JobsWritePage() {
       return;
     }
     setSubmitting(true);
+    const toolTags = [
+      ...selectedVideoTools.filter((t) => t !== "기타"),
+      ...selectedDesignTools.filter((t) => t !== "기타"),
+      ...(selectedVideoTools.includes("기타") || selectedDesignTools.includes("기타") ? ["기타"] : []),
+    ];
+    const commonFields = {
+      title,
+      content,
+      thumbnailUrl: extractThumbnailUrl(content),
+      minPrice: priceHidden ? null : minPrice,
+      maxPrice: priceHidden ? null : maxPrice,
+      priceVisible: !priceHidden,
+      fieldTags: [...selectedCategory, ...selectedSubCategory],
+      toolTags,
+      revisionCount: unlimitedRevision ? null : revisionCount,
+    };
+    const body = editId
+      ? JSON.stringify({ ...commonFields, portfolioIds: selectedPortfolioIds })
+      : JSON.stringify({ ...commonFields, postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH", portfolioIds: selectedPortfolioIds });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/posts/job`, {
-        method: "POST",
+      const url = editId
+        ? `${API_BASE_URL}/api/posts/job/${editId}`
+        : `${API_BASE_URL}/api/posts/job`;
+      console.log("[submit]", editId ? "PATCH" : "POST", url, JSON.parse(body));
+      const res = await fetch(url, {
+        method: editId ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH",
-          title,
-          content,
-          thumbnailUrl: extractThumbnailUrl(content),
-          minPrice: priceHidden ? null : minPrice,
-          maxPrice: priceHidden ? null : maxPrice,
-          priceVisible: !priceHidden,
-          fieldTags: [...selectedCategory, ...selectedSubCategory],
-          toolTags: [
-            ...selectedVideoTools.filter((t) => t !== "기타"),
-            ...selectedDesignTools.filter((t) => t !== "기타"),
-            ...(selectedVideoTools.includes("기타") || selectedDesignTools.includes("기타") ? ["기타"] : []),
-          ],
-          portfolioId: selectedPortfolioId,
-          revisionCount: unlimitedRevision ? null : revisionCount,
-        }),
+        body,
       });
+      console.log("[submit] status:", res.status);
       if (!res.ok) {
         const errText = await res.text();
-        console.error("등록 실패:", res.status, errText);
-        throw new Error("등록 실패");
+        console.error("[submit] error body:", errText);
+        alert(`저장 실패 (${res.status}): ${errText}`);
+        return;
       }
-      router.push(`/jobs?tab=${type}`);
+      if (editId) {
+        router.push(`/jobs/${editId}`);
+      } else {
+        const result = await res.json();
+        router.push(`/jobs/${result.id}`);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("[submit] exception:", err);
+      alert("요청 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -150,15 +271,53 @@ export default function JobsWritePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
-            href="/jobs"
+            href={editId ? `/jobs/${editId}` : "/jobs"}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
           >
             <ArrowLeft size={16} />
-            목록으로
+            {editId ? "상세로" : "목록으로"}
           </Link>
-          <h1 className="text-xl font-bold text-text-primary">글 작성</h1>
-          <div className="w-20" />
+          <h1 className="text-xl font-bold text-text-primary">
+            {editId ? "글 수정" : "글 작성"}
+          </h1>
+          <button
+            onClick={() => setAiPanelOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
+          >
+            <Sparkles size={14} />
+            AI 초안
+          </button>
         </div>
+
+        {/* AI 초안 패널 */}
+        {aiPanelOpen && (
+          <div className="mb-6 bg-surface border border-primary/30 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                <Sparkles size={16} />
+                AI 초안 작성
+              </div>
+              <button onClick={() => setAiPanelOpen(false)}>
+                <X size={16} className="text-text-muted hover:text-text-primary" />
+              </button>
+            </div>
+            <textarea
+              value={aiDescription}
+              onChange={(e) => setAiDescription(e.target.value)}
+              placeholder="예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."
+              rows={3}
+              className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary resize-none transition-colors"
+            />
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiGenerating || !aiDescription.trim()}
+              className="mt-3 flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Sparkles size={14} />
+              {aiGenerating ? "생성 중..." : "초안 생성"}
+            </button>
+          </div>
+        )}
 
         <div className="space-y-8">
           {/* 게시글 종류 */}
@@ -240,9 +399,7 @@ export default function JobsWritePage() {
                 </div>
                 <div className="flex items-start gap-2 text-amber-500 text-xs font-medium bg-amber-500/10 p-3 rounded-lg">
                   <AlertCircle size={16} className="flex-shrink-0" />
-                  <span>
-                    단가를 비공개로 설정하면 검색 결과에서 후순위로 노출됩니다.
-                  </span>
+                  <span>단가를 비공개로 설정하면 검색 결과에서 후순위로 노출됩니다.</span>
                 </div>
               </div>
             ) : (
@@ -250,9 +407,7 @@ export default function JobsWritePage() {
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex-1 flex items-center bg-surface-elevated border border-border rounded-xl px-4 py-3">
                     <span className="text-text-muted mr-2">최소</span>
-                    <span className="text-text-secondary font-medium mr-1">
-                      ₩
-                    </span>
+                    <span className="text-text-secondary font-medium mr-1">₩</span>
                     <input
                       type="number"
                       value={minPrice}
@@ -263,9 +418,7 @@ export default function JobsWritePage() {
                   <span className="text-text-muted">~</span>
                   <div className="flex-1 flex items-center bg-surface-elevated border border-border rounded-xl px-4 py-3">
                     <span className="text-text-muted mr-2">최대</span>
-                    <span className="text-text-secondary font-medium mr-1">
-                      ₩
-                    </span>
+                    <span className="text-text-secondary font-medium mr-1">₩</span>
                     <input
                       type="number"
                       value={maxPrice}
@@ -281,61 +434,77 @@ export default function JobsWritePage() {
                   </div>
                 )}
                 <div className="text-center font-mono text-primary font-bold">
-                  ₩{new Intl.NumberFormat("ko-KR").format(minPrice)} ~ ₩
-                  {new Intl.NumberFormat("ko-KR").format(maxPrice)}
-                  <span className="font-sans text-sm font-normal text-text-muted">
-                    /분
-                  </span>
+                  ₩{new Intl.NumberFormat("ko-KR").format(minPrice)} ~ ₩{new Intl.NumberFormat("ko-KR").format(maxPrice)}
+                  <span className="font-sans text-sm font-normal text-text-muted">/분</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* 수정 횟수 */}
-          <div className="bg-surface border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-text-primary">
-                수정 횟수
-              </label>
+          <div ref={revisionSectionRef} className="bg-surface border border-border rounded-xl p-6">
+            <label className="block text-sm font-bold text-text-primary mb-4">수정 횟수</label>
+            <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setUnlimitedRevision(!unlimitedRevision)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${unlimitedRevision ? "bg-primary/10 text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+                type="button"
+                onClick={() => { setRevisionCount(0); setCustomRevisionInput(""); setUnlimitedRevision(false); setRevisionError(false); }}
+                className={`px-3 h-10 rounded-lg text-sm font-bold border transition-all ${revisionCount === 0 && !unlimitedRevision && customRevisionInput === "" ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
+              >
+                없음
+              </button>
+              {[1, 2, 3, 5, 10].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => { setRevisionCount(n); setCustomRevisionInput(""); setUnlimitedRevision(false); setRevisionError(false); }}
+                  className={`w-12 h-10 rounded-lg text-sm font-bold border transition-all ${revisionCount === n && !unlimitedRevision && customRevisionInput === "" ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
+                >
+                  {n}회
+                </button>
+              ))}
+              <div className={`flex items-center gap-1.5 bg-surface-elevated border rounded-lg px-3 h-10 transition-colors ${revisionError ? "border-accent/60 focus-within:border-accent" : "border-border focus-within:border-primary"}`}>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="직접"
+                  value={customRevisionInput}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setCustomRevisionInput(raw);
+                    setUnlimitedRevision(false);
+                    const v = Number(raw);
+                    if (raw === "") {
+                      setRevisionCount(null);
+                      setRevisionError(false);
+                    } else if (v >= 0) {
+                      setRevisionCount(v);
+                      setRevisionError(false);
+                    } else {
+                      setRevisionCount(null);
+                      setRevisionError(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (customRevisionInput !== "" && Number(customRevisionInput) < 0) {
+                      setRevisionError(true);
+                    }
+                  }}
+                  className="w-12 bg-transparent text-sm text-text-primary font-mono focus:outline-none"
+                />
+                <span className="text-sm text-text-muted">회</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setUnlimitedRevision(true); setRevisionCount(null); setCustomRevisionInput(""); setRevisionError(false); }}
+                className={`px-3 h-10 rounded-lg text-sm font-bold border transition-all ${unlimitedRevision ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
               >
                 무제한
               </button>
             </div>
-            {unlimitedRevision ? (
-              <div className="inline-flex items-center rounded-full bg-surface border border-transparent px-3 py-1 text-text-secondary opacity-70 text-sm font-medium w-max">
-                무제한
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                {[1, 2, 3, 5, 10].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setRevisionCount(n)}
-                    className={`w-12 h-10 rounded-lg text-sm font-bold border transition-all ${revisionCount === n ? "bg-primary/10 border-primary/50 text-primary" : "bg-surface-elevated border-border text-text-secondary hover:border-text-muted"}`}
-                  >
-                    {n}회
-                  </button>
-                ))}
-                <div className="flex items-center gap-1.5 bg-surface-elevated border border-border rounded-lg px-3 h-10 focus-within:border-primary transition-colors">
-                  <input
-                    type="number"
-                    min={1}
-                    placeholder="직접"
-                    value={revisionCount !== null && ![1,2,3,5,10].includes(revisionCount) ? revisionCount : ""}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setRevisionCount(v > 0 ? v : null);
-                    }}
-                    className="w-12 bg-transparent text-sm text-text-primary font-mono focus:outline-none"
-                  />
-                  <span className="text-sm text-text-muted">회</span>
-                </div>
-              </div>
+            {revisionError && (
+              <p className="mt-2 text-xs text-accent font-medium">0 이상의 숫자로 입력해주세요.</p>
             )}
+            <p className="mt-3 text-xs text-text-muted">미설정 시 협의 가능으로 표시됩니다.</p>
           </div>
 
           {/* 태그 */}
@@ -399,44 +568,42 @@ export default function JobsWritePage() {
               {portfolios.length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
                   <span className="text-sm font-medium mb-2">등록된 포트폴리오가 없습니다.</span>
-                  <Link
-                    href="/profile"
-                    className="text-xs text-primary hover:underline"
-                  >
+                  <Link href="/profile" className="text-xs text-primary hover:underline">
                     포트폴리오를 등록해서 이용해보세요 →
                   </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {portfolios.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setSelectedPortfolioId(selectedPortfolioId === p.id ? null : p.id)}
-                      className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                        selectedPortfolioId === p.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-surface hover:border-text-muted"
-                      }`}
-                    >
-                      {p.url && (
-                        <img
-                          src={p.url}
-                          alt={p.title}
-                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-text-primary truncate">{p.title}</div>
-                        {p.representative && (
-                          <div className="text-xs text-primary mt-0.5">대표 포트폴리오</div>
+                  {portfolios.map((p) => {
+                    const selected = selectedPortfolioIds.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedPortfolioIds((prev) =>
+                            prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-surface hover:border-text-muted"
+                        }`}
+                      >
+                        {p.url && (
+                          <img src={p.url} alt={p.title} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                         )}
-                      </div>
-                      {selectedPortfolioId === p.id && (
-                        <CheckCircle2 size={18} className="text-primary flex-shrink-0" />
-                      )}
-                    </button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-text-primary truncate">{p.title}</div>
+                          {p.representative && (
+                            <div className="text-xs text-primary mt-0.5">대표 포트폴리오</div>
+                          )}
+                        </div>
+                        {selected && <CheckCircle2 size={18} className="text-primary flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -447,21 +614,35 @@ export default function JobsWritePage() {
             <label className="block text-sm font-bold text-text-primary mb-3">
               내용 <span className="text-accent">*</span>
             </label>
-            <RichTextEditor
-              placeholder="상세한 작업 조건, 우대 사항 등을 적어주세요."
-              onChange={setContent}
-            />
+            {editorReady ? (
+              <RichTextEditor
+                key={editId ?? "new"}
+                value={content}
+                placeholder="상세한 작업 조건, 우대 사항 등을 적어주세요."
+                onChange={setContent}
+              />
+            ) : (
+              <div className="bg-surface border border-border rounded-xl h-[300px] animate-pulse" />
+            )}
           </div>
 
           <button
             onClick={handleSubmit}
-            disabled={submitting || !title.trim() || !content.trim()}
+            disabled={submitting || !title.trim() || !content.trim() || !isDirty}
             className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "등록 중..." : "등록하기"}
+            {submitting ? (editId ? "수정 중..." : "등록 중...") : (editId ? "수정하기" : "등록하기")}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JobsWritePage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-text-muted text-sm">불러오는 중...</div></div>}>
+      <JobsWriteContent />
+    </React.Suspense>
   );
 }
