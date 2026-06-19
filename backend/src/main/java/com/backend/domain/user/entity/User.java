@@ -123,6 +123,10 @@ public class User {
         }
     }
 
+    public void updatePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {
         this.matchEnabled = matchEnabled;
         this.matchPriceMin = matchPriceMin;
