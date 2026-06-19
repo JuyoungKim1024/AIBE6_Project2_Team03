@@ -1527,7 +1527,7 @@ function ChatsSection() {
           </div>
           {filteredRooms.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <div className="flex min-h-[780px] flex-col">
+          <div className="flex min-h-[720px] flex-col">
             <div className="flex-1 space-y-2 overflow-y-auto pr-1">
             {pagedRooms.map((room) => (
               <div
@@ -1576,7 +1576,7 @@ function ChatsSection() {
             ) : null}
           </div>
 
-          <div className="h-[calc(100vh-7rem)] min-h-[780px] max-h-[1040px] min-w-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
+          <div className="h-[calc(100vh-7rem)] min-h-[776px] max-h-[1036px] min-w-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col lg:-mt-14">
             <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
