@@ -12,6 +12,7 @@ import {
   FileText,
   Film,
   FolderOpen,
+  GripVertical,
   Heart,
   Image as ImageIcon,
   MessageCircle,
@@ -1003,6 +1004,8 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [message, setMessage] = useState('');
   const [isGroupsLoading, setIsGroupsLoading] = useState(true);
   const [isGroupSaving, setIsGroupSaving] = useState(false);
+  const [draggedPortfolioId, setDraggedPortfolioId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const groupSaveLockRef = useRef(false);
 
   useEffect(() => {
@@ -1134,6 +1137,14 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
     });
   };
 
+  const dropPortfolioIntoGroup = (groupId: string) => {
+    if (!draggedPortfolioId) return;
+    changePortfolioGroup(draggedPortfolioId, groupId === 'ungrouped' ? null : groupId);
+    setDraggedPortfolioId(null);
+    setDragOverGroupId(null);
+    setMessage('포트폴리오 이동 후 그룹/순번 저장을 눌러주세요.');
+  };
+
   const toggleOrder = (groupKey: string, id: string) => {
     setSelectedOrders((prev) => {
       const current = prev[groupKey] ?? [];
@@ -1233,6 +1244,15 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
             selectedIds={selectedOrders[group.id] ?? []}
             onToggleOrder={(id) => toggleOrder(group.id, id)}
             onChangeGroup={changePortfolioGroup}
+            draggedPortfolioId={draggedPortfolioId}
+            isDragOver={dragOverGroupId === group.id}
+            onDragStart={setDraggedPortfolioId}
+            onDragEnd={() => {
+              setDraggedPortfolioId(null);
+              setDragOverGroupId(null);
+            }}
+            onDragOver={() => setDragOverGroupId(group.id)}
+            onDrop={() => dropPortfolioIntoGroup(group.id)}
           />
         ))}
       </div>
@@ -1254,6 +1274,12 @@ function PortfolioGroupManageSection({
   selectedIds,
   onToggleOrder,
   onChangeGroup,
+  draggedPortfolioId,
+  isDragOver,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: {
   group: { id: string; name: string; representative: boolean };
   groups: PortfolioGroupDraft[];
@@ -1261,12 +1287,32 @@ function PortfolioGroupManageSection({
   selectedIds: string[];
   onToggleOrder: (id: string) => void;
   onChangeGroup: (portfolioId: string, groupId: string | null) => void;
+  draggedPortfolioId: string | null;
+  isDragOver: boolean;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDragOver: () => void;
+  onDrop: () => void;
 }) {
   return (
-    <section>
+    <section
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        onDragOver();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop();
+      }}
+      className={`rounded-xl border p-4 transition-colors ${
+        isDragOver ? 'border-primary bg-primary/5' : 'border-transparent'
+      }`}
+    >
       <div className="flex items-center gap-2 mb-3">
         <h3 className="text-lg font-bold text-text-primary">{group.name}</h3>
         {group.representative && <span className="px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold">대표 그룹</span>}
+        {isDragOver && <span className="text-xs font-bold text-primary">여기에 놓아 이동</span>}
       </div>
       {portfolios.length > 0 ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -1274,7 +1320,16 @@ function PortfolioGroupManageSection({
             const selectedOrder = selectedIds.indexOf(portfolio.id) + 1;
             const selected = selectedOrder > 0;
             return (
-            <div key={portfolio.id} className={`rounded-xl border p-4 transition-colors ${selected ? 'bg-primary/10 border-primary' : 'bg-surface-elevated border-border'}`}>
+            <div
+              key={portfolio.id}
+              className={`rounded-xl border p-4 transition-colors ${
+                draggedPortfolioId === portfolio.id
+                  ? 'opacity-50 border-primary'
+                  : selected
+                    ? 'bg-primary/10 border-primary'
+                    : 'bg-surface-elevated border-border'
+              }`}
+            >
               <div className="flex gap-3">
                 <button type="button" onClick={() => onToggleOrder(portfolio.id)} className="relative w-24 h-16 rounded-lg bg-surface border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
                   {portfolio.type === 'image' && portfolio.url ? (
@@ -1291,7 +1346,22 @@ function PortfolioGroupManageSection({
                   )}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-text-primary truncate">{portfolio.title}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-bold text-text-primary truncate flex-1">{portfolio.title}</div>
+                    <span
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', portfolio.id);
+                        onDragStart(portfolio.id);
+                      }}
+                      onDragEnd={onDragEnd}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface cursor-grab active:cursor-grabbing"
+                      title="드래그하여 그룹 이동"
+                    >
+                      <GripVertical size={18} />
+                    </span>
+                  </div>
                   <div className="text-xs text-text-muted truncate mt-1">{portfolio.type === 'video' ? '영상' : '이미지'} · {portfolio.fileName}</div>
                   <button type="button" onClick={() => onToggleOrder(portfolio.id)} className="text-xs font-bold text-primary mt-2">
                     {selected ? '순번 해제' : '순번 지정'}
