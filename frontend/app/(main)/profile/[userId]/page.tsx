@@ -2,11 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, HelpCircle, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
 import { RankBadge } from '@/components/common/RankBadge';
-import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
 import { TrustTemperature } from '@/components/profile/TrustTemperature';
 import type { RankTier } from '@/types/user';
 import { createDirectChatRoom } from '@/lib/api/chat';

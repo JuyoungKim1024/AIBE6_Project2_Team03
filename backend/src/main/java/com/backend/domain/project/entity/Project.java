@@ -63,6 +63,14 @@ public class Project extends BaseEntity {
         this.memo = memo;
     }
 
+    public void update(String field, Integer price, Integer videoLength, LocalDateTime deadline, String memo) {
+        this.field = field;
+        this.price = price;
+        this.videoLength = videoLength;
+        this.deadline = deadline;
+        this.memo = memo;
+    }
+
     public void start() {
         this.status = ProjectStatus.WORKING;
     }

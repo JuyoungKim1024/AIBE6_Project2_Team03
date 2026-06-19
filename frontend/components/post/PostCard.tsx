@@ -8,9 +8,8 @@ import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
 import { togglePostLike } from "@/lib/api/post";
 import { UserDmDropdown } from "@/components/common/UserDmDropdown";
-import type { PostType } from "@/types/post";
 
-export type PostType = "hiring" | "looking" | "info" | "free";
+export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
 export interface PostCardProps {
   id: string;
@@ -43,8 +42,6 @@ const typeConfig: Record<
   info: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
   rate: { label: "단가 토크", color: "text-amber-500", bg: "bg-amber-500/10" },
   portfolio: { label: "포트폴리오", color: "text-violet-400", bg: "bg-violet-400/10" },
-  rate: { label: "시세공유", color: "text-primary", bg: "bg-primary/10" },
-  portfolio: { label: "포트폴리오", color: "text-cyan-400", bg: "bg-cyan-400/10" },
   free: {
     label: "자유게시판",
     color: "text-text-secondary",

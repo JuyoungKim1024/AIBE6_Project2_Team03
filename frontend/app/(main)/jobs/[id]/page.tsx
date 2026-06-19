@@ -19,8 +19,10 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
+import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
 import {
   fetchJobPost,
@@ -32,18 +34,17 @@ import {
   togglePostLike,
   getPostLikedStatus,
 } from "@/lib/api/post";
-import { createDirectChatRoom } from "@/lib/api/chat";
-import { fetchJobPost, fetchComments, createComment, updateComment, deleteComment } from "@/lib/api/post";
+import { createPostChatRequest } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [post, setPost] = useState<JobPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [showChatRequestModal, setShowChatRequestModal] = useState(false);
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -127,21 +128,33 @@ export default function JobDetailPage() {
     }
   };
 
-  const startChat = async () => {
+  const openChatRequestModal = () => {
     if (!post || isStartingChat || currentUserId === post.author.id) return;
+
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
+
+    setShowChatRequestModal(true);
+  };
+
+  const submitChatRequest = async (message: string) => {
+    if (!post || isStartingChat || currentUserId === post.author.id || !id) return;
 
     setIsStartingChat(true);
 
     try {
-      const roomId = await createDirectChatRoom(post.author.id);
-      router.push(`/chat/${roomId}`);
+      await createPostChatRequest(post.author.id, id, message);
+      setShowChatRequestModal(false);
+      alert("채팅 요청을 보냈습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "채팅방을 열지 못했습니다.";
-      if (message.includes("로그인")) {
+      const errorMessage = error instanceof Error ? error.message : "채팅 요청을 보내지 못했습니다.";
+      if (errorMessage.includes("로그인")) {
         router.push("/login");
         return;
       }
-      alert(message);
+      alert(errorMessage);
     } finally {
       setIsStartingChat(false);
     }
@@ -719,25 +732,27 @@ export default function JobDetailPage() {
               </div>
             </div>
             <button
-              onClick={startChat}
+              onClick={openChatRequestModal}
               disabled={isStartingChat || isMyPost}
               className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Send size={16} />
               {isMyPost ? "내 글입니다" : "채팅 문의하기"}
             </button>
-            {!(userRole === "EDITOR" && post.postType === "JOB_SEARCH") && (
-              <button
-                onClick={() => setShowChatPanel(true)}
-                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-              >
-                <Send size={16} />
-                채팅 문의하기
-              </button>
-            )}
           </div>
         </div>
       </div>
+
+      {showChatRequestModal && post && (
+        <DirectChatRequestModal
+          targetName={post.author.nickname}
+          title="채팅 문의하기"
+          initialMessage="안녕하세요. 게시글 보고 문의드립니다."
+          isSubmitting={isStartingChat}
+          onClose={() => setShowChatRequestModal(false)}
+          onSubmit={submitChatRequest}
+        />
+      )}
 
       {/* Portfolio Lightbox */}
       <AnimatePresence>

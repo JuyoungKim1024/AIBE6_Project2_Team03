@@ -8,13 +8,6 @@ import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.mypage.dto.*;
-import com.backend.domain.profile.entity.Portfolio;
-import com.backend.domain.profile.entity.PortfolioGroup;
-import com.backend.domain.profile.entity.UserTag;
-import com.backend.domain.profile.entity.UserTagType;
-import com.backend.domain.profile.repository.PortfolioRepository;
-import com.backend.domain.profile.repository.PortfolioGroupRepository;
-import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
@@ -97,7 +90,7 @@ public class MyPageService {
                 .toList();
 
         List<MyProjectResponse> ongoing = projectRepository
-                .findByRequester_IdOrEditor_IdOrderByUpdatedAtDesc(userId, userId)
+                .findVisibleProjectsByUserId(userId)
                 .stream()
                 .map(project -> toProjectResponse(userId, project))
                 .toList();
@@ -395,13 +388,14 @@ public class MyPageService {
         ChatRoom room = roomUser.getChatRoom();
         String roomId = room.getId();
 
-        String partnerName = chatParticipantRepository.findByChatRoom_Id(roomId)
+        User partner = chatParticipantRepository.findByChatRoom_Id(roomId)
                 .stream()
                 .map(ChatParticipant::getUser)
                 .filter(user -> !user.getId().equals(userId))
-                .map(User::getNickname)
                 .findFirst()
-                .orElse("알 수 없음");
+                .orElse(null);
+        String partnerName = partner == null ? "알 수 없음" : partner.getNickname();
+        boolean partnerDeleted = partner != null && partner.isDeleted();
 
         ChatMessage lastMessage = chatMessageRepository.findTopByChatRoom_IdOrderByCreatedAtDesc(roomId);
 
@@ -435,7 +429,8 @@ public class MyPageService {
                 formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
                 room.getChatRoomType(),
                 roomUser.getUnreadCount(),
-                postSummary
+                postSummary,
+                partnerDeleted
         );
     }
 
@@ -452,6 +447,8 @@ public class MyPageService {
         User partner = project.getRequester().getId().equals(userId) ? project.getEditor() : project.getRequester();
         return new MyProjectResponse(
                 project.getId(),
+                project.getRoom().getId(),
+                project.getRequester().getId(),
                 partner.getNickname(),
                 project.getField(),
                 project.getStatus().name(),

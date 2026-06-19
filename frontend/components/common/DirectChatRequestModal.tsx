@@ -7,6 +7,8 @@ type DirectChatRequestModalProps = {
   isSubmitting: boolean;
   onClose: () => void;
   onSubmit: (message: string) => Promise<void> | void;
+  title?: string;
+  initialMessage?: string;
 };
 
 export function DirectChatRequestModal({
@@ -14,8 +16,10 @@ export function DirectChatRequestModal({
   isSubmitting,
   onClose,
   onSubmit,
+  title = 'DM 요청하기',
+  initialMessage = '안녕하세요. DM 문의드립니다.',
 }: DirectChatRequestModalProps) {
-  const [message, setMessage] = useState('안녕하세요. DM 문의드립니다.');
+  const [message, setMessage] = useState(initialMessage);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -37,7 +41,7 @@ export function DirectChatRequestModal({
         onSubmit={submit}
         className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl"
       >
-        <h3 className="text-lg font-bold text-text-primary">DM 요청하기</h3>
+        <h3 className="text-lg font-bold text-text-primary">{title}</h3>
         <p className="mt-2 text-sm text-text-secondary">
           {targetName}님에게 보낼 첫 메시지를 입력하세요.
         </p>

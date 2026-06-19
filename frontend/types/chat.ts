@@ -29,6 +29,8 @@ export interface MyChatRoom {
   type: ChatRoomType;
   unreadCount: number;
   post: ChatPostSummary | null;
+  partnerDeleted?: boolean;
+  partnerWithdrawn?: boolean;
 }
 
 export interface ChatMessage {

@@ -5,9 +5,12 @@ export const PROJECT_MESSAGE_PREFIX = '__PROJECT_CARD__';
 export type ProjectMessagePayload = {
   id: string;
   roomId: string;
+  requesterId?: string;
+  editorId?: string;
   field: string | null;
   price: number | null;
   videoLength: number | null;
+  revisionCount?: number;
   deadline: string | null;
   memo: string | null;
   status: string;
@@ -41,19 +44,97 @@ function formatDeadline(deadline: string | null) {
   });
 }
 
-export function ProjectMessageCard({ project }: { project: ProjectMessagePayload }) {
+function getProjectStatusLabel(status: string) {
+  if (status === 'WAITING') return '수락 대기';
+  if (status === 'WORKING') return '진행 중';
+  if (status === 'COMPLETED') return '완료된 프로젝트입니다';
+  if (status === 'REJECTED') return '거절된 프로젝트입니다';
+  if (status === 'CANCELED') return '취소됨';
+  return status;
+}
+
+function getProjectTone(status: string) {
+  if (status === 'COMPLETED' || status === 'REJECTED') {
+    return {
+      card: 'border-border bg-surface-elevated',
+      badge: 'bg-surface text-text-secondary',
+      label: 'text-text-secondary',
+    };
+  }
+  return {
+    card: 'border-primary/40 bg-primary/5',
+    badge: 'bg-primary/10 text-primary',
+    label: 'text-primary',
+  };
+}
+
+export function ProjectMessageCard({
+  project,
+  pinned = false,
+  actions,
+}: {
+  project: ProjectMessagePayload;
+  pinned?: boolean;
+  actions?: React.ReactNode;
+}) {
+  const tone = getProjectTone(project.status);
+
+  if (pinned) {
+    return (
+      <div className={`w-full rounded-xl border px-4 py-3 text-left ${tone.card}`}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center gap-2">
+              <span className={`text-xs font-bold ${tone.label}`}>프로젝트</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${tone.badge}`}>
+                {getProjectStatusLabel(project.status)}
+              </span>
+            </div>
+            <h4 className="truncate text-sm font-bold text-text-primary">
+              {project.field || '프로젝트'}
+            </h4>
+            {project.memo && (
+              <p className="mt-1 line-clamp-1 text-xs text-text-muted">
+                {project.memo}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-3 lg:items-end">
+            <div className="grid w-full grid-cols-3 gap-2 text-xs lg:w-72">
+              <div>
+                <p className="text-text-muted">금액</p>
+                <p className="font-bold text-text-primary">{formatPrice(project.price)}</p>
+              </div>
+              <div>
+                <p className="text-text-muted">길이</p>
+                <p className="font-bold text-text-primary">
+                  {project.videoLength ? `${project.videoLength}분` : '미정'}
+                </p>
+              </div>
+              <div>
+                <p className="text-text-muted">마감</p>
+                <p className="font-bold text-text-primary">{formatDeadline(project.deadline)}</p>
+              </div>
+            </div>
+            {actions ? <div className="flex w-full justify-end lg:w-auto">{actions}</div> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-primary/40 bg-surface p-4 text-left shadow-[0_0_20px_rgba(59,130,246,0.15)]">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-xs font-bold text-primary">프로젝트 시작</span>
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          {project.status}
+    <div className={`w-full max-w-sm rounded-xl border bg-surface p-3 text-left shadow-[0_0_14px_rgba(59,130,246,0.12)] ${project.status === 'COMPLETED' ? 'border-border shadow-none' : 'border-primary/40'}`}>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className={`text-xs font-bold ${tone.label}`}>프로젝트</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${tone.badge}`}>
+          {getProjectStatusLabel(project.status)}
         </span>
       </div>
       <h4 className="text-sm font-bold text-text-primary">
         {project.field || '프로젝트'}
       </h4>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-lg bg-surface-elevated p-2">
           <p className="text-text-muted">금액</p>
           <p className="mt-0.5 font-bold text-text-primary">{formatPrice(project.price)}</p>
@@ -65,12 +146,13 @@ export function ProjectMessageCard({ project }: { project: ProjectMessagePayload
           </p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-text-secondary">{formatDeadline(project.deadline)}</p>
+      <p className="mt-2 text-xs text-text-secondary">{formatDeadline(project.deadline)}</p>
       {project.memo && (
-        <p className="mt-2 whitespace-pre-wrap break-words text-xs text-text-muted">
+        <p className="mt-1.5 line-clamp-2 whitespace-pre-wrap break-words text-xs text-text-muted">
           {project.memo}
         </p>
       )}
+      {actions ? <div className="mt-2 flex justify-end">{actions}</div> : null}
     </div>
   );
 }

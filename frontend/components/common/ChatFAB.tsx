@@ -21,6 +21,8 @@ type MyChatRoom = {
   lastMessage: string;
   time: string;
   unreadCount: number;
+  partnerDeleted?: boolean;
+  partnerWithdrawn?: boolean;
 };
 
 export function ChatFAB() {
@@ -43,6 +45,7 @@ export function ChatFAB() {
   const showPopup = isOpen;
   const activeRoom = chatRooms.find((chat) => chat.id === activeRoomId);
   const activePartnerName = activeRoom?.partnerName ?? '채팅방';
+  const isPartnerWithdrawn = Boolean(activeRoom?.partnerDeleted || activeRoom?.partnerWithdrawn);
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -155,7 +158,7 @@ export function ChatFAB() {
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !activeRoomId || !user || isSending) return;
+    if (!content || !activeRoomId || !user || isSending || isPartnerWithdrawn) return;
 
     setIsSending(true);
     setErrorMessage('');
@@ -245,7 +248,9 @@ export function ChatFAB() {
                           <span className="font-bold text-sm text-text-primary truncate">{chat.partnerName}</span>
                           <span className="text-[10px] text-text-muted flex-shrink-0">{chat.time}</span>
                         </div>
-                        <p className="text-xs text-text-secondary truncate">{chat.lastMessage || '아직 메시지가 없습니다'}</p>
+                        <p className="text-xs text-text-secondary truncate">
+                          {chat.partnerDeleted || chat.partnerWithdrawn ? '탈퇴한 회원입니다' : chat.lastMessage || '아직 메시지가 없습니다'}
+                        </p>
                       </div>
                     </button>
                   ))
@@ -306,6 +311,9 @@ export function ChatFAB() {
                         );
                       })
                     )}
+                    {isPartnerWithdrawn ? (
+                      <div className="py-2 text-center text-xs font-bold text-text-muted">---탈퇴한 회원입니다---</div>
+                    ) : null}
                     <div ref={messagesEndRef} />
                   </div>
                   {errorMessage && <div className="border-t border-border px-4 py-2 text-xs text-primary">{errorMessage}</div>}
@@ -314,12 +322,13 @@ export function ChatFAB() {
                       <input
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
-                        placeholder="메시지 입력..."
+                        disabled={isPartnerWithdrawn}
+                        placeholder={isPartnerWithdrawn ? '탈퇴한 회원에게는 메시지를 보낼 수 없습니다.' : '메시지 입력...'}
                         className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
                       />
                       <button
                         type="submit"
-                        disabled={!draft.trim() || !activeRoomId || isSending}
+                        disabled={!draft.trim() || !activeRoomId || isSending || isPartnerWithdrawn}
                         className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="메시지 보내기"
                       >

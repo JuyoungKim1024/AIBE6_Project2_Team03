@@ -1,13 +1,13 @@
 'use client';
 
 import React, { FormEvent, Suspense, useEffect, useRef, useState } from 'react';
-import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Briefcase,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
   Coins,
@@ -18,6 +18,7 @@ import {
   Heart,
   Image as ImageIcon,
   MessageCircle,
+  Pencil,
   Plus,
   RefreshCw,
   Send,
@@ -26,6 +27,7 @@ import {
   Trash2,
   Upload,
   Wallet,
+  X,
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
 import {
@@ -100,8 +102,14 @@ type ProjectCreateForm = {
   memo: string;
 };
 
+type ProjectFormMode = 'create' | 'edit';
+type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
+
 type MyProject = {
   id: string;
+  roomId?: string;
+  requesterId?: string;
+  editorId?: string;
   partnerName: string;
   field: string | null;
   status: string;
@@ -150,6 +158,46 @@ function getTomorrowDateTimeLocalMin() {
   tomorrow.setHours(0, 0, 0, 0);
   const timezoneOffsetMs = tomorrow.getTimezoneOffset() * 60 * 1000;
   return new Date(tomorrow.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+}
+
+function toDateTimeLocalValue(value: string | null) {
+  return value ? value.slice(0, 16) : '';
+}
+
+function isWaitingProject(project: ProjectMessagePayload | null | undefined) {
+  return project?.status === 'WAITING';
+}
+
+function isWorkingProject(project: ProjectMessagePayload | null | undefined) {
+  return project?.status === 'WORKING';
+}
+
+function isOpenProject(project: ProjectMessagePayload | null | undefined) {
+  return project ? ['WAITING', 'WORKING'].includes(project.status) : false;
+}
+
+function isVisibleChatProject(project: ProjectMessagePayload | null | undefined) {
+  return project ? ['WAITING', 'WORKING', 'COMPLETED', 'REJECTED'].includes(project.status) : false;
+}
+
+function getProjectMessageLabel(project: ProjectMessagePayload) {
+  if (project.status === 'WAITING') return '프로젝트 수락 대기';
+  if (project.status === 'WORKING') return '프로젝트 진행 중';
+  if (project.status === 'COMPLETED') return '프로젝트 완료';
+  if (project.status === 'REJECTED') return '프로젝트 거절';
+  if (project.status === 'CANCELED') return '프로젝트 취소';
+  return '프로젝트';
+}
+
+function getChatLastMessageText(lastMessage: string) {
+  if (!lastMessage) return '아직 메시지가 없습니다';
+  const project = parseProjectMessage(lastMessage);
+  return project ? getProjectMessageLabel(project) : lastMessage;
+}
+
+function canRespondProject(project: { status?: string; requesterId?: string } | null | undefined, userId: string | null | undefined) {
+  if (!project || !userId || project.status !== 'WAITING') return false;
+  return project.requesterId ? project.requesterId !== userId : true;
 }
 
 type PortfolioDraft = {
@@ -971,15 +1019,22 @@ function ChatsSection() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('ALL');
+  const [chatPage, setChatPage] = useState(1);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentProject, setCurrentProject] = useState<ProjectMessagePayload | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectAction, setProjectAction] = useState<ProjectAction | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showPostCard, setShowPostCard] = useState(false);
+  const [showProjectCard, setShowProjectCard] = useState(false);
+  const [projectFormMode, setProjectFormMode] = useState<ProjectFormMode>('create');
+  const [editingProject, setEditingProject] = useState<ProjectMessagePayload | null>(null);
   const [projectRoomId, setProjectRoomId] = useState<string | null>(null);
   const [projectForm, setProjectForm] = useState<ProjectCreateForm>({
     field: '',
@@ -991,13 +1046,20 @@ function ChatsSection() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const selectedRoom = chatRooms.find((room) => room.id === selectedRoomId);
+  const selectedPost = selectedRoom?.post ?? null;
+  const isPartnerWithdrawn = Boolean(selectedRoom?.partnerDeleted || selectedRoom?.partnerWithdrawn);
   const minProjectDeadline = getTomorrowDateTimeLocalMin();
+  const roomProject = currentProject?.roomId === selectedRoomId ? currentProject : null;
+  const pinnedProject = isVisibleChatProject(roomProject) ? roomProject : null;
   const filteredRooms = chatRooms.filter((room) => {
     if (activeFilter === 'POST') return room.type === 'POST';
     if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
     if (activeFilter === 'UNREAD') return room.unreadCount > 0;
     return true;
   });
+  const roomsPerPage = 7;
+  const totalChatPages = Math.max(1, Math.ceil(filteredRooms.length / roomsPerPage));
+  const pagedRooms = filteredRooms.slice((chatPage - 1) * roomsPerPage, chatPage * roomsPerPage);
   const chatFilters: { id: ChatFilter; label: string }[] = [
     { id: 'ALL', label: '전체' },
     { id: 'POST', label: '문의채팅' },
@@ -1029,6 +1091,7 @@ function ChatsSection() {
   const loadMessages = async (roomId: string) => {
     setIsLoadingMessages(true);
     setErrorMessage('');
+    setMessages([]);
     try {
       const data = await fetchMyPageData<ChatMessage[]>(`/api/chat/rooms/${roomId}/messages`);
       setMessages(data);
@@ -1037,6 +1100,39 @@ function ChatsSection() {
       setErrorMessage('메시지를 불러오지 못했습니다.');
     } finally {
       setIsLoadingMessages(false);
+    }
+  };
+
+  const fetchProject = async (roomId: string) => {
+    try {
+      const project = await fetchMyPageData<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`);
+      setCurrentProject(project);
+      return project;
+    } catch {
+      try {
+        const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED'].includes(item.status));
+        if (project) {
+          const memo = project.status === 'REJECTED' ? '거절된 프로젝트입니다.' : '완료된 프로젝트입니다.';
+          const completedProject: ProjectMessagePayload = {
+            id: project.id,
+            roomId,
+            requesterId: project.requesterId,
+            field: project.field,
+            price: null,
+            videoLength: null,
+            deadline: null,
+            memo,
+            status: project.status,
+          };
+          setCurrentProject(completedProject);
+          return completedProject;
+        }
+      } catch {
+        // 활성 프로젝트가 없으면 채팅 메시지에 저장된 카드도 숨긴다.
+      }
+      setCurrentProject(null);
+      return null;
     }
   };
 
@@ -1056,9 +1152,39 @@ function ChatsSection() {
   useEffect(() => {
     if (!selectedRoomId) {
       setMessages([]);
+      setCurrentProject(null);
       return;
     }
+    setShowPostCard(false);
+    setShowProjectCard(false);
+    setCurrentProject(null);
     loadMessages(selectedRoomId);
+    fetchProject(selectedRoomId);
+  }, [selectedRoomId]);
+
+  useEffect(() => {
+    setChatPage(1);
+  }, [activeFilter]);
+
+  useEffect(() => {
+    if (chatPage > totalChatPages) {
+      setChatPage(totalChatPages);
+    }
+  }, [chatPage, totalChatPages]);
+
+  useEffect(() => {
+    if (!selectedRoomId) return;
+    const intervalId = window.setInterval(() => fetchProject(selectedRoomId), 10000);
+    const refetch = () => {
+      if (document.visibilityState === 'visible') fetchProject(selectedRoomId);
+    };
+    window.addEventListener('focus', refetch);
+    document.addEventListener('visibilitychange', refetch);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refetch);
+      document.removeEventListener('visibilitychange', refetch);
+    };
   }, [selectedRoomId]);
 
   useEffect(() => {
@@ -1068,7 +1194,7 @@ function ChatsSection() {
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !selectedRoomId || !user || isSending) return;
+    if (!content || !selectedRoomId || !user || isSending || isPartnerWithdrawn) return;
 
     setIsSending(true);
     setErrorMessage('');
@@ -1139,6 +1265,8 @@ function ChatsSection() {
     if (isCreatingProject) return;
     setShowProjectForm(false);
     setProjectRoomId(null);
+    setEditingProject(null);
+    setProjectFormMode('create');
   };
 
   const openProjectForm = () => {
@@ -1150,13 +1278,150 @@ function ChatsSection() {
 
     setProjectRoomId(roomId);
     setSelectedRoomId(roomId);
+    setProjectFormMode('create');
+    setEditingProject(null);
+    setProjectForm({
+      field: '',
+      price: '',
+      videoLength: '',
+      deadline: '',
+      memo: '',
+    });
     setErrorMessage('');
     setShowProjectForm(true);
   };
 
-  const createProject = async (event: FormEvent<HTMLFormElement>) => {
+  const openEditProjectForm = (project: ProjectMessagePayload) => {
+    setProjectRoomId(project.roomId);
+    setProjectFormMode('edit');
+    setEditingProject(project);
+    setProjectForm({
+      field: project.field ?? '',
+      price: project.price ? String(project.price) : '',
+      videoLength: project.videoLength ? String(project.videoLength) : '',
+      deadline: toDateTimeLocalValue(project.deadline),
+      memo: project.memo ?? '',
+    });
+    setErrorMessage('');
+    setShowProjectForm(true);
+  };
+
+  const upsertProjectMessage = (project: ProjectMessagePayload) => {
+    setCurrentProject(project);
+    setMessages((current) => current.map((message) => {
+      const messageProject = parseProjectMessage(message.content);
+      if (messageProject?.id !== project.id) return message;
+      return { ...message, content: serializeProjectMessage(project) };
+    }));
+  };
+
+  const updateProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
+    const confirmMessage =
+      action === 'start'
+        ? '프로젝트를 수락하시겠습니까?'
+        : action === 'reject'
+          ? '프로젝트를 거절하시겠습니까?'
+          : action === 'complete'
+            ? '프로젝트를 완료하시겠습니까?'
+            : '프로젝트를 취소하시겠습니까?';
+    if (!window.confirm(confirmMessage)) return;
+
+    setProjectAction(action);
+    setErrorMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/projects/${project.id}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? '프로젝트 상태를 변경하지 못했습니다.');
+      }
+
+      const savedProject = await response.json() as ProjectMessagePayload;
+      upsertProjectMessage(savedProject);
+
+      if (action === 'reject' && user) {
+        const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${project.roomId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getAccessToken()}`,
+          },
+          body: JSON.stringify({
+            senderId: user.id,
+            content: '프로젝트가 거절되었습니다.',
+            messageType: 'TEXT',
+          }),
+        }).catch(() => null);
+        if (messageResponse?.ok && project.roomId === selectedRoomId) {
+          const savedMessage = await messageResponse.json() as ChatMessage;
+          setMessages((current) => [...current, savedMessage]);
+        }
+      }
+
+      window.alert(
+        action === 'start'
+          ? '프로젝트를 수락했습니다.'
+          : action === 'reject'
+            ? '프로젝트를 거절했습니다.'
+            : action === 'complete'
+              ? '프로젝트를 완료했습니다.'
+              : '프로젝트를 취소했습니다.'
+      );
+      loadRooms();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+      setErrorMessage(message);
+      window.alert(message);
+    } finally {
+      setProjectAction(null);
+    }
+  };
+
+  const deleteProject = async (project: ProjectMessagePayload) => {
+    await updateProjectStatus(project, 'cancel');
+  };
+
+  const renderProjectActions = (project: ProjectMessagePayload) => (
+    <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+      {canRespondProject(project, user?.id) ? (
+        <>
+          <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'start')} className="inline-flex min-w-16 items-center justify-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">
+            <Check size={12} />수락
+          </button>
+          <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'reject')} className="inline-flex min-w-16 items-center justify-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">
+            <X size={12} />거절
+          </button>
+        </>
+      ) : null}
+      {isWorkingProject(project) ? (
+        <>
+          <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'complete')} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">
+            <Check size={12} />완료
+          </button>
+          <button type="button" disabled={Boolean(projectAction)} onClick={() => deleteProject(project)} className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">
+            <X size={12} />취소
+          </button>
+        </>
+      ) : null}
+      {isOpenProject(project) ? (
+        <button type="button" onClick={() => openEditProjectForm(project)} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2.5 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:border-primary/50 hover:text-primary">
+          <Pencil size={12} />수정
+        </button>
+      ) : null}
+    </div>
+  );
+
+  const saveProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!projectRoomId || !user || isCreatingProject) return;
+
+    if (projectFormMode === 'create' && projectRoomId !== selectedRoomId) {
+      setErrorMessage('현재 선택한 채팅방에서만 프로젝트를 시작할 수 있습니다.');
+      return;
+    }
 
     if (projectForm.deadline && projectForm.deadline < minProjectDeadline) {
       setErrorMessage('마감일은 내일 이후로 설정해주세요.');
@@ -1166,14 +1431,15 @@ function ChatsSection() {
     setIsCreatingProject(true);
     setErrorMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/projects`, {
-        method: 'POST',
+      const isEdit = projectFormMode === 'edit' && editingProject;
+      const response = await fetch(`${API_BASE_URL}/api/projects${isEdit ? `/${editingProject.id}` : ''}`, {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getAccessToken()}`,
         },
         body: JSON.stringify({
-          roomId: projectRoomId,
+          ...(isEdit ? {} : { roomId: projectRoomId }),
           field: projectForm.field.trim(),
           price: projectForm.price ? Number(projectForm.price) : null,
           videoLength: projectForm.videoLength ? Number(projectForm.videoLength) : null,
@@ -1184,9 +1450,21 @@ function ChatsSection() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        throw new Error(data?.message ?? '프로젝트 생성에 실패했습니다.');
+        throw new Error(data?.message ?? (isEdit ? '프로젝트 수정에 실패했습니다.' : '프로젝트 생성에 실패했습니다.'));
       }
       const project = await response.json() as ProjectMessagePayload;
+
+      if (isEdit) {
+        upsertProjectMessage(project);
+        setShowProjectForm(false);
+        setProjectRoomId(null);
+        setEditingProject(null);
+        setProjectFormMode('create');
+        setProjectForm({ field: '', price: '', videoLength: '', deadline: '', memo: '' });
+        setErrorMessage('프로젝트를 수정했습니다.');
+        loadRooms();
+        return;
+      }
 
       const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${projectRoomId}/messages`, {
         method: 'POST',
@@ -1206,19 +1484,14 @@ function ChatsSection() {
 
       setShowProjectForm(false);
       setProjectRoomId(null);
-      setProjectForm({
-        field: '',
-        price: '',
-        videoLength: '',
-        deadline: '',
-        memo: '',
-      });
+      setProjectForm({ field: '', price: '', videoLength: '', deadline: '', memo: '' });
+      setCurrentProject(project);
       setMessages((current) => [...current, savedMessage]);
       setSelectedRoomId(projectRoomId);
       setErrorMessage('프로젝트를 시작했습니다.');
       loadRooms();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '프로젝트를 시작하지 못했습니다.');
+      setErrorMessage(error instanceof Error ? error.message : '프로젝트를 저장하지 못했습니다.');
     } finally {
       setIsCreatingProject(false);
     }
@@ -1243,6 +1516,7 @@ function ChatsSection() {
                     if (filter.id === 'UNREAD') return room.unreadCount > 0;
                     return true;
                   });
+                  setChatPage(1);
                   setSelectedRoomId(nextRooms[0]?.id ?? null);
                 }}
                 className={`px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${activeFilter === filter.id ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary hover:text-text-primary'}`}
@@ -1252,26 +1526,27 @@ function ChatsSection() {
             ))}
           </div>
           {filteredRooms.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-          <div className="space-y-2">
-            {filteredRooms.map((room) => (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="flex min-h-[780px] flex-col">
+            <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+            {pagedRooms.map((room) => (
               <div
                 key={room.id}
-                className={`w-full flex items-center gap-4 bg-surface-elevated border rounded-xl p-4 text-left transition-colors ${selectedRoomId === room.id ? 'border-primary/60' : 'border-border hover:border-primary/50'}`}
+                className={`w-full flex items-center gap-3 bg-surface-elevated border rounded-xl p-3 text-left transition-colors ${selectedRoomId === room.id ? 'border-primary/60 bg-primary/5' : 'border-border hover:border-primary/50'}`}
               >
                 <button
                   type="button"
                   onClick={() => setSelectedRoomId(room.id)}
-                  className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 >
-                  <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
-                    <MessageCircle size={18} className="text-text-muted" />
+                  <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                    <MessageCircle size={16} className="text-text-muted" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-text-primary truncate">{room.partnerName}</span>
+                      <span className="font-bold text-sm text-text-primary truncate">{room.partnerName}</span>
                     </div>
-                    <p className="text-sm text-text-secondary truncate">{room.lastMessage || '아직 메시지가 없습니다'}</p>
+                    <p className="text-xs text-text-secondary truncate">{getChatLastMessageText(room.lastMessage)}</p>
                     {room.type === 'POST' && <p className="mt-1 text-xs font-bold text-primary">문의채팅</p>}
                   </div>
                 </button>
@@ -1291,27 +1566,35 @@ function ChatsSection() {
                 </div>
               </div>
             ))}
+            </div>
+            {totalChatPages > 1 ? (
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+                <button type="button" onClick={() => setChatPage((page) => Math.max(1, page - 1))} disabled={chatPage === 1} className="rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50">이전</button>
+                <span className="text-xs font-bold text-text-muted">{chatPage} / {totalChatPages}</span>
+                <button type="button" onClick={() => setChatPage((page) => Math.min(totalChatPages, page + 1))} disabled={chatPage === totalChatPages} className="rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50">다음</button>
+              </div>
+            ) : null}
           </div>
 
-          <div className="h-[560px] min-h-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
-            <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="h-[calc(100vh-7rem)] min-h-[780px] max-h-[1040px] min-w-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
+            <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
                   <MessageCircle size={18} className="text-text-muted" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="truncate text-base font-bold text-text-primary">{selectedRoom?.partnerName ?? '채팅방'}</h3>
+                  <p className="mt-0.5 text-xs text-text-muted">
+                    {selectedRoom?.type === 'POST' ? '문의채팅' : selectedRoom?.type === 'DIRECT' ? 'DM' : '채팅'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openProjectForm}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-primary/90"
-                >
-                  <Briefcase size={14} />
-                  프로젝트 시작
-                </button>
+                {!isOpenProject(pinnedProject) ? (
+                  <button type="button" onClick={openProjectForm} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/20">
+                    <Briefcase size={14} />프로젝트 시작
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => selectedRoomId && loadMessages(selectedRoomId)}
@@ -1323,16 +1606,36 @@ function ChatsSection() {
               </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto bg-background/40 px-4 py-5">
-              {selectedRoom?.type === 'POST' && selectedRoom.post && (
-                <ChatPostCard post={selectedRoom.post} />
-              )}
+            {selectedPost ? (
+              <div className="shrink-0 border-b border-border bg-surface px-5 py-3">
+                <button type="button" onClick={() => setShowPostCard((current) => !current)} className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-left text-sm font-bold text-text-primary transition-colors hover:border-primary/50">
+                  <span className="min-w-0 truncate">게시글 정보</span>
+                  <ChevronDown size={16} className={`flex-shrink-0 text-text-muted transition-transform ${showPostCard ? 'rotate-180' : ''}`} />
+                </button>
+                {showPostCard ? <div className="mt-3"><ChatPostCard post={selectedPost} compact /></div> : null}
+              </div>
+            ) : null}
+
+            {pinnedProject ? (
+              <div className="shrink-0 border-b border-border bg-surface px-5 py-3">
+                <button type="button" onClick={() => setShowProjectCard((current) => !current)} className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm font-bold text-text-primary transition-colors hover:border-primary/60">
+                  <span className="min-w-0 truncate">{pinnedProject.status === 'COMPLETED' ? '완료된 프로젝트' : '진행 중인 프로젝트'}</span>
+                  <ChevronDown size={16} className={`flex-shrink-0 text-text-muted transition-transform ${showProjectCard ? 'rotate-180' : ''}`} />
+                </button>
+                {showProjectCard ? <div className="mt-3"><ProjectMessageCard project={pinnedProject} pinned actions={renderProjectActions(pinnedProject)} /></div> : null}
+              </div>
+            ) : null}
+
+            <main className="flex-1 overflow-y-auto bg-background/40 px-5 py-5">
               {isLoadingMessages ? (
                 <div className="flex h-full items-center justify-center text-sm text-text-secondary">메시지를 불러오는 중입니다</div>
               ) : errorMessage && messages.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-sm text-text-secondary">{errorMessage}</div>
               ) : messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-text-secondary">아직 메시지가 없습니다</div>
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-text-secondary">
+                  <span>아직 메시지가 없습니다</span>
+                  {isPartnerWithdrawn ? <span className="text-xs font-bold text-text-muted">---탈퇴한 회원입니다---</span> : null}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {messages.map((message) => {
@@ -1340,16 +1643,27 @@ function ChatsSection() {
                     const projectMessage = parseProjectMessage(message.content);
 
                     if (projectMessage) {
+                      if (roomProject?.id !== projectMessage.id) return null;
+                      if (!isVisibleChatProject(roomProject)) return null;
+                      const displayProject: ProjectMessagePayload = {
+                        ...projectMessage,
+                        ...roomProject,
+                        price: roomProject.price ?? projectMessage.price,
+                        videoLength: roomProject.videoLength ?? projectMessage.videoLength,
+                        deadline: roomProject.deadline ?? projectMessage.deadline,
+                        memo: roomProject.memo ?? projectMessage.memo,
+                      };
+
                       return (
                         <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <ProjectMessageCard project={projectMessage} />
+                          <ProjectMessageCard project={displayProject} actions={renderProjectActions(displayProject)} />
                         </div>
                       );
                     }
 
                     return (
                       <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
+                        <div className={`max-w-[72%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
                           <p className="whitespace-pre-wrap break-words">{message.content}</p>
                           <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
                             {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
@@ -1358,6 +1672,9 @@ function ChatsSection() {
                       </div>
                     );
                   })}
+                  {isPartnerWithdrawn ? (
+                    <div className="py-2 text-center text-xs font-bold text-text-muted">---탈퇴한 회원입니다---</div>
+                  ) : null}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1367,17 +1684,18 @@ function ChatsSection() {
               <div className="border-t border-border px-4 py-2 text-xs text-primary">{errorMessage}</div>
             )}
 
-            <form onSubmit={sendMessage} className="border-t border-border bg-surface px-3 py-3">
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-1.5">
+            <form onSubmit={sendMessage} className="border-t border-border bg-surface px-4 py-4">
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-2">
                 <input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder="메시지 입력..."
-                  className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+                  disabled={isPartnerWithdrawn}
+                  placeholder={isPartnerWithdrawn ? '탈퇴한 회원에게는 메시지를 보낼 수 없습니다.' : '메시지 입력...'}
+                  className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
                 />
                 <button
                   type="submit"
-                  disabled={!draft.trim() || !selectedRoomId || isSending}
+                  disabled={!draft.trim() || !selectedRoomId || isSending || isPartnerWithdrawn}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="메시지 보내기"
                 >
@@ -1404,12 +1722,14 @@ function ChatsSection() {
             aria-label="프로젝트 입력 닫기"
           />
           <form
-            onSubmit={createProject}
+            onSubmit={saveProject}
             className="relative w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl"
           >
-            <h3 className="text-lg font-bold text-text-primary">프로젝트 시작</h3>
+            <h3 className="text-lg font-bold text-text-primary">
+              {projectFormMode === 'edit' ? '프로젝트 수정' : '프로젝트 시작'}
+            </h3>
             <p className="mt-1 text-sm text-text-secondary">
-              작업 조건을 입력해 프로젝트를 생성합니다.
+              {projectFormMode === 'edit' ? '프로젝트 조건을 수정합니다.' : '작업 조건을 입력해 프로젝트를 생성합니다.'}
             </p>
 
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1478,7 +1798,9 @@ function ChatsSection() {
                 disabled={isCreatingProject}
                 className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isCreatingProject ? '생성 중...' : '프로젝트 시작'}
+                {isCreatingProject
+                  ? projectFormMode === 'edit' ? '수정 중...' : '생성 중...'
+                  : projectFormMode === 'edit' ? '수정하기' : '프로젝트 시작'}
               </button>
             </div>
           </form>
@@ -1488,14 +1810,14 @@ function ChatsSection() {
   );
 }
 
-function ChatPostCard({ post }: { post: ChatPostSummary }) {
+function ChatPostCard({ post, compact = false }: { post: ChatPostSummary; compact?: boolean }) {
   const priceText = formatChatPostPrice(post.priceMin, post.priceMax);
   const deadlineText = post.deadline
     ? new Date(post.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
     : '마감기한 없음';
 
   return (
-    <Link href={`/jobs/${post.id}`} className="mb-4 block rounded-xl border border-border bg-surface p-4 hover:border-primary/50 transition-colors">
+    <Link href={`/jobs/${post.id}`} className={`${compact ? '' : 'mb-4'} block rounded-xl border border-border bg-surface p-4 hover:border-primary/50 transition-colors`}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-primary">게시글 문의</span>
         <span className="text-xs text-text-muted">{deadlineText}</span>
@@ -1518,74 +1840,173 @@ function formatChatPostPrice(minPrice: number | null, maxPrice: number | null) {
 
 function ProjectsSection() {
   const [projects, setProjects] = useState<MyProjects>({ received: [], ongoing: [] });
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [projectActionId, setProjectActionId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+
+  const loadProjects = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
+      setProjects(data);
+    } catch {
+      setProjects({ received: [], ongoing: [] });
+      setMessage('프로젝트 정보를 불러오지 못했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchMyPageData<MyProjects>('/api/users/me/projects')
-      .then(setProjects)
-      .catch(() => setProjects({ received: [], ongoing: [] }))
-      .finally(() => setIsLoading(false));
+    fetchMyPageData<AuthUser>('/api/auth/me').then(setUser).catch(() => setUser(null));
+    loadProjects();
   }, []);
+
+  const updateProjectFromBoard = async (project: MyProject, action: 'start' | 'reject' | 'complete') => {
+    const confirmMessage =
+      action === 'start'
+        ? '프로젝트를 수락하시겠습니까?'
+        : action === 'reject'
+          ? '프로젝트를 거절하시겠습니까?'
+          : '프로젝트를 완료하시겠습니까?';
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setProjectActionId(project.id);
+    setMessage('');
+    try {
+      await patchMyPageData<MyProject>(`/api/projects/${project.id}/${action}`, {});
+      window.alert(
+        action === 'start'
+          ? '프로젝트를 수락했습니다.'
+          : action === 'reject'
+            ? '프로젝트를 거절했습니다.'
+            : '프로젝트를 완료했습니다.'
+      );
+      await loadProjects();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+      setMessage(errorMessage);
+      window.alert(errorMessage);
+    } finally {
+      setProjectActionId(null);
+    }
+  };
+
+  const visibleProjects = projects.ongoing.filter((project) => !['REJECTED', 'CANCELED'].includes(project.status));
+  const pendingProjects = visibleProjects.filter((project) => project.status === 'WAITING');
+  const workingProjects = visibleProjects.filter((project) => project.status === 'WORKING');
+  const completedProjects = visibleProjects.filter((project) => project.status === 'COMPLETED');
 
   return (
     <SectionCard title="프로젝트 관리" description="받은 매칭 요청과 진행 중인 프로젝트를 관리합니다.">
+      {message ? <p className="mb-4 text-sm font-bold text-accent">{message}</p> : null}
       {isLoading ? (
         <EmptyState message="프로젝트 정보를 불러오는 중입니다" />
       ) : (
-      <div className="space-y-8">
-        <section>
-          <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-4">받은 매칭 요청</h3>
-          {projects.received.length > 0 ? (
-            <div className="space-y-3">
-              {projects.received.map((project) => (
-                <div key={project.id} className="bg-surface-elevated border border-primary/30 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+        <div className="space-y-6">
+          <ProjectBoardColumn title="받은 매칭 요청" emptyMessage="새로운 매칭 요청이 없습니다">
+            {projects.received.map((request) => (
+              <div key={request.id} className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="text-xs font-bold text-primary">새로운 매칭 요청</div>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="text-xs text-primary font-bold mb-1">새로운 매칭 요청이 도착했습니다!</div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-text-primary">{project.requesterName}</span>
-                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.date}</span>
-                    </div>
+                    <p className="font-bold text-text-primary">{request.requesterName}</p>
+                    <p className="text-xs text-text-muted">{request.date}</p>
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    <button className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold text-text-secondary bg-surface hover:bg-border transition-colors">거절</button>
-                    <Link href="/chat/1" className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-primary/90 transition-colors text-center">수락 후 채팅</Link>
-                  </div>
+                  <span className="w-fit rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-text-secondary">{request.status}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="새로운 매칭 요청이 없습니다" />
-          )}
-        </section>
-        <section>
-          <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-4">진행 중인 프로젝트</h3>
-          {projects.ongoing.length > 0 ? (
-            <div className="space-y-3">
-              {projects.ongoing.map((project) => (
-                <Link key={project.id} href="/chat/1" className="block bg-surface-elevated border border-border rounded-xl p-5 hover:border-primary/50 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-text-primary">{project.partnerName}</span>
-                      <span className="text-text-muted">·</span><span className="text-sm text-text-secondary">{project.field ?? '프로젝트'}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${project.status === 'WORKING' ? 'bg-amber-500/10 text-amber-500' : 'bg-primary/10 text-primary'}`}>
-                        {project.status === 'WORKING' ? <Clock size={12} /> : <Check size={12} />}{project.status === 'COMPLETED' ? '작업완료' : '작업 중'}
-                      </span>
-                      <ChevronRight size={16} className="text-text-muted" />
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="진행 중인 프로젝트가 없습니다" />
-          )}
-        </section>
-      </div>
+              </div>
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="대기 중 프로젝트" emptyMessage="수락 대기 중인 프로젝트가 없습니다">
+            {pendingProjects.map((project) => (
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="수락 대기"
+                accentClass="border-l-primary"
+                actions={canRespondProject(project, user?.id) ? (
+                  <>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'reject')} className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">거절</button>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'start')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">수락</button>
+                  </>
+                ) : null}
+              />
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="진행 중인 프로젝트" emptyMessage="진행 중인 프로젝트가 없습니다">
+            {workingProjects.map((project) => (
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="진행 중"
+                accentClass="border-l-amber-500"
+                actions={(
+                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
+                )}
+              />
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="완료된 프로젝트" emptyMessage="완료된 프로젝트가 없습니다">
+            {completedProjects.map((project) => (
+              <ProjectBoardCard key={project.id} project={project} statusLabel="완료" accentClass="border-l-border" />
+            ))}
+          </ProjectBoardColumn>
+        </div>
       )}
     </SectionCard>
+  );
+}
+
+function ProjectBoardColumn({
+  title,
+  emptyMessage,
+  children,
+}: {
+  title: string;
+  emptyMessage: string;
+  children: React.ReactNode[];
+}) {
+  return (
+    <section>
+      <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-text-secondary">{title}</h3>
+      {children.length > 0 ? <div className="space-y-3">{children}</div> : <EmptyState message={emptyMessage} />}
+    </section>
+  );
+}
+
+function ProjectBoardCard({
+  project,
+  statusLabel,
+  accentClass,
+  actions,
+}: {
+  project: MyProject;
+  statusLabel: string;
+  accentClass: string;
+  actions?: React.ReactNode;
+}) {
+  const roomHref = project.roomId ? `/mypage?tab=chats&roomId=${project.roomId}` : '/mypage?tab=chats';
+
+  return (
+    <div className={`rounded-xl border border-border border-l-4 ${accentClass} bg-surface-elevated p-4`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link href={roomHref} className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-bold text-text-primary">{project.partnerName}</span>
+            <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-bold text-text-secondary">{statusLabel}</span>
+          </div>
+          <p className="mt-1 text-sm text-text-secondary">{project.field ?? '프로젝트'}</p>
+          <p className="mt-1 text-xs text-text-muted">{project.date}</p>
+        </Link>
+        {actions ? <div className="flex shrink-0 items-center justify-end gap-2">{actions}</div> : null}
+      </div>
+    </div>
   );
 }
 

@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { mergeAttributes } from "@tiptap/core";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { TextStyle, Color } from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";

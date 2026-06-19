@@ -9,6 +9,7 @@ public record MyChatRoomResponseDTO(
         String time,
         ChatRoomType type,
         int unreadCount,
-        ChatPostSummaryDTO post
+        ChatPostSummaryDTO post,
+        boolean partnerDeleted
 ) {
 }

@@ -58,7 +58,7 @@ class NotificationControllerTest {
 
         editor = new User(SocialProvider.GOOGLE, "google-ed-2", "ed2@test.com", "에디터2", "https://example.com/avatar2.jpg");
         editor.updateRole(UserRole.EDITOR);
-        editor.updateMatchingPrice(true, 12000, MatchPriceUnit.MIN);
+        editor.updateMatchingPrice(true, 12000, 12000, MatchPriceUnit.MIN);
         userRepository.saveAndFlush(editor);
 
         matchRequest = new MatchRequest(requester, editor);

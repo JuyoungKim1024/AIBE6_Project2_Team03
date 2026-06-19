@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { parseProjectMessage, ProjectMessageCard } from '@/components/common/ProjectMessageCard';
-import type { ChatMessage } from '@/types/chat';
+import type { ChatMessage, MyChatRoom } from '@/types/chat';
 
 type AuthUser = {
   id: string;
@@ -32,6 +32,7 @@ export default function ChatRoomPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -69,11 +70,14 @@ export default function ChatRoomPage() {
       fetchJson<AuthUser>('/api/auth/me'),
       fetchJson<ChatRoomDetail>(`/api/chat/rooms/${roomId}`),
       fetchJson<ChatMessage[]>(`/api/chat/rooms/${roomId}/messages`),
+      fetchJson<MyChatRoom[]>('/api/users/me/chats'),
     ])
-      .then(([me, roomDetail, messageList]) => {
+      .then(([me, roomDetail, messageList, rooms]) => {
         setUser(me);
         setRoom(roomDetail);
         setMessages(messageList);
+        const currentRoom = rooms.find((item) => item.id === roomId);
+        setIsPartnerWithdrawn(Boolean(currentRoom?.partnerDeleted || currentRoom?.partnerWithdrawn));
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
@@ -86,7 +90,7 @@ export default function ChatRoomPage() {
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !user || isSending) return;
+    if (!content || !user || isSending || isPartnerWithdrawn) return;
 
     setIsSending(true);
     setErrorMessage('');
@@ -142,7 +146,10 @@ export default function ChatRoomPage() {
           ) : errorMessage && messages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-text-secondary">{errorMessage}</div>
           ) : messages.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-text-secondary">아직 메시지가 없습니다</div>
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-text-secondary">
+              <span>아직 메시지가 없습니다</span>
+              {isPartnerWithdrawn ? <span className="text-xs font-bold text-text-muted">---탈퇴한 회원입니다---</span> : null}
+            </div>
           ) : (
             <div className="space-y-3">
               {messages.map((message) => {
@@ -168,6 +175,9 @@ export default function ChatRoomPage() {
                   </div>
                 );
               })}
+              {isPartnerWithdrawn ? (
+                <div className="py-2 text-center text-xs font-bold text-text-muted">---탈퇴한 회원입니다---</div>
+              ) : null}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -182,12 +192,13 @@ export default function ChatRoomPage() {
             <input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="메시지 입력..."
+              disabled={isPartnerWithdrawn}
+              placeholder={isPartnerWithdrawn ? '탈퇴한 회원에게는 메시지를 보낼 수 없습니다.' : '메시지 입력...'}
               className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             />
             <button
               type="submit"
-              disabled={!draft.trim() || isSending}
+              disabled={!draft.trim() || isSending || isPartnerWithdrawn}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="메시지 보내기"
             >
