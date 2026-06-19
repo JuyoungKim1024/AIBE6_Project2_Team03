@@ -52,6 +52,7 @@ function JobsWriteContent() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [editorKey, setEditorKey] = useState(0);
   const priceRangeError = !priceHidden && minPrice > maxPrice;
 
   const isDirty = !editId || originalSnapshot === null || originalSnapshot !== JSON.stringify({
@@ -188,7 +189,17 @@ function JobsWriteContent() {
       if (!res.ok) throw new Error("생성 실패");
       const data = await res.json();
       if (data.title) setTitle(data.title);
-      if (data.content) setContent(data.content);
+      if (data.content) { setContent(data.content); setEditorKey((k) => k + 1); }
+      if (data.category?.length) setSelectedCategory(data.category);
+      if (data.subCategory?.length) setSelectedSubCategory(data.subCategory);
+      if (data.videoTools?.length) setSelectedVideoTools(data.videoTools);
+      if (data.designTools?.length) setSelectedDesignTools(data.designTools);
+      if (data.minPrice !== null) { setMinPrice(data.minPrice); setPriceHidden(false); }
+      if (data.maxPrice !== null) { setMaxPrice(data.maxPrice); setPriceHidden(false); }
+      if (data.revisionCount !== null) {
+        setRevisionCount(data.revisionCount);
+        setUnlimitedRevision(false);
+      }
       setAiPanelOpen(false);
       setAiDescription("");
     } catch (err) {
@@ -616,7 +627,7 @@ function JobsWriteContent() {
             </label>
             {editorReady ? (
               <RichTextEditor
-                key={editId ?? "new"}
+                key={`${editId ?? "new"}-${editorKey}`}
                 value={content}
                 placeholder="상세한 작업 조건, 우대 사항 등을 적어주세요."
                 onChange={setContent}
