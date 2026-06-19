@@ -1014,6 +1014,7 @@ function LikedSection() {
 }
 
 function ChatsSection() {
+  const { openModal } = useModal();
   const searchParams = useSearchParams();
   const roomIdParam = searchParams.get('roomId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1315,7 +1316,7 @@ function ChatsSection() {
     }));
   };
 
-  const updateProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
+  const updateProjectStatus = (project: ProjectMessagePayload, action: ProjectAction) => {
     const confirmMessage =
       action === 'start'
         ? '프로젝트를 수락하시겠습니까?'
@@ -1324,60 +1325,67 @@ function ChatsSection() {
           : action === 'complete'
             ? '프로젝트를 완료하시겠습니까?'
             : '프로젝트를 취소하시겠습니까?';
-    if (!window.confirm(confirmMessage)) return;
 
-    setProjectAction(action);
-    setErrorMessage('');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/projects/${project.id}/${action}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      });
+    openModal({
+      title: '확인',
+      message: confirmMessage,
+      confirmLabel: '확인',
+      onConfirm: async () => {
+        setProjectAction(action);
+        setErrorMessage('');
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/projects/${project.id}/${action}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${getAccessToken()}` },
+          });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message ?? '프로젝트 상태를 변경하지 못했습니다.');
-      }
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            throw new Error(data?.message ?? '프로젝트 상태를 변경하지 못했습니다.');
+          }
 
-      const savedProject = await response.json() as ProjectMessagePayload;
-      upsertProjectMessage(savedProject);
+          const savedProject = await response.json() as ProjectMessagePayload;
+          upsertProjectMessage(savedProject);
 
-      if (action === 'reject' && user) {
-        const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${project.roomId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${getAccessToken()}`,
-          },
-          body: JSON.stringify({
-            senderId: user.id,
-            content: '프로젝트가 거절되었습니다.',
-            messageType: 'TEXT',
-          }),
-        }).catch(() => null);
-        if (messageResponse?.ok && project.roomId === selectedRoomId) {
-          const savedMessage = await messageResponse.json() as ChatMessage;
-          setMessages((current) => [...current, savedMessage]);
+          if (action === 'reject' && user) {
+            const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${project.roomId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${getAccessToken()}`,
+              },
+              body: JSON.stringify({
+                senderId: user.id,
+                content: '프로젝트가 거절되었습니다.',
+                messageType: 'TEXT',
+              }),
+            }).catch(() => null);
+            if (messageResponse?.ok && project.roomId === selectedRoomId) {
+              const savedMessage = await messageResponse.json() as ChatMessage;
+              setMessages((current) => [...current, savedMessage]);
+            }
+          }
+
+          openModal({
+            title: '알림',
+            message: action === 'start'
+              ? '프로젝트를 수락했습니다.'
+              : action === 'reject'
+                ? '프로젝트를 거절했습니다.'
+                : action === 'complete'
+                  ? '프로젝트를 완료했습니다.'
+                  : '프로젝트를 취소했습니다.',
+          });
+          loadRooms();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+          setErrorMessage(message);
+          openModal({ title: '오류', message });
+        } finally {
+          setProjectAction(null);
         }
-      }
-
-      window.alert(
-        action === 'start'
-          ? '프로젝트를 수락했습니다.'
-          : action === 'reject'
-            ? '프로젝트를 거절했습니다.'
-            : action === 'complete'
-              ? '프로젝트를 완료했습니다.'
-              : '프로젝트를 취소했습니다.'
-      );
-      loadRooms();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
-      setErrorMessage(message);
-      window.alert(message);
-    } finally {
-      setProjectAction(null);
-    }
+      },
+    });
   };
 
   const deleteProject = async (project: ProjectMessagePayload) => {
@@ -1839,6 +1847,7 @@ function formatChatPostPrice(minPrice: number | null, maxPrice: number | null) {
 }
 
 function ProjectsSection() {
+  const { openModal } = useModal();
   const [projects, setProjects] = useState<MyProjects>({ received: [], ongoing: [] });
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1871,27 +1880,33 @@ function ProjectsSection() {
           ? '프로젝트를 거절하시겠습니까?'
           : '프로젝트를 완료하시겠습니까?';
 
-    if (!window.confirm(confirmMessage)) return;
-
-    setProjectActionId(project.id);
-    setMessage('');
-    try {
-      await patchMyPageData<MyProject>(`/api/projects/${project.id}/${action}`, {});
-      window.alert(
-        action === 'start'
-          ? '프로젝트를 수락했습니다.'
-          : action === 'reject'
-            ? '프로젝트를 거절했습니다.'
-            : '프로젝트를 완료했습니다.'
-      );
-      await loadProjects();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
-      setMessage(errorMessage);
-      window.alert(errorMessage);
-    } finally {
-      setProjectActionId(null);
-    }
+    openModal({
+      title: '확인',
+      message: confirmMessage,
+      confirmLabel: '확인',
+      onConfirm: async () => {
+        setProjectActionId(project.id);
+        setMessage('');
+        try {
+          await patchMyPageData<MyProject>(`/api/projects/${project.id}/${action}`, {});
+          openModal({
+            title: '알림',
+            message: action === 'start'
+              ? '프로젝트를 수락했습니다.'
+              : action === 'reject'
+                ? '프로젝트를 거절했습니다.'
+                : '프로젝트를 완료했습니다.',
+          });
+          await loadProjects();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+          setMessage(errorMessage);
+          openModal({ title: '오류', message: errorMessage });
+        } finally {
+          setProjectActionId(null);
+        }
+      },
+    });
   };
 
   const visibleProjects = projects.ongoing.filter((project) => !['REJECTED', 'CANCELED'].includes(project.status));
