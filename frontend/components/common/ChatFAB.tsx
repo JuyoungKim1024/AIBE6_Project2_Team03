@@ -31,6 +31,7 @@ type MyProject = {
   id: string;
   roomId?: string;
   requesterId?: string;
+  completionRequestedBy?: string | null;
   field: string | null;
   status: string;
 };
@@ -121,12 +122,13 @@ export function ChatFAB() {
     } catch {
       try {
         const data = await fetchJson<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           setCurrentProject({
             id: project.id,
             roomId,
             requesterId: project.requesterId,
+            completionRequestedBy: project.completionRequestedBy,
             field: project.field,
             price: null,
             videoLength: null,
@@ -442,13 +444,15 @@ export function ChatFAB() {
                               ? '프로젝트 수락 대기'
                               : displayProject.status === 'WORKING'
                                 ? '프로젝트 진행 중'
-                                : displayProject.status === 'COMPLETED'
-                                  ? '완료된 프로젝트입니다'
-                                  : displayProject.status === 'REJECTED'
-                                    ? '거절된 프로젝트입니다'
-                                    : displayProject.status === 'CANCELED'
-                                      ? '취소된 프로젝트입니다'
-                                      : '프로젝트';
+                                : displayProject.status === 'COMPLETION_PENDING'
+                                  ? '프로젝트 완료 대기'
+                                  : displayProject.status === 'COMPLETED'
+                                    ? '완료된 프로젝트입니다'
+                                    : displayProject.status === 'REJECTED'
+                                      ? '거절된 프로젝트입니다'
+                                      : displayProject.status === 'CANCELED'
+                                        ? '취소된 프로젝트입니다'
+                                        : '프로젝트';
 
                           return (
                             <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
