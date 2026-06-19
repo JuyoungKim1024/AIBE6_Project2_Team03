@@ -206,6 +206,27 @@ public class MyPageService {
     }
 
     @Transactional
+    public PortfolioGroupResponse createPortfolioGroup(String userId, PortfolioGroupCreateRequest request) {
+        String name = request.name() == null ? "" : request.name().trim();
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("그룹 이름을 입력해주세요.");
+        }
+
+        List<PortfolioGroup> groups = portfolioGroupRepository.findByUser_IdOrderByDisplayOrderAsc(userId);
+        int nextDisplayOrder = groups.stream()
+                .mapToInt(PortfolioGroup::getDisplayOrder)
+                .max()
+                .orElse(0) + 1;
+        PortfolioGroup group = new PortfolioGroup(
+                getUser(userId),
+                name,
+                nextDisplayOrder,
+                groups.isEmpty()
+        );
+        return PortfolioGroupResponse.from(portfolioGroupRepository.save(group));
+    }
+
+    @Transactional
     public List<PortfolioGroupResponse> savePortfolioGroups(String userId, List<PortfolioGroupRequest> requests) {
         User user = getUser(userId);
         if (!requests.isEmpty() && requests.stream().filter(PortfolioGroupRequest::representative).count() != 1) {

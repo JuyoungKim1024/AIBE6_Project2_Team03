@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -235,6 +235,22 @@ async function putMyPageData(path: string, body: unknown): Promise<void> {
 async function putMyPageDataWithResponse<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getAccessToken()}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message ?? '저장에 실패했습니다.');
+  }
+  return response.json();
+}
+
+async function postMyPageDataWithResponse<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getAccessToken()}`,
@@ -985,9 +1001,15 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   const [selectedOrders, setSelectedOrders] = useState<Record<string, string[]>>({});
   const [newGroupName, setNewGroupName] = useState('');
   const [message, setMessage] = useState('');
+  const [isGroupsLoading, setIsGroupsLoading] = useState(true);
+  const [isGroupSaving, setIsGroupSaving] = useState(false);
+  const groupSaveLockRef = useRef(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setIsGroupsLoading(false);
+      return;
+    }
 
     const applyPortfolios = (saved: PortfolioDraft[]) => {
       setPortfolios(saved);
@@ -1007,9 +1029,14 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
       setSelectedOrders(orders);
     };
 
+    setIsGroupsLoading(true);
     fetchMyPageData<PortfolioGroupDraft[]>('/api/users/me/portfolio-groups')
       .then(setGroups)
-      .catch(() => setGroups([]));
+      .catch(() => {
+        setGroups([]);
+        setMessage('그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      })
+      .finally(() => setIsGroupsLoading(false));
 
     fetchMyPageData<{ id: string; title: string; url: string; type: string; representative: boolean; displayOrder: number; groupId: string | null }[]>('/api/users/me/portfolios')
       .then((data) => applyPortfolios(data.map((item) => ({
@@ -1026,36 +1053,48 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   }, [userId]);
 
   const saveGroups = async (nextGroups: PortfolioGroupDraft[]) => {
-    const saved = await putMyPageDataWithResponse<PortfolioGroupDraft[]>('/api/users/me/portfolio-groups', nextGroups.map((group, index) => ({
-      id: group.id.startsWith('new-') ? null : group.id,
-      name: group.name,
-      displayOrder: index + 1,
-      representative: group.representative,
-    })));
-    setGroups(saved);
-    return saved;
+    if (groupSaveLockRef.current) {
+      throw new Error('그룹을 저장 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+
+    groupSaveLockRef.current = true;
+    setIsGroupSaving(true);
+    try {
+      const saved = await putMyPageDataWithResponse<PortfolioGroupDraft[]>('/api/users/me/portfolio-groups', nextGroups.map((group, index) => ({
+        id: group.id.startsWith('new-') ? null : group.id,
+        name: group.name,
+        displayOrder: index + 1,
+        representative: group.representative,
+      })));
+      setGroups(saved);
+      return saved;
+    } finally {
+      groupSaveLockRef.current = false;
+      setIsGroupSaving(false);
+    }
   };
 
   const addGroup = async () => {
+    if (isGroupsLoading || groupSaveLockRef.current) {
+      return;
+    }
     const name = newGroupName.trim();
     if (!name) {
       setMessage('그룹 이름을 입력해주세요.');
       return;
     }
+    groupSaveLockRef.current = true;
+    setIsGroupSaving(true);
     try {
-      await saveGroups([
-        ...groups,
-        {
-          id: `new-${crypto.randomUUID()}`,
-          name,
-          displayOrder: groups.length + 1,
-          representative: groups.length === 0,
-        },
-      ]);
+      const saved = await postMyPageDataWithResponse<PortfolioGroupDraft>('/api/users/me/portfolio-groups', { name });
+      setGroups((prev) => [...prev, saved].sort((a, b) => a.displayOrder - b.displayOrder));
       setNewGroupName('');
       setMessage('그룹이 추가되었습니다.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '그룹 추가에 실패했습니다.');
+    } finally {
+      groupSaveLockRef.current = false;
+      setIsGroupSaving(false);
     }
   };
 
@@ -1138,9 +1177,20 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
   return (
     <SectionCard title="포트폴리오 관리" description="영상과 이미지를 원하는 그룹으로 묶고 그룹별 노출 순서를 지정합니다. 대표 그룹이 공개 프로필과 맞춤매칭에 우선 노출됩니다.">
       <div className="flex flex-col sm:flex-row gap-2 mb-6">
-        <input value={newGroupName} onChange={(event) => setNewGroupName(event.target.value)} placeholder="새 그룹 이름" className="form-input flex-1" />
-        <button type="button" onClick={addGroup} className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold">
-          <Plus size={16} />그룹 추가
+        <input
+          value={newGroupName}
+          onChange={(event) => setNewGroupName(event.target.value)}
+          placeholder={isGroupsLoading ? '그룹 목록 불러오는 중...' : '새 그룹 이름'}
+          disabled={isGroupsLoading || isGroupSaving}
+          className="form-input flex-1 disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={addGroup}
+          disabled={isGroupsLoading || isGroupSaving}
+          className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={16} />{isGroupSaving ? '저장 중...' : '그룹 추가'}
         </button>
       </div>
 
@@ -1151,21 +1201,23 @@ function PortfolioManagementSection({ userId }: { userId: string | null }) {
               <input
                 value={group.name}
                 onChange={(event) => setGroups((prev) => prev.map((item) => item.id === group.id ? { ...item, name: event.target.value } : item))}
-                className="form-input flex-1"
+                disabled={isGroupSaving}
+                className="form-input flex-1 disabled:opacity-60"
               />
               <button
                 type="button"
                 onClick={() => setGroups((prev) => prev.map((item) => ({ ...item, representative: item.id === group.id })))}
-                className={`px-3 py-2 rounded-lg text-sm font-bold border ${group.representative ? 'border-primary bg-primary/10 text-primary' : 'border-border text-text-secondary'}`}
+                disabled={isGroupSaving}
+                className={`px-3 py-2 rounded-lg text-sm font-bold border disabled:opacity-50 ${group.representative ? 'border-primary bg-primary/10 text-primary' : 'border-border text-text-secondary'}`}
               >
                 {group.representative ? '대표 그룹' : '대표로 설정'}
               </button>
-              <button type="button" onClick={() => removeEmptyGroup(group.id)} className="w-10 h-10 flex items-center justify-center text-accent" title="빈 그룹 삭제">
+              <button type="button" onClick={() => removeEmptyGroup(group.id)} disabled={isGroupSaving} className="w-10 h-10 flex items-center justify-center text-accent disabled:opacity-50" title="빈 그룹 삭제">
                 <Trash2 size={17} />
               </button>
             </div>
           ))}
-          <button type="button" onClick={persistGroups} className="px-4 py-3 rounded-xl border border-primary text-primary text-sm font-bold">
+          <button type="button" onClick={persistGroups} disabled={isGroupSaving} className="px-4 py-3 rounded-xl border border-primary text-primary text-sm font-bold disabled:opacity-50">
             그룹 설정 저장
           </button>
         </div>
