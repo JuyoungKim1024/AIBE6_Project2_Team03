@@ -10,9 +10,10 @@ import {
 } from "@/types/post";
 
 export async function fetchJobPosts(
-  postType: JobPostType,
+  postType?: JobPostType,
 ): Promise<JobPostDto[]> {
-  const res = await fetch(`${API_BASE_URL}/api/posts/job?postType=${postType}`);
+  const query = postType ? `?postType=${postType}` : "";
+  const res = await fetch(`${API_BASE_URL}/api/posts/job${query}`);
   if (!res.ok) throw new Error("구인구직 목록 조회 실패");
   const data = await res.json();
   console.log("fetchJobPosts data[0]:", data[0]);
@@ -26,11 +27,10 @@ export async function fetchJobPost(id: string): Promise<JobPostDetailDto> {
 }
 
 export async function fetchCommunityPosts(
-  category: CommunityCategory,
+  category?: CommunityCategory,
 ): Promise<CommunityPostDto[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/posts/community?category=${category}`,
-  );
+  const query = category ? `?category=${category}` : "";
+  const res = await fetch(`${API_BASE_URL}/api/posts/community${query}`);
   if (!res.ok) throw new Error("커뮤니티 목록 조회 실패");
   return res.json();
 }

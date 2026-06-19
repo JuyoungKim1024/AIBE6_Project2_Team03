@@ -77,6 +77,9 @@ public class User {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public User(SocialProvider provider, String socialId, String providerEmail, String nickname, String profileImage) {
         this.provider = provider;
         this.socialId = socialId;
@@ -125,6 +128,25 @@ public class User {
 
     public void updatePassword(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public void withdraw() {
+        String withdrawnId = "withdrawn-" + id;
+        this.socialId = withdrawnId;
+        this.providerEmail = null;
+        this.passwordHash = null;
+        this.emailVerified = false;
+        this.nickname = "탈퇴한 사용자";
+        this.profileImage = null;
+        this.matchEnabled = false;
+        this.matchPriceMin = null;
+        this.matchPriceMax = null;
+        this.matchPriceUnit = null;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {
