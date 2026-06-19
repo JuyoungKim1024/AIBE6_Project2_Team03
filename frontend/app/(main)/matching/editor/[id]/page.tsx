@@ -5,14 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
 import Link from 'next/link';
 import type { BlindEditor } from '@/types/matching';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+import { useAuth } from '@/hooks/useAuth';
+import { API_BASE_URL } from '@/lib/api';
 
 type RequestStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export default function EditorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
+  const isEditor = user?.role === 'EDITOR';
 
   const [editor, setEditor] = useState<BlindEditor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,7 +170,11 @@ export default function EditorDetailPage() {
             </div>
 
             {/* 매칭 요청 버튼 */}
-            {requestStatus === 'success' ? (
+            {isEditor ? (
+              <div className="w-full py-4 rounded-xl bg-surface-elevated border border-border text-text-muted text-center text-sm font-medium">
+                에디터 계정으로는 매칭 요청이 불가합니다.
+              </div>
+            ) : requestStatus === 'success' ? (
               <div className="flex items-center justify-center gap-2 py-4 rounded-xl bg-primary/10 text-primary font-bold">
                 <Check size={18} />
                 매칭 요청이 전송되었습니다. 에디터의 수락을 기다려주세요.

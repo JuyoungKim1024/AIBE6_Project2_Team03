@@ -64,6 +64,17 @@ public class MatchingService {
                 .anyMatch(t -> values.stream().anyMatch(v -> v.equalsIgnoreCase(t.getTagName())));
     }
 
+    // GET /api/matching/editors/random
+    public List<BlindEditorResponse> getRandomEditors(int count) {
+        return userRepository.findRandomMatchableEditors(count).stream()
+                .map(user -> {
+                    List<UserTag> tags = userTagRepository.findByUser_IdOrderByTagNameAsc(user.getId());
+                    List<Portfolio> portfolios = portfolioRepository.findByUser_IdOrderByDisplayOrderAsc(user.getId());
+                    return BlindEditorResponse.of(user, tags, portfolios);
+                })
+                .toList();
+    }
+
     // GET /api/matching/editors/{editorId}
     public BlindEditorResponse getEditorDetail(String editorId) {
         User user = userRepository.findById(editorId)

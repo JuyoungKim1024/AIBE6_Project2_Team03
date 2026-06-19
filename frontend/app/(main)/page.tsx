@@ -1,28 +1,18 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown } from 'lucide-react';
-import { EditorCard } from '@/components/profile/EditorCard';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown, RefreshCw } from 'lucide-react';
+import { MatchingCard } from '@/components/matching/MatchingCard';
 import { useAuth } from '@/hooks/useAuth';
+import type { BlindEditor } from '@/types/matching';
 import { useModal } from '@/store/modalStore';
-
-type SearchCategory = 'jobs' | 'community';
-
-const categoryOptions: { value: SearchCategory; label: string }[] = [
-  { value: 'jobs', label: '구인구직' },
-  { value: 'community', label: '커뮤니티' },
-];
+import { type SearchCategory, searchCategoryOptions } from '@/lib/searchCategories';
+import { API_BASE_URL } from '@/lib/api';
 
 const popularTags = ['롱폼', '숏폼', '게임', '프리미어프로', '파이널컷', '썸네일'];
-
-const mockFeaturedEditors = [
-  { id: '1', nickname: '모션그래픽왕', rank: 'diamond' as const, rating: 4.9, reviewCount: 128, thumbnailUrl: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=800&q=80', minPrice: 20000, maxPrice: 35000, tags: ['애프터이펙트', '인포그래픽', '인트로'], responseTime: '1시간 이내' },
-  { id: '2', nickname: '예능자막마스터', rank: 'platinum' as const, rating: 4.8, reviewCount: 85, thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=800&q=80', minPrice: 12000, maxPrice: 18000, tags: ['프리미어프로', '예능자막', '먹방'], responseTime: '30분 이내' },
-  { id: '3', nickname: '빠른컷편집러', rank: 'gold' as const, rating: 4.7, reviewCount: 42, thumbnailUrl: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&w=800&q=80', minPrice: 8000, maxPrice: 12000, tags: ['파이널컷', '브이로그', '쇼츠'], responseTime: '10분 이내' },
-];
 
 const quickAccessCards = [
   { icon: Briefcase, title: '구인구직 바로가기', desc: '검증된 크리에이터와 에디터들이 모이는 곳', path: '/jobs', color: 'text-primary' },
@@ -38,6 +28,28 @@ export default function HomePage() {
   const [category, setCategory] = useState<SearchCategory>('jobs');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [randomEditors, setRandomEditors] = useState<BlindEditor[]>([]);
+  const [editorsLoading, setEditorsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const fetchRandomEditors = useCallback(async () => {
+    setEditorsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/matching/editors/random?count=3`);
+      if (!res.ok) throw new Error();
+      const data: BlindEditor[] = await res.json();
+      setRandomEditors(data);
+      setRefreshKey((k) => k + 1);
+    } catch {
+      setRandomEditors([]);
+    } finally {
+      setEditorsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRandomEditors();
+  }, [fetchRandomEditors]);
 
   const handleQuickCardClick = (e: React.MouseEvent, path: string) => {
     if (path === '/matching' && user?.role === 'EDITOR') {
@@ -68,11 +80,12 @@ export default function HomePage() {
   };
 
   const handleTagClick = (tag: string) => {
+    if (tag.trim().length <= 1) return;
     setQuery(tag);
     router.push(`/${category}?q=${encodeURIComponent(tag)}`);
   };
 
-  const selectedLabel = categoryOptions.find((o) => o.value === category)?.label ?? '구인구직';
+  const selectedLabel = searchCategoryOptions.find((o) => o.value === category)!.label;
 
   return (
     <div className="min-h-screen">
@@ -107,7 +120,7 @@ export default function HomePage() {
                       </button>
                       {dropdownOpen && (
                         <div className="absolute top-full left-0 mt-1 w-28 bg-surface border border-border rounded-lg shadow-lg overflow-hidden z-50">
-                          {categoryOptions.map((option) => (
+                          {searchCategoryOptions.map((option) => (
                             <button
                               key={option.value}
                               type="button"
@@ -200,24 +213,81 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-10">
-            <div>
-              <h2 className="text-3xl font-bold text-text-primary mb-2">이달의 탑 에디터</h2>
-              <p className="text-text-secondary">가장 높은 매너온도와 만족도를 기록한 전문가들입니다.</p>
+      {(editorsLoading || randomEditors.length > 0) && (
+        <section className="py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-end mb-10">
+              <div>
+                <h2 className="text-3xl font-bold text-text-primary mb-2">지금 추천하는 에디터</h2>
+                <p className="text-text-secondary">매번 다른 에디터를 추천해드려요.</p>
+              </div>
+              <motion.button
+                onClick={fetchRandomEditors}
+                disabled={editorsLoading}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/30 text-sm font-medium text-primary hover:bg-primary hover:text-white hover:border-primary hover:shadow-[0_0_20px_rgba(59,130,246,0.35)] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary disabled:hover:shadow-none"
+              >
+                <RefreshCw
+                  size={15}
+                  className={`transition-transform duration-500 ${editorsLoading ? 'animate-spin' : 'group-hover:rotate-180'}`}
+                />
+                새로고침
+              </motion.button>
             </div>
-            <Link href="/jobs" className="text-primary font-medium hover:underline hidden sm:block">전체보기 &rarr;</Link>
+            <AnimatePresence mode="wait">
+              {editorsLoading ? (
+                <motion.div
+                  key="skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                >
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="bg-surface border border-border rounded-xl h-64 animate-pulse" />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={refreshKey}
+                  initial="hidden"
+                  animate="visible"
+                  exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                  variants={{
+                    hidden: {},
+                    visible: { transition: { staggerChildren: 0.1 } },
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                >
+                  {randomEditors.map((editor) => (
+                    <motion.div
+                      key={editor.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 24 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+                      }}
+                    >
+                      <MatchingCard
+                        id={editor.id}
+                        thumbnails={editor.thumbnails}
+                        categories={editor.categories}
+                        tools={editor.tools}
+                        videoLengths={editor.videoLengths}
+                        minPrice={editor.matchPriceMin ?? 0}
+                        maxPrice={editor.matchPriceMax ?? 0}
+                        priceUnit={editor.matchPriceUnit}
+                        showBlindBadge={false}
+                      />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          {mockFeaturedEditors.length === 0 ? (
-            <div className="text-center py-20 text-text-muted">이달의 탑 에디터를 선정 중입니다.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {mockFeaturedEditors.map((editor) => <EditorCard key={editor.id} {...editor} />)}
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
