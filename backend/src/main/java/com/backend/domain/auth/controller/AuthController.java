@@ -9,6 +9,7 @@ import com.backend.domain.auth.dto.EmailVerificationSendRequest;
 import com.backend.domain.auth.dto.LocalLoginRequest;
 import com.backend.domain.auth.dto.LocalSignupRequest;
 import com.backend.domain.auth.dto.LogoutRequest;
+import com.backend.domain.auth.dto.PasswordChangeRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.RoleUpdateRequest;
 import com.backend.domain.auth.dto.UserResponse;
@@ -140,6 +141,15 @@ public class AuthController {
             @RequestBody ProfileUpdateRequest request
     ) {
         return authService.updateProfile(authService.resolveUserId(authorizationHeader), request);
+    }
+
+    @PatchMapping("/users/me/password")
+    public ResponseEntity<Void> changePassword(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody PasswordChangeRequest request
+    ) {
+        authService.changePassword(authService.resolveUserId(authorizationHeader), request);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/users/me")

@@ -7,6 +7,7 @@ import com.backend.domain.auth.dto.EmailVerificationCompleteResponse;
 import com.backend.domain.auth.dto.EmailVerificationSendRequest;
 import com.backend.domain.auth.dto.LocalLoginRequest;
 import com.backend.domain.auth.dto.LocalSignupRequest;
+import com.backend.domain.auth.dto.PasswordChangeRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.SocialUserInfo;
 import com.backend.domain.auth.dto.UserResponse;
@@ -249,6 +250,23 @@ public class AuthService {
                 .orElseGet(() -> profileRepository.save(new Profile(user, name, phone)));
         profile.update(name, phone);
         return UserResponse.from(user, profile.getName(), profile.getPhone());
+    }
+
+    @Transactional
+    public void changePassword(String userId, PasswordChangeRequest request) {
+        User user = getUser(userId);
+        if (user.getProvider() != SocialProvider.LOCAL || user.getPasswordHash() == null) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
+        if (request.currentPassword() == null
+                || !passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+        validatePassword(request.newPassword());
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 입력해주세요.");
+        }
+        user.updatePassword(passwordEncoder.encode(request.newPassword()));
     }
 
     @Transactional

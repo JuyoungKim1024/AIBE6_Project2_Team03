@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, MailCheck } from 'lucide-react';
+import { Check, Circle, MailCheck } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 type AuthResponse = {
@@ -124,6 +124,15 @@ export default function SignupPage() {
 
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = String(remainingSeconds % 60).padStart(2, '0');
+  const passwordChecks = [
+    { label: '8자 이상 입력', valid: password.length >= 8 },
+    { label: '영문 대문자 포함', valid: /[A-Z]/.test(password) },
+    { label: '영문 소문자 포함', valid: /[a-z]/.test(password) },
+    { label: '숫자 포함', valid: /\d/.test(password) },
+  ];
+  const isPasswordValid = passwordChecks.every((check) => check.valid);
+  const isPasswordMatched = passwordConfirm.length > 0 && password === passwordConfirm;
+  const canCompleteSignup = emailVerified && isPasswordValid && isPasswordMatched && !isSubmitting;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -213,6 +222,14 @@ export default function SignupPage() {
                 required
                 className="form-input disabled:bg-surface-elevated disabled:text-text-muted disabled:cursor-not-allowed disabled:opacity-60"
               />
+              <div className="grid grid-cols-2 gap-2 px-1">
+                {passwordChecks.map((check) => (
+                  <span key={check.label} className={`flex items-center gap-1.5 text-xs font-bold ${check.valid ? 'text-primary' : 'text-accent'}`}>
+                    {check.valid ? <Check size={13} /> : <Circle size={13} />}
+                    {check.label}
+                  </span>
+                ))}
+              </div>
               <input
                 type="password"
                 value={passwordConfirm}
@@ -223,7 +240,13 @@ export default function SignupPage() {
                 required
                 className="form-input disabled:bg-surface-elevated disabled:text-text-muted disabled:cursor-not-allowed disabled:opacity-60"
               />
-              <button type="submit" disabled={isSubmitting || !emailVerified} className="w-full py-3.5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
+              {passwordConfirm.length > 0 && (
+                <p className={`flex items-center gap-1.5 px-1 text-xs font-bold ${isPasswordMatched ? 'text-primary' : 'text-accent'}`}>
+                  {isPasswordMatched ? <Check size={13} /> : <Circle size={13} />}
+                  {isPasswordMatched ? '비밀번호가 일치합니다.' : '비밀번호가 일치하지 않습니다.'}
+                </p>
+              )}
+              <button type="submit" disabled={!canCompleteSignup} className="w-full py-3.5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
                 {isSubmitting ? '가입 중...' : '회원가입'}
               </button>
             </div>
