@@ -83,7 +83,7 @@ public class AuthService {
     @Transactional
     public AuthResponse login(SocialProvider provider, String code) {
         SocialUserInfo userInfo = oAuthClient.getUserInfo(provider, code);
-        User user = userRepository.findByProviderAndSocialId(provider, userInfo.socialId())
+        User user = userRepository.findByProviderAndSocialIdAndDeletedAtIsNull(provider, userInfo.socialId())
                 .map(existingUser -> {
                     existingUser.updateSocialProfile(userInfo.email(), userInfo.nickname(), userInfo.profileImage());
                     return existingUser;
@@ -91,7 +91,7 @@ public class AuthService {
                 .orElseGet(() -> {
                     String normalizedEmail = normalizeEmail(userInfo.email());
                     String email = normalizedEmail.isBlank() ? null : normalizedEmail;
-                    if (email != null && userRepository.existsByProviderEmailIgnoreCase(email)) {
+                    if (email != null && userRepository.existsByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)) {
                         throw new IllegalArgumentException("이미 가입된 이메일입니다.");
                     }
                     return userRepository.save(new User(
@@ -109,7 +109,7 @@ public class AuthService {
     @Transactional
     public EmailVerificationResponse requestLocalSignup(EmailVerificationSendRequest request) {
         String email = normalizeAndValidateEmail(request.email());
-        if (userRepository.existsByProviderEmailIgnoreCase(email)) {
+        if (userRepository.existsByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
@@ -163,7 +163,7 @@ public class AuthService {
         if (request.verificationToken() == null || request.verificationToken().isBlank()) {
             throw new IllegalArgumentException("이메일 인증을 완료해주세요.");
         }
-        if (userRepository.existsByProviderEmailIgnoreCase(email)) {
+        if (userRepository.existsByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
@@ -186,7 +186,7 @@ public class AuthService {
         if (request.password() == null || request.password().isBlank()) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
-        User user = userRepository.findByProviderEmailIgnoreCase(email)
+        User user = userRepository.findByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)
                 .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다."));
 
         if (user.getProvider() != SocialProvider.LOCAL) {
@@ -209,6 +209,10 @@ public class AuthService {
         if (storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
             storedToken.revoke();
             throw new IllegalArgumentException("리프레시 토큰이 만료되었습니다.");
+        }
+        if (storedToken.getUser().isDeleted()) {
+            storedToken.revoke();
+            throw new IllegalArgumentException("탈퇴한 계정입니다.");
         }
         storedToken.revoke();
         return issueTokens(storedToken.getUser());
@@ -287,7 +291,9 @@ public class AuthService {
         if (!"탈퇴하겠습니다".equals(confirmation)) {
             throw new IllegalArgumentException("탈퇴 문구를 정확히 입력해주세요");
         }
-        userRepository.delete(getUser(userId));
+        User user = getUser(userId);
+        profileRepository.findByUser_Id(userId).ifPresent(Profile::withdraw);
+        user.withdraw();
     }
 
     public UserResponse getMe(String userId) {
@@ -299,12 +305,22 @@ public class AuthService {
         if (logoutTokenRepository.existsByAccessToken(accessToken)) {
             throw new IllegalArgumentException("로그아웃된 토큰입니다");
         }
-        return jwtTokenProvider.getUserId(accessToken);
+        String userId = jwtTokenProvider.getUserId(accessToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        if (user.isDeleted()) {
+            throw new IllegalArgumentException("탈퇴한 계정입니다.");
+        }
+        return userId;
     }
 
     private User getUser(String userId) {
-        return userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        if (user.isDeleted()) {
+            throw new IllegalArgumentException("탈퇴한 계정입니다.");
+        }
+        return user;
     }
 
     private UserResponse toUserResponse(User user) {
