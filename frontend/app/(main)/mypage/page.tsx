@@ -1241,36 +1241,41 @@ function ChatsSection() {
     }
   };
 
-  const deleteRoom = async (roomId: string) => {
-    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+  const deleteRoom = (roomId: string) => {
+    openModal({
+      title: '확인',
+      message: '채팅방을 목록에서 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${getAccessToken()}` },
+          });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      });
+          if (!response.ok) throw new Error('Failed to delete room');
 
-      if (!response.ok) throw new Error('Failed to delete room');
+          const nextRooms = chatRooms.filter((room) => room.id !== roomId);
+          setChatRooms(nextRooms);
 
-      const nextRooms = chatRooms.filter((room) => room.id !== roomId);
-      setChatRooms(nextRooms);
+          if (selectedRoomId === roomId) {
+            const nextSelectedRoomId = nextRooms.find((room) => {
+              if (activeFilter === 'POST') return room.type === 'POST';
+              if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
+              if (activeFilter === 'UNREAD') return room.unreadCount > 0;
+              return true;
+            })?.id ?? null;
 
-      if (selectedRoomId === roomId) {
-        const nextSelectedRoomId = nextRooms.find((room) => {
-          if (activeFilter === 'POST') return room.type === 'POST';
-          if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
-          if (activeFilter === 'UNREAD') return room.unreadCount > 0;
-          return true;
-        })?.id ?? null;
-
-        setSelectedRoomId(nextSelectedRoomId);
-        if (!nextSelectedRoomId) {
-          setMessages([]);
+            setSelectedRoomId(nextSelectedRoomId);
+            if (!nextSelectedRoomId) {
+              setMessages([]);
+            }
+          }
+        } catch {
+          setErrorMessage('채팅방을 삭제하지 못했습니다.');
         }
-      }
-    } catch {
-      setErrorMessage('채팅방을 삭제하지 못했습니다.');
-    }
+      },
+    });
   };
 
   const updateProjectForm = (key: keyof ProjectCreateForm, value: string) => {
