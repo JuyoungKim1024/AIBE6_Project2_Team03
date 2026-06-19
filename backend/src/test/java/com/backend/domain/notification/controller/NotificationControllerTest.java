@@ -3,7 +3,7 @@ package com.backend.domain.notification.controller;
 import com.backend.domain.auth.service.JwtTokenProvider;
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
-import com.backend.domain.mypage.repository.ChatRoomRepository;
+import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.user.entity.MatchPriceUnit;
 import com.backend.domain.user.entity.SocialProvider;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -59,7 +58,7 @@ class NotificationControllerTest {
 
         editor = new User(SocialProvider.GOOGLE, "google-ed-2", "ed2@test.com", "에디터2", "https://example.com/avatar2.jpg");
         editor.updateRole(UserRole.EDITOR);
-        editor.updateMatchingPrice(true, 12000, MatchPriceUnit.MIN);
+        editor.updateMatchingPrice(true, 12000, 12000, MatchPriceUnit.MIN);
         userRepository.saveAndFlush(editor);
 
         matchRequest = new MatchRequest(requester, editor);

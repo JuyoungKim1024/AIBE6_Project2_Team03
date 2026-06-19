@@ -7,8 +7,9 @@ import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
 import { togglePostLike } from "@/lib/api/post";
+import { UserDmDropdown } from "@/components/common/UserDmDropdown";
 
-export type PostType = "hiring" | "looking" | "info" | "free";
+export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
 export interface PostCardProps {
   id: string;
@@ -39,6 +40,8 @@ const typeConfig: Record<
   hiring: { label: "구인", color: "text-accent", bg: "bg-accent/10" },
   looking: { label: "구직", color: "text-primary", bg: "bg-primary/10" },
   info: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+  rate: { label: "단가 토크", color: "text-amber-500", bg: "bg-amber-500/10" },
+  portfolio: { label: "포트폴리오", color: "text-violet-400", bg: "bg-violet-400/10" },
   free: {
     label: "자유게시판",
     color: "text-text-secondary",
@@ -113,6 +116,31 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
+            {author.id ? (
+              <UserDmDropdown targetUserId={author.id} targetName={author.name}>
+                <span className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-surface-elevated">
+                  {author.avatar && (
+                    <img
+                      src={author.avatar}
+                      alt={author.name}
+                      className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
+                    />
+                  )}
+                  <span className="font-medium text-text-primary">{author.name}</span>
+                </span>
+              </UserDmDropdown>
+            ) : (
+              <>
+                {author.avatar && (
+                  <img
+                    src={author.avatar}
+                    alt={author.name}
+                    className="w-5 h-5 rounded-full object-cover bg-surface-elevated"
+                  />
+                )}
+                <span className="font-medium text-text-primary">{author.name}</span>
+              </>
+            )}
             <UserActionMenu
               userId={author.id}
               nickname={author.name}

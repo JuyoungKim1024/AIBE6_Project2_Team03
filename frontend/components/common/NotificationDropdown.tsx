@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Check, X } from 'lucide-react';
-import type { Notification } from '@/types/notification';
+import type { ChatRequestNotification, Notification } from '@/types/notification';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -19,14 +19,71 @@ export function NotificationDropdown() {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notifications`, {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const [notificationRes, chatRequestRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/notifications`, { headers }),
+        fetch(`${API_BASE_URL}/api/chat/requests/received`, { headers }),
+      ]);
+
+      const notifications = notificationRes.ok
+        ? await notificationRes.json() as Notification[]
+        : [];
+      const chatRequests = chatRequestRes.ok
+        ? await chatRequestRes.json() as ChatRequestNotification[]
+        : [];
+
+      setNotifications([
+        ...chatRequests.map(toNotification),
+        ...notifications,
+      ]);
+    } catch {
+      // 네트워크 에러 무시
+    }
+  };
+
+  const getActionUrl = (notification: Notification, action: 'accept' | 'reject') => {
+    if (notification.type === 'CHAT_REQUEST') {
+      return `${API_BASE_URL}/api/chat/requests/${notification.id}/${action}`;
+    }
+    return `${API_BASE_URL}/api/notifications/${notification.id}/${action}`;
+  };
+
+  const updateNotification = (id: string, status: Notification['status'], chatRoomId?: string | null) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, status, chatRoomId: chatRoomId ?? n.chatRoomId } : n)),
+    );
+  };
+
+  const handleAccept = async (notification: Notification) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const res = await fetch(getActionUrl(notification, 'accept'), {
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) return;
       const data = await res.json();
-      setNotifications(data);
+      updateNotification(notification.id, 'ACCEPTED', data.chatRoomId);
+      setOpen(false);
+      router.push(data.chatRoomId ? `/mypage?tab=chats&roomId=${data.chatRoomId}` : '/mypage?tab=chats');
     } catch {
       // 네트워크 에러 무시
+    }
+  };
+
+  const handleReject = async (notification: Notification) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const res = await fetch(getActionUrl(notification, 'reject'), {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      updateNotification(notification.id, 'REJECTED');
+    } catch {
+      // 에러 무시
     }
   };
 
@@ -47,47 +104,6 @@ export function NotificationDropdown() {
   const toggleOpen = () => {
     if (!open) fetchNotifications();
     setOpen((prev) => !prev);
-  };
-
-  const handleAccept = async (notification: Notification) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/accept`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, status: 'ACCEPTED' } : n)),
-      );
-      setOpen(false);
-      // TODO: 채팅 페이지 구현 후 아래 주석으로 교체
-      // const chatRoomId = data.chatRoomId;
-      // router.push(chatRoomId ? `/chat/${chatRoomId}` : '/chat');
-      // 현재는 채팅 페이지(/chat/[id])가 없어 마이페이지로 임시 이동
-      router.push('/mypage');
-    } catch {
-      // 에러 무시
-    }
-  };
-
-  const handleReject = async (notification: Notification) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/reject`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) return;
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, status: 'REJECTED' } : n)),
-      );
-    } catch {
-      // 에러 무시
-    }
   };
 
   return (
@@ -129,6 +145,20 @@ export function NotificationDropdown() {
   );
 }
 
+function toNotification(request: ChatRequestNotification): Notification {
+  return {
+    id: request.id,
+    type: 'CHAT_REQUEST',
+    status: request.status === 'WAITING' ? 'PENDING' : request.status,
+    senderName: request.senderName,
+    senderAvatar: request.senderAvatar ?? undefined,
+    chatRoomId: request.chatRoomId,
+    postTitle: request.postTitle,
+    message: request.message,
+    createdAt: request.createdAt ?? '',
+  };
+}
+
 interface NotificationItemProps {
   notification: Notification;
   onAccept: (n: Notification) => void;
@@ -139,6 +169,8 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
   const isPending = notification.status === 'PENDING';
   const isAccepted = notification.status === 'ACCEPTED';
   const isRejected = notification.status === 'REJECTED';
+  const isChatRequest = notification.type === 'CHAT_REQUEST';
+  const actionLabel = isChatRequest ? '채팅 문의' : '매칭';
 
   return (
     <div className="px-4 py-3 border-b border-border/50 last:border-0">
@@ -154,8 +186,18 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-text-primary">
-            <span className="font-bold">{notification.senderName}</span>님이 매칭을 요청했습니다.
+            <span className="font-bold">{notification.senderName}</span>님이 {actionLabel}를 요청했습니다.
           </p>
+          {notification.postTitle && (
+            <p className="mt-0.5 truncate text-xs font-medium text-text-secondary">
+              {notification.postTitle}
+            </p>
+          )}
+          {notification.message && (
+            <p className="mt-1 line-clamp-2 text-xs text-text-muted">
+              {notification.message}
+            </p>
+          )}
           <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
 
           {isPending && (
@@ -178,14 +220,14 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
           {isAccepted && (
             <div className="flex items-center gap-1 mt-2 text-xs text-primary font-medium">
               <Check size={13} />
-              매칭 수락됨 · 채팅방으로 이동했습니다.
+              {actionLabel} 수락됨 · 채팅방으로 이동했습니다.
             </div>
           )}
 
           {isRejected && (
             <div className="flex items-center gap-1 mt-2 text-xs text-text-muted">
               <X size={13} />
-              매칭 거절됨 · 상대방에게 알림이 전송됩니다.
+              {actionLabel} 거절됨 · 상대방에게 알림이 전송됩니다.
             </div>
           )}
         </div>

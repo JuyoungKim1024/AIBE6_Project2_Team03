@@ -2,11 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, HelpCircle, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
 import { RankBadge } from '@/components/common/RankBadge';
 import { TrustTemperature } from '@/components/profile/TrustTemperature';
 import type { RankTier } from '@/types/user';
+import { createDirectChatRoom } from '@/lib/api/chat';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -173,6 +174,7 @@ function ProfilePostSection({ title, posts, emptyMessage }: { title: string; pos
 }
 
 export default function PublicProfilePage() {
+  const router = useRouter();
   const params = useParams<{ userId: string }>();
   const userId = params.userId;
   const [data, setData] = useState<PublicProfile | null>(null);
@@ -182,6 +184,8 @@ export default function PublicProfilePage() {
   const [selectedPortfolioGroupId, setSelectedPortfolioGroupId] = useState<string | null>(null);
   const [reviewPage, setReviewPage] = useState(1);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [chatErrorMessage, setChatErrorMessage] = useState('');
 
   useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
@@ -302,6 +306,27 @@ export default function PublicProfilePage() {
     setPortfolioIndex((current) => (current + direction + sortedPortfolios.length) % sortedPortfolios.length);
   };
 
+  const startChat = async () => {
+    if (isCreatingChat) return;
+
+    setIsCreatingChat(true);
+    setChatErrorMessage('');
+
+    try {
+      const roomId = await createDirectChatRoom(data.id);
+      router.push(`/chat/${roomId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'DM을 시작하지 못했습니다.';
+      if (message.includes('로그인')) {
+        router.push('/login');
+        return;
+      }
+      setChatErrorMessage(message);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -352,6 +377,19 @@ export default function PublicProfilePage() {
                 <MessageCircle size={16} />
                 채팅 문의
               </Link>
+              {isEditor && <TrustTemperature temp={data.battlePower} />}
+              <div className="flex flex-col items-stretch sm:items-end gap-2">
+                <button
+                  type="button"
+                  onClick={startChat}
+                  disabled={isCreatingChat}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <MessageCircle size={16} />
+                  채팅 문의
+                </button>
+                {chatErrorMessage && <span className="text-xs text-primary">{chatErrorMessage}</span>}
+              </div>
             </div>
           </div>
         </section>

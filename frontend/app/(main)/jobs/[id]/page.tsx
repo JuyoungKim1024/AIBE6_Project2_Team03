@@ -13,15 +13,16 @@ import {
   Heart,
   MessageCircle,
   Send,
-  X,
   Edit2,
   Trash2,
   Reply,
   Play,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
+import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
 import {
   fetchJobPost,
@@ -33,15 +34,17 @@ import {
   togglePostLike,
   getPostLikedStatus,
 } from "@/lib/api/post";
+import { createPostChatRequest } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
-  const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<JobPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showChatPanel, setShowChatPanel] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [showChatRequestModal, setShowChatRequestModal] = useState(false);
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -122,6 +125,38 @@ export default function JobDetailPage() {
       // 비로그인 시 로컬 토글
       setLiked((prev) => !prev);
       setLikeCount((prev) => liked ? prev - 1 : prev + 1);
+    }
+  };
+
+  const openChatRequestModal = () => {
+    if (!post || isStartingChat || currentUserId === post.author.id) return;
+
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
+
+    setShowChatRequestModal(true);
+  };
+
+  const submitChatRequest = async (message: string) => {
+    if (!post || isStartingChat || currentUserId === post.author.id || !id) return;
+
+    setIsStartingChat(true);
+
+    try {
+      await createPostChatRequest(post.author.id, id, message);
+      setShowChatRequestModal(false);
+      alert("채팅 요청을 보냈습니다.");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "채팅 요청을 보내지 못했습니다.";
+      if (errorMessage.includes("로그인")) {
+        router.push("/login");
+        return;
+      }
+      alert(errorMessage);
+    } finally {
+      setIsStartingChat(false);
     }
   };
 
@@ -214,6 +249,7 @@ export default function JobDetailPage() {
   }
 
   const postTypeLabel = post.postType === "RECRUITING" ? "구인" : "구직";
+  const isMyPost = currentUserId === post.author.id;
   const priceText =
     post.priceVisible && (post.minPrice || post.maxPrice)
       ? post.minPrice && post.maxPrice
@@ -695,18 +731,28 @@ export default function JobDetailPage() {
                 <span className="text-sm font-bold">{comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)}</span>
               </div>
             </div>
-            {!(userRole === "EDITOR" && post.postType === "JOB_SEARCH") && (
-              <button
-                onClick={() => setShowChatPanel(true)}
-                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-              >
-                <Send size={16} />
-                채팅 문의하기
-              </button>
-            )}
+            <button
+              onClick={openChatRequestModal}
+              disabled={isStartingChat || isMyPost}
+              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Send size={16} />
+              {isMyPost ? "내 글입니다" : "채팅 문의하기"}
+            </button>
           </div>
         </div>
       </div>
+
+      {showChatRequestModal && post && (
+        <DirectChatRequestModal
+          targetName={post.author.nickname}
+          title="채팅 문의하기"
+          initialMessage="안녕하세요. 게시글 보고 문의드립니다."
+          isSubmitting={isStartingChat}
+          onClose={() => setShowChatRequestModal(false)}
+          onSubmit={submitChatRequest}
+        />
+      )}
 
       {/* Portfolio Lightbox */}
       <AnimatePresence>
@@ -849,79 +895,6 @@ export default function JobDetailPage() {
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* Right Sidebar: Chat Panel */}
-      <AnimatePresence>
-        {showChatPanel && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowChatPanel(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 w-full max-w-md bg-surface border-l border-border shadow-2xl z-[101] flex flex-col"
-            >
-              <div className="flex items-center justify-between p-5 border-b border-border bg-surface/95 backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  {post.author.profileImage ? (
-                    <img
-                      src={post.author.profileImage}
-                      alt={post.author.nickname}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center text-text-muted text-sm font-bold">
-                      {post.author.nickname[0]}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-bold text-text-primary block">
-                      {post.author.nickname}
-                    </span>
-                    <span className="text-xs text-text-muted">
-                      보통 1시간 이내 응답
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowChatPanel(false)}
-                  className="p-2 text-text-muted hover:text-text-primary rounded-lg hover:bg-surface-elevated transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-5 bg-background/50 flex flex-col gap-4">
-                <div className="text-center text-xs text-text-muted my-4">
-                  채팅이 시작되었습니다.
-                </div>
-                <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-primary text-white px-4 py-2.5 rounded-2xl rounded-br-md text-sm">
-                    안녕하세요! 올려주신 구인글 보고 연락드립니다.
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 border-t border-border bg-surface">
-                <div className="flex items-center gap-2 bg-surface-elevated border border-border rounded-xl p-2">
-                  <input
-                    placeholder="메시지를 입력하세요"
-                    className="flex-1 bg-transparent px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-                  />
-                  <button className="p-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                    <Send size={16} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
         )}
       </AnimatePresence>
     </div>
