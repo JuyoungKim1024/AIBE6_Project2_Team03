@@ -38,6 +38,20 @@ public class ProjectService {
     }
 
     @Transactional
+    public void cancelWaitingProjectByRoom(String roomId) {
+        Project project = projectRepository.findTopByRoom_IdAndStatusInOrderByCreatedAtDesc(
+                roomId,
+                List.of(ProjectStatus.WAITING)
+        );
+
+        if(project == null) return;
+
+        project.cancel();
+        publishProject(project);
+
+    }
+
+    @Transactional
     public ProjectResponseDTO createProject(String userId, ProjectCreateRequestDTO request) {
         ChatRoom room = chatRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
@@ -136,8 +150,7 @@ public class ProjectService {
     public ProjectResponseDTO completeProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
-        validateStatus(project, ProjectStatus.WORKING);
-        project.complete();
+        project.requestComplete(userId);
         return publishProject(project);
     }
 
@@ -145,7 +158,9 @@ public class ProjectService {
     public ProjectResponseDTO cancelProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
-        if (project.getStatus() != ProjectStatus.WAITING && project.getStatus() != ProjectStatus.WORKING) {
+        if (project.getStatus() != ProjectStatus.WAITING
+                && project.getStatus() != ProjectStatus.WORKING
+                && project.getStatus() != ProjectStatus.COMPLETION_PENDING) {
             throw new IllegalArgumentException("취소할 수 없는 프로젝트 상태입니다.");
         }
         project.cancel();

@@ -6,13 +6,17 @@ import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomResponseDTO;
 import com.backend.domain.chat.entity.ChatMessage;
 import com.backend.domain.chat.entity.ChatParticipant;
+import com.backend.domain.chat.entity.ChatRequest;
 import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
+import com.backend.domain.chat.repository.ChatRequestRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
+import com.backend.domain.chat.type.ChatRequestStatus;
 import com.backend.domain.chat.type.ChatRoomType;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.post.repository.PostRepository;
+import com.backend.domain.project.service.ProjectService;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +33,11 @@ public class ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatParticipantRepository chatParticipantRepository;
+    private final ChatRequestRepository chatRequestRepository;
     private final UserRepository userRepository;
     private final DirectChatRoomService directChatRoomService;
     private final PostRepository postRepository;
+    private final ProjectService projectService;
 
 
     @Transactional(readOnly = true)
@@ -118,10 +124,7 @@ public class ChatService {
 
     @Transactional
     public void deleteRoomForUser(String roomId, String userId) {
-        ChatParticipant participant = chatParticipantRepository.findByChatRoom_IdAndUser_Id(roomId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("채팅방 참여자를 찾을 수 없습니다."));
-
-        participant.delete();
+        leaveRoom(roomId, userId);
     }
 
 
@@ -143,8 +146,20 @@ public class ChatService {
         User sender = userRepository.findById(dto.senderId())
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        if (!chatParticipantRepository.existsByChatRoom_IdAndUser_Id(chatRoom.getId(), sender.getId())) {
+        if (!chatParticipantRepository.existsByChatRoom_IdAndUser_IdAndDeletedAtIsNull(chatRoom.getId(), sender.getId())) {
             throw new IllegalArgumentException("채팅방 참여자만 메시지를 보낼 수 있습니다.");
+        }
+
+        ChatParticipant deletedPartner = chatParticipantRepository.findByChatRoom_Id(roomId)
+                .stream()
+                .filter(participant -> !participant.getUser().getId().equals(sender.getId()))
+                .filter(participant -> participant.getDeletedAt() != null)
+                .findFirst()
+                .orElse(null);
+
+        if (deletedPartner != null) {
+            createReopenRequest(sender, deletedPartner.getUser(), dto.content());
+            return ChatMessageResponseDTO.requested(roomId, sender.getId(), dto.content(), dto.messageType());
         }
 
         ChatMessage message = new ChatMessage(
@@ -157,6 +172,35 @@ public class ChatService {
         ChatMessage saveMessage = chatMessageRepository.save(message);
         return new ChatMessageResponseDTO(saveMessage);
 
+    }
+
+    private void createReopenRequest(User requester, User receiver, String message) {
+        boolean existsWaitingRequest = chatRequestRepository.existsByRequester_IdAndReceiver_IdAndPostIsNullAndStatus(
+                requester.getId(),
+                receiver.getId(),
+                ChatRequestStatus.WAITING
+        );
+        if (existsWaitingRequest) {
+            return;
+        }
+
+        chatRequestRepository.save(new ChatRequest(
+                requester,
+                receiver,
+                null,
+                message
+        ));
+    }
+
+    @Transactional
+    public void leaveRoom(String roomId, String userId) {
+        ChatParticipant participant = chatParticipantRepository
+                .findByChatRoom_IdAndUser_Id(roomId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
+
+        projectService.cancelWaitingProjectByRoom(roomId);
+
+        participant.delete();
     }
 
 
