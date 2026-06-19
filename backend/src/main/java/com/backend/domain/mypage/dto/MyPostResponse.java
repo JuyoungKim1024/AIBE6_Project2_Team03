@@ -5,6 +5,7 @@ public record MyPostResponse(
         String boardType,
         String postType,
         String title,
+        String authorName,
         String date,
         int views,
         int comments,
