@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X } from "lucide-react";
+import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X, Play } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { fetchJobPost } from "@/lib/api/post";
@@ -15,12 +15,11 @@ const designToolTags = ["Photoshop", "Adobe Illustrator", "Figma", "Canva", "기
 
 type UserRole = "YOUTUBER" | "EDITOR";
 
-interface PortfolioItem {
+interface PortfolioGroupItem {
   id: string;
-  title: string;
-  url: string;
-  type: string;
+  name: string;
   representative: boolean;
+  items: { id: string; title: string; url: string; type: string }[];
 }
 
 function JobsWriteContent() {
@@ -40,8 +39,8 @@ function JobsWriteContent() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string[]>([]);
   const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
   const [selectedDesignTools, setSelectedDesignTools] = useState<string[]>([]);
-  const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
-  const [selectedPortfolioIds, setSelectedPortfolioIds] = useState<string[]>([]);
+  const [portfolioGroups, setPortfolioGroups] = useState<PortfolioGroupItem[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [revisionCount, setRevisionCount] = useState<number | null>(null);
   const [customRevisionInput, setCustomRevisionInput] = useState("");
   const [unlimitedRevision, setUnlimitedRevision] = useState(false);
@@ -49,6 +48,7 @@ function JobsWriteContent() {
   const [submitting, setSubmitting] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
   const [originalSnapshot, setOriginalSnapshot] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<{ url: string; title: string; type: string } | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -68,7 +68,7 @@ function JobsWriteContent() {
     selectedSubCategory: [...selectedSubCategory].sort(),
     selectedVideoTools: [...selectedVideoTools].sort(),
     selectedDesignTools: [...selectedDesignTools].sort(),
-    selectedPortfolioIds: [...selectedPortfolioIds].sort(),
+    selectedGroupIds: [...selectedGroupIds].sort(),
   });
   const priceSectionRef = useRef<HTMLDivElement>(null);
   const revisionSectionRef = useRef<HTMLDivElement>(null);
@@ -88,12 +88,18 @@ function JobsWriteContent() {
     }
 
     if (cachedRole === "EDITOR") {
-      fetch(`${API_BASE_URL}/api/users/me/portfolios`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => r.ok ? r.json() : [])
-        .then(setPortfolios)
-        .catch(() => {});
+      Promise.all([
+        fetch(`${API_BASE_URL}/api/users/me/portfolio-groups`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.ok ? r.json() : []),
+        fetch(`${API_BASE_URL}/api/users/me/portfolios`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.ok ? r.json() : []),
+      ]).then(([groups, items]) => {
+        const grouped: PortfolioGroupItem[] = groups.map((g: { id: string; name: string; representative: boolean }) => ({
+          id: g.id,
+          name: g.name,
+          representative: g.representative,
+          items: items.filter((p: { groupId: string }) => p.groupId === g.id),
+        }));
+        setPortfolioGroups(grouped);
+      }).catch(() => {});
     }
 
     if (editId) {
@@ -107,7 +113,7 @@ function JobsWriteContent() {
           const fetchedSubCategory = post.fieldTags.filter((t) => subCategoryTags.includes(t));
           const fetchedVideoTools = post.toolTags.filter((t) => videoToolTags.includes(t));
           const fetchedDesignTools = post.toolTags.filter((t) => designToolTags.includes(t));
-          const fetchedPortfolioIds = (post.portfolios ?? []).map((p: { id: string }) => p.id);
+          const fetchedPortfolioIds = (post.portfolioGroups ?? []).map((g: { id: string }) => g.id);
           const fetchedUnlimited = post.revisionCount === null;
           const fetchedRevisionCount = post.revisionCount;
 
@@ -121,7 +127,7 @@ function JobsWriteContent() {
           setSelectedSubCategory(fetchedSubCategory);
           setSelectedVideoTools(fetchedVideoTools);
           setSelectedDesignTools(fetchedDesignTools);
-          setSelectedPortfolioIds(fetchedPortfolioIds);
+          setSelectedGroupIds(fetchedPortfolioIds);
           if (fetchedUnlimited) {
             setUnlimitedRevision(true);
           } else {
@@ -144,7 +150,7 @@ function JobsWriteContent() {
             selectedSubCategory: [...fetchedSubCategory].sort(),
             selectedVideoTools: [...fetchedVideoTools].sort(),
             selectedDesignTools: [...fetchedDesignTools].sort(),
-            selectedPortfolioIds: [...fetchedPortfolioIds].sort(),
+            selectedGroupIds: [...fetchedPortfolioIds].sort(),
           }));
         })
         .catch(console.error)
@@ -241,8 +247,8 @@ function JobsWriteContent() {
       revisionCount: unlimitedRevision ? null : revisionCount,
     };
     const body = editId
-      ? JSON.stringify({ ...commonFields, portfolioIds: selectedPortfolioIds })
-      : JSON.stringify({ ...commonFields, postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH", portfolioIds: selectedPortfolioIds });
+      ? JSON.stringify({ ...commonFields, portfolioGroupIds: selectedGroupIds })
+      : JSON.stringify({ ...commonFields, postType: type === "hiring" ? "RECRUITING" : "JOB_SEARCH", portfolioGroupIds: selectedGroupIds });
     try {
       const url = editId
         ? `${API_BASE_URL}/api/posts/job/${editId}`
@@ -278,6 +284,7 @@ function JobsWriteContent() {
   };
 
   return (
+    <>
     <div className="min-h-screen pb-32">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -570,48 +577,70 @@ function JobsWriteContent() {
             </div>
           </div>
 
-          {/* 포트폴리오 (구직만) */}
+          {/* 포트폴리오 그룹 (구직만) */}
           {type === "looking" && (
             <div>
               <label className="block text-sm font-bold text-text-primary mb-3">
                 포트폴리오 선택
               </label>
-              {portfolios.length === 0 ? (
+              {portfolioGroups.length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
-                  <span className="text-sm font-medium mb-2">등록된 포트폴리오가 없습니다.</span>
+                  <span className="text-sm font-medium mb-2">등록된 포트폴리오 그룹이 없습니다.</span>
                   <Link href="/profile" className="text-xs text-primary hover:underline">
                     포트폴리오를 등록해서 이용해보세요 →
                   </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {portfolios.map((p) => {
-                    const selected = selectedPortfolioIds.includes(p.id);
+                  {portfolioGroups.map((g) => {
+                    const selected = selectedGroupIds.includes(g.id);
+                    const previews = g.items.slice(0, 4);
                     return (
                       <button
-                        key={p.id}
+                        key={g.id}
                         type="button"
                         onClick={() =>
-                          setSelectedPortfolioIds((prev) =>
-                            prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                          setSelectedGroupIds((prev) =>
+                            prev.includes(g.id) ? prev.filter((id) => id !== g.id) : [...prev, g.id]
                           )
                         }
-                        className={`flex items-center gap-3 p-4 rounded-xl border text-left transition-all ${
-                          selected
-                            ? "border-primary bg-primary/10"
-                            : "border-border bg-surface hover:border-text-muted"
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          selected ? "border-primary bg-primary/10" : "border-border bg-surface hover:border-text-muted"
                         }`}
                       >
-                        {p.url && (
-                          <img src={p.url} alt={p.title} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-text-primary truncate">{p.title}</div>
-                          {p.representative && (
-                            <div className="text-xs text-primary mt-0.5">대표 포트폴리오</div>
-                          )}
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <div className="text-sm font-bold text-text-primary">{g.name}</div>
+                            {g.representative && <div className="text-xs text-primary mt-0.5">대표 그룹</div>}
+                            <div className="text-xs text-text-muted mt-0.5">{g.items.length}개</div>
+                          </div>
+                          {selected && <CheckCircle2 size={18} className="text-primary flex-shrink-0" />}
                         </div>
-                        {selected && <CheckCircle2 size={18} className="text-primary flex-shrink-0" />}
+                        {previews.length > 0 && (
+                          <div className="flex gap-1.5">
+                            {previews.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setPreviewItem(p); }}
+                                className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 group/thumb"
+                              >
+                                <img src={p.url} alt={p.title} className="w-full h-full object-cover" />
+                                {p.type === "video" && (
+                                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                    <Play size={10} className="text-white" fill="currentColor" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/thumb:opacity-100 transition-opacity rounded-lg" />
+                              </button>
+                            ))}
+                            {g.items.length > 4 && (
+                              <div className="w-12 h-12 rounded-lg bg-surface-elevated border border-border flex items-center justify-center text-xs text-text-muted font-bold flex-shrink-0">
+                                +{g.items.length - 4}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -647,6 +676,30 @@ function JobsWriteContent() {
         </div>
       </div>
     </div>
+
+    {/* 포트폴리오 미리보기 모달 */}
+    {previewItem && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => setPreviewItem(null)}>
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+        <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setPreviewItem(null)}
+            className="absolute -top-10 right-0 p-2 text-white/70 hover:text-white transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <div className="bg-black rounded-2xl overflow-hidden aspect-video">
+            {previewItem.type === "video" ? (
+              <video src={previewItem.url} className="w-full h-full object-contain" controls autoPlay />
+            ) : (
+              <img src={previewItem.url} alt={previewItem.title} className="w-full h-full object-contain" />
+            )}
+          </div>
+          <p className="mt-3 text-white font-bold">{previewItem.title}</p>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
