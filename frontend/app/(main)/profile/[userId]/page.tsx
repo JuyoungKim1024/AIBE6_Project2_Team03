@@ -177,7 +177,7 @@ export default function PublicProfilePage() {
   const userId = params.userId;
   const [data, setData] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [profileError, setProfileError] = useState('');
   const [portfolioIndex, setPortfolioIndex] = useState(0);
   const [selectedPortfolioGroupId, setSelectedPortfolioGroupId] = useState<string | null>(null);
   const [reviewPage, setReviewPage] = useState(1);
@@ -202,15 +202,19 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     setIsLoading(true);
-    setNotFound(false);
+    setProfileError('');
     setPortfolioIndex(0);
     setSelectedPortfolioGroupId(null);
     setReviewPage(1);
 
     fetch(`${API_BASE_URL}/api/profiles/${userId}`)
       .then((response) => {
+        if (response.status === 410) {
+          setProfileError('탈퇴한 계정입니다');
+          return null;
+        }
         if (response.status === 404) {
-          setNotFound(true);
+          setProfileError('존재하지 않는 사용자입니다');
           return null;
         }
         if (!response.ok) {
@@ -254,7 +258,7 @@ export default function PublicProfilePage() {
         const representativeGroup = profile.portfolioGroups?.find((group) => group.representative);
         setSelectedPortfolioGroupId(representativeGroup?.id ?? profile.portfolioGroups?.[0]?.id ?? null);
       })
-      .catch(() => setNotFound(true))
+      .catch(() => setProfileError('프로필을 불러오지 못했습니다'))
       .finally(() => setIsLoading(false));
   }, [currentUserId, userId]);
 
@@ -274,10 +278,10 @@ export default function PublicProfilePage() {
     );
   }
 
-  if (notFound || !data) {
+  if (profileError || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <p className="text-text-secondary font-bold">존재하지 않는 사용자입니다</p>
+        <p className="text-text-secondary font-bold">{profileError || '존재하지 않는 사용자입니다'}</p>
       </div>
     );
   }

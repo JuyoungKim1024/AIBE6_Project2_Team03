@@ -79,6 +79,18 @@ public class Profile {
         this.phone = phone;
     }
 
+    public void withdraw() {
+        this.name = null;
+        this.phone = null;
+        this.bio = null;
+        this.publicStatus = false;
+        this.representativePortfolioId = null;
+        this.publicPostsVisible = false;
+        this.publicJobPostsVisible = false;
+        this.publicCommunityPostsVisible = false;
+        this.publicLikedPostsVisible = false;
+    }
+
     public void updatePublicContentVisibility(boolean publicPostsVisible, boolean publicLikedPostsVisible) {
         this.publicPostsVisible = publicPostsVisible;
         this.publicLikedPostsVisible = publicLikedPostsVisible;
