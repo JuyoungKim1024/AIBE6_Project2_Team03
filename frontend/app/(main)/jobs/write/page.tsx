@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { fetchJobPost } from "@/lib/api/post";
@@ -49,6 +49,9 @@ function JobsWriteContent() {
   const [submitting, setSubmitting] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
   const [originalSnapshot, setOriginalSnapshot] = useState<string | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const priceRangeError = !priceHidden && minPrice > maxPrice;
 
   const isDirty = !editId || originalSnapshot === null || originalSnapshot !== JSON.stringify({
@@ -173,6 +176,29 @@ function JobsWriteContent() {
     return match?.[1] ?? null;
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiDescription.trim()) return;
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/ai-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: aiDescription, postType: type }),
+      });
+      if (!res.ok) throw new Error("생성 실패");
+      const data = await res.json();
+      if (data.title) setTitle(data.title);
+      if (data.content) setContent(data.content);
+      setAiPanelOpen(false);
+      setAiDescription("");
+    } catch (err) {
+      console.error(err);
+      alert("AI 초안 생성에 실패했습니다.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim() || !type) return;
     if (!editId && userRole === "EDITOR" && type === "hiring") return;
@@ -254,8 +280,44 @@ function JobsWriteContent() {
           <h1 className="text-xl font-bold text-text-primary">
             {editId ? "글 수정" : "글 작성"}
           </h1>
-          <div className="w-20" />
+          <button
+            onClick={() => setAiPanelOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
+          >
+            <Sparkles size={14} />
+            AI 초안
+          </button>
         </div>
+
+        {/* AI 초안 패널 */}
+        {aiPanelOpen && (
+          <div className="mb-6 bg-surface border border-primary/30 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                <Sparkles size={16} />
+                AI 초안 작성
+              </div>
+              <button onClick={() => setAiPanelOpen(false)}>
+                <X size={16} className="text-text-muted hover:text-text-primary" />
+              </button>
+            </div>
+            <textarea
+              value={aiDescription}
+              onChange={(e) => setAiDescription(e.target.value)}
+              placeholder="예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."
+              rows={3}
+              className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary resize-none transition-colors"
+            />
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiGenerating || !aiDescription.trim()}
+              className="mt-3 flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Sparkles size={14} />
+              {aiGenerating ? "생성 중..." : "초안 생성"}
+            </button>
+          </div>
+        )}
 
         <div className="space-y-8">
           {/* 게시글 종류 */}
