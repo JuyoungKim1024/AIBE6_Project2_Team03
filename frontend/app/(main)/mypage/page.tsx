@@ -192,7 +192,7 @@ function getProjectMessageLabel(project: ProjectMessagePayload) {
 function getChatLastMessageText(lastMessage: string) {
   if (!lastMessage) return '아직 메시지가 없습니다';
   const project = parseProjectMessage(lastMessage);
-  return project ? getProjectMessageLabel(project) : lastMessage;
+  return project ? '프로젝트' : lastMessage;
 }
 
 function canRespondProject(project: { status?: string; requesterId?: string } | null | undefined, userId: string | null | undefined) {

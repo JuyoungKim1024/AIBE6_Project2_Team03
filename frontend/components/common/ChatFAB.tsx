@@ -2,12 +2,13 @@
 
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, MessageSquare, RefreshCw, Send, X } from 'lucide-react';
+import { ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
 import { createDirectChatRequest } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
+import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
 
 type AuthUser = {
@@ -25,6 +26,19 @@ type MyChatRoom = {
   partnerWithdrawn?: boolean;
 };
 
+type MyProject = {
+  id: string;
+  roomId?: string;
+  requesterId?: string;
+  field: string | null;
+  status: string;
+};
+
+type MyProjects = {
+  received: unknown[];
+  ongoing: MyProject[];
+};
+
 export function ChatFAB() {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -33,6 +47,7 @@ export function ChatFAB() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentProject, setCurrentProject] = useState<ProjectMessagePayload | null>(null);
   const [draft, setDraft] = useState('');
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -98,6 +113,35 @@ export function ChatFAB() {
     }
   };
 
+  const loadProject = async (roomId: string) => {
+    try {
+      const project = await fetchJson<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`);
+      setCurrentProject(project);
+    } catch {
+      try {
+        const data = await fetchJson<MyProjects>('/api/users/me/projects');
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED'].includes(item.status));
+        if (project) {
+          setCurrentProject({
+            id: project.id,
+            roomId,
+            requesterId: project.requesterId,
+            field: project.field,
+            price: null,
+            videoLength: null,
+            deadline: null,
+            memo: null,
+            status: project.status,
+          });
+          return;
+        }
+      } catch {
+        // 프로젝트가 없으면 약식 카드의 저장 상태를 그대로 사용한다.
+      }
+      setCurrentProject(null);
+    }
+  };
+
   useEffect(() => {
     if (!showPopup) return;
     if (!accessToken) {
@@ -118,6 +162,7 @@ export function ChatFAB() {
   useEffect(() => {
     if (!showPopup || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
+    loadProject(activeRoomId);
   }, [activeRoomId, isDMActive, showPopup]);
 
   useEffect(() => {
@@ -160,7 +205,46 @@ export function ChatFAB() {
 
   const openRoom = (roomId: string) => {
     setActiveRoomId(roomId);
+    setCurrentProject(null);
     if (isDMActive) closeDM();
+  };
+
+  const deleteRoom = async (roomId: string) => {
+    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+
+    setErrorMessage('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
+        method: 'DELETE',
+        headers: {
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete room');
+
+      setChatRooms((current) => current.filter((room) => room.id !== roomId));
+      if (activeRoomId === roomId) {
+        setActiveRoomId(null);
+        setMessages([]);
+        setCurrentProject(null);
+        setDraft('');
+      }
+    } catch {
+      setErrorMessage('채팅방을 삭제하지 못했습니다.');
+    }
+  };
+
+  const refreshActiveRoom = () => {
+    if (!activeRoomId) return;
+    loadMessages(activeRoomId);
+    loadProject(activeRoomId);
+  };
+
+  const getLastMessagePreview = (chat: MyChatRoom) => {
+    if (chat.partnerDeleted || chat.partnerWithdrawn) return '탈퇴한 회원입니다';
+    if (!chat.lastMessage) return '아직 메시지가 없습니다';
+    return parseProjectMessage(chat.lastMessage) ? '프로젝트' : chat.lastMessage;
   };
 
   const submitDmRequest = async (message: string) => {
@@ -268,26 +352,32 @@ export function ChatFAB() {
                   <div className="p-4 text-sm text-text-secondary">채팅 목록이 없습니다</div>
                 ) : (
                   chatRooms.map((chat) => (
-                    <button
+                    <div
                       key={chat.id}
-                      type="button"
-                      onClick={() => openRoom(chat.id)}
                       className={`w-full text-left p-3 border-b border-border/50 hover:bg-surface-elevated transition-colors flex items-center gap-3 ${activeRoomId === chat.id ? 'bg-surface-elevated' : ''}`}
                     >
-                      <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface">
-                        <MessageSquare size={17} className="text-text-muted" />
-                        {chat.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-white">{chat.unreadCount}</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-0.5 gap-2">
-                          <span className="font-bold text-sm text-text-primary truncate">{chat.partnerName}</span>
-                          <span className="text-[10px] text-text-muted flex-shrink-0">{chat.time}</span>
+                      <button type="button" onClick={() => openRoom(chat.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <div className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface">
+                          <MessageSquare size={17} className="text-text-muted" />
+                          {chat.unreadCount > 0 && <span className="absolute -top-1 -right-1 min-w-4 h-4 rounded-full bg-primary px-1 text-[10px] font-bold leading-4 text-white">{chat.unreadCount}</span>}
                         </div>
-                        <p className="text-xs text-text-secondary truncate">
-                          {chat.partnerDeleted || chat.partnerWithdrawn ? '탈퇴한 회원입니다' : chat.lastMessage || '아직 메시지가 없습니다'}
-                        </p>
-                      </div>
-                    </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-0.5 gap-2">
+                            <span className="font-bold text-sm text-text-primary truncate">{chat.partnerName}</span>
+                            <span className="text-[10px] text-text-muted flex-shrink-0">{chat.time}</span>
+                          </div>
+                          <p className="text-xs text-text-secondary truncate">{getLastMessagePreview(chat)}</p>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteRoom(chat.id)}
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface hover:text-accent"
+                        aria-label="채팅방 삭제"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -315,7 +405,7 @@ export function ChatFAB() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => activeRoomId && loadMessages(activeRoomId)}
+                        onClick={refreshActiveRoom}
                         className="text-text-muted hover:text-text-primary"
                         aria-label="새로고침"
                       >
@@ -334,6 +424,37 @@ export function ChatFAB() {
                     ) : (
                       messages.map((message) => {
                         const isMine = message.senderId === user?.id;
+                        const projectMessage = parseProjectMessage(message.content);
+                        if (projectMessage) {
+                          const displayProject = currentProject?.id === projectMessage.id
+                            ? {
+                              ...projectMessage,
+                              ...currentProject,
+                              field: currentProject.field ?? projectMessage.field,
+                            }
+                            : projectMessage;
+                          const statusText =
+                            displayProject.status === 'WAITING'
+                              ? '프로젝트 수락 대기'
+                              : displayProject.status === 'WORKING'
+                                ? '프로젝트 진행 중'
+                                : displayProject.status === 'COMPLETED'
+                                  ? '완료된 프로젝트입니다'
+                                  : displayProject.status === 'REJECTED'
+                                    ? '거절된 프로젝트입니다'
+                                    : '프로젝트';
+
+                          return (
+                            <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                              <div className="max-w-[80%] rounded-xl border border-primary/30 bg-surface px-3 py-2 text-sm">
+                                <p className="text-xs font-bold text-primary">프로젝트</p>
+                                <p className="mt-0.5 truncate font-bold text-text-primary">{displayProject.field || '프로젝트'}</p>
+                                <p className="mt-1 text-xs text-text-secondary">{statusText}</p>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         return (
                           <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
