@@ -7,6 +7,7 @@ public record MyProjectResponse(
         String partnerName,
         String field,
         String status,
+        String completionRequestedBy,
         String date
 ) {
 }

@@ -23,6 +23,7 @@ export interface ChatPostSummary {
 
 export interface MyChatRoom {
   id: string;
+  partnerId?: string;
   partnerName: string;
   lastMessage: string;
   time: string;

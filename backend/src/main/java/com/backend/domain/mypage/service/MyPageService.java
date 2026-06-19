@@ -452,6 +452,7 @@ public class MyPageService {
                 partner.getNickname(),
                 project.getField(),
                 project.getStatus().name(),
+                project.getCompletionRequestedBy(),
                 formatDate(project.getUpdatedAt())
         );
     }

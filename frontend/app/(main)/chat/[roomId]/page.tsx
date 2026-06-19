@@ -81,6 +81,7 @@ export default function ChatRoomPage() {
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
+
   }, [accessToken, roomId, router]);
 
   useEffect(() => {
@@ -105,7 +106,8 @@ export default function ChatRoomPage() {
           messageType: 'TEXT',
         }),
       });
-      setMessages((current) => [...current, saved]);
+      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
+      setMessages((current) => [...current, savedMessage]);
       setDraft('');
     } catch {
       setErrorMessage('메시지를 보내지 못했습니다.');

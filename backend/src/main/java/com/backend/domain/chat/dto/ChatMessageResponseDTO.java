@@ -24,4 +24,15 @@ public record ChatMessageResponseDTO (
         );
     }
 
+    public static ChatMessageResponseDTO requested(String roomId, String senderId, String content, MessageType messageType) {
+        return new ChatMessageResponseDTO(
+                null,
+                roomId,
+                senderId,
+                content,
+                messageType,
+                LocalDateTime.now()
+        );
+    }
+
 }
