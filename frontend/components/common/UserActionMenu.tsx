@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, User } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api";
 import { createDirectChatRequest } from "@/lib/api/chat";
 import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 
@@ -37,12 +38,28 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
     event.stopPropagation();
   };
 
-  const openDmRequestModal = (event: React.MouseEvent) => {
+  const openDmRequestModal = async (event: React.MouseEvent) => {
     stopLinkClick(event);
     if (!userId || isStartingDm) return;
 
     const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error("로그인이 필요합니다.");
+      const me = await response.json() as { id: string };
+      if (me.id === userId) {
+        alert("본인에게는 DM을 보낼 수 없습니다.");
+        setOpen(false);
+        return;
+      }
+    } catch {
       router.push("/login");
       return;
     }
@@ -58,8 +75,8 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
       await createDirectChatRequest(userId, message);
       setShowRequestModal(false);
       setOpen(false);
-    } catch {
-      alert("DM 요청을 보내지 못했습니다.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "DM 요청을 보내지 못했습니다.");
     } finally {
       setIsStartingDm(false);
     }

@@ -121,6 +121,35 @@ export function ChatFAB() {
   }, [activeRoomId, isDMActive, showPopup]);
 
   useEffect(() => {
+    if (!activeDMUser) return;
+
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      closeDM();
+      router.push('/login');
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => (response.ok ? response.json() as Promise<AuthUser> : null))
+      .then((me) => {
+        if (!me) return;
+        setUser(me);
+        if (me.id === activeDMUser.id) {
+          closeDM();
+          setErrorMessage('본인에게는 DM을 보낼 수 없습니다.');
+          alert('본인에게는 DM을 보낼 수 없습니다.');
+        }
+      })
+      .catch(() => {
+        closeDM();
+        router.push('/login');
+      });
+  }, [activeDMUser, closeDM, router]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -136,6 +165,12 @@ export function ChatFAB() {
 
   const submitDmRequest = async (message: string) => {
     if (!activeDMUser || isRequestingDm) return;
+    if (user?.id === activeDMUser.id) {
+      closeDM();
+      setErrorMessage('본인에게는 DM을 보낼 수 없습니다.');
+      alert('본인에게는 DM을 보낼 수 없습니다.');
+      return;
+    }
 
     setIsRequestingDm(true);
     setErrorMessage('');
