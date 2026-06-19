@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, User } from "lucide-react";
-import { API_BASE_URL } from "@/lib/api";
+import { createDirectChatRequest } from "@/lib/api/chat";
+import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 
 type UserActionMenuProps = {
   userId?: string | null;
@@ -16,6 +17,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [isStartingDm, setIsStartingDm] = useState(false);
   const avatarSize = size === "sm" ? "w-7 h-7 text-xs" : "w-10 h-10 text-sm";
   const iconSize = size === "sm" ? 13 : 16;
@@ -35,7 +37,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
     event.stopPropagation();
   };
 
-  const startDm = async (event: React.MouseEvent) => {
+  const openDmRequestModal = (event: React.MouseEvent) => {
     stopLinkClick(event);
     if (!userId || isStartingDm) return;
 
@@ -45,41 +47,21 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
       return;
     }
 
+    setShowRequestModal(true);
+  };
+
+  const submitDmRequest = async (message: string) => {
+    if (!userId || isStartingDm) return;
+
     setIsStartingDm(true);
     try {
-      const meResponse = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const me = meResponse.ok ? await meResponse.json() : null;
-      if (!me?.id) {
-        router.push("/login");
-        return;
-      }
-      if (me.id === userId) {
-        router.push(`/profile/${userId}`);
-        return;
-      }
-
-      const roomResponse = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          roomType: "DIRECT",
-          participantUserIds: [me.id, userId],
-        }),
-      });
-      if (!roomResponse.ok) throw new Error("채팅방 생성 실패");
-
-      const room = await roomResponse.json();
-      router.push(`/chat/${room.roomId}`);
+      await createDirectChatRequest(userId, message);
+      setShowRequestModal(false);
+      setOpen(false);
     } catch {
-      alert("DM을 시작하지 못했습니다.");
+      alert("DM 요청을 보내지 못했습니다.");
     } finally {
       setIsStartingDm(false);
-      setOpen(false);
     }
   };
 
@@ -124,14 +106,22 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
           </button>
           <button
             type="button"
-            onClick={startDm}
+            onClick={openDmRequestModal}
             disabled={isStartingDm}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-50"
           >
             <MessageCircle size={14} />
-            DM 보내기
+            DM 요청하기
           </button>
         </div>
+      )}
+      {showRequestModal && (
+        <DirectChatRequestModal
+          targetName={nickname}
+          isSubmitting={isStartingDm}
+          onClose={() => setShowRequestModal(false)}
+          onSubmit={submitDmRequest}
+        />
       )}
     </div>
   );

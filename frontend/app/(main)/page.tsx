@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown, RefreshCw } from 'lucide-react';
+import { Search, ShieldCheck, Zap, TrendingUp, Users, Briefcase, Sparkles, MessageSquare, ArrowRight, ChevronDown, RefreshCw, BookOpen } from 'lucide-react';
 import { MatchingCard } from '@/components/matching/MatchingCard';
 import { useAuth } from '@/hooks/useAuth';
 import type { BlindEditor } from '@/types/matching';
@@ -18,6 +18,7 @@ const quickAccessCards = [
   { icon: Briefcase, title: '구인구직 바로가기', desc: '검증된 크리에이터와 에디터들이 모이는 곳', path: '/jobs', color: 'text-primary' },
   { icon: Sparkles, title: '맞춤매칭 시작', desc: '조건에 맞는 에디터 5명을 추천받으세요', path: '/matching', color: 'text-accent' },
   { icon: MessageSquare, title: '커뮤니티 둘러보기', desc: '단가, 팁, 포트폴리오 정보가 한 곳에', path: '/community', color: 'text-violet-400' },
+  { icon: BookOpen, title: '이용 가이드', desc: '처음이라면? 크크킄 사용법을 확인하세요', path: '/guide', color: 'text-green-400' },
 ];
 
 export default function HomePage() {
@@ -194,15 +195,15 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-text-primary mb-2">빠른 시작</h2>
             <p className="text-text-secondary">원하는 방식으로 시작해보세요</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {quickAccessCards.map((card, i) => (
-              <motion.div key={card.path} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.1 }}>
-                <Link href={card.path} onClick={(e) => handleQuickCardClick(e, card.path)} className="group block bg-surface border border-border rounded-2xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all">
-                  <div className={`inline-flex p-3 rounded-xl bg-surface-elevated ${card.color} mb-5`}>
+              <motion.div key={card.path} className="h-full" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.1 }}>
+                <Link href={card.path} onClick={(e) => handleQuickCardClick(e, card.path)} className="group flex flex-col h-full bg-surface border border-border rounded-2xl p-8 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all">
+                  <div className={`inline-flex mb-5 ${card.color}`}>
                     <card.icon size={28} />
                   </div>
                   <h3 className="text-xl font-bold text-text-primary mb-2 group-hover:text-primary transition-colors">{card.title}</h3>
-                  <p className="text-sm text-text-secondary mb-4 leading-relaxed">{card.desc}</p>
+                  <p className="text-sm text-text-secondary mb-4 leading-relaxed flex-1">{card.desc}</p>
                   <div className="flex items-center gap-1 text-sm font-medium text-text-secondary group-hover:text-primary group-hover:gap-2 transition-all">
                     바로가기 <ArrowRight size={14} />
                   </div>

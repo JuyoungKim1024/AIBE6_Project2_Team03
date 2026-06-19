@@ -52,3 +52,6 @@ cloudflare:
     secret-access-key: ${CLOUDFLARE_R2_SECRET_ACCESS_KEY}
     bucket-name: ${CLOUDFLARE_R2_BUCKET_NAME}
     public-url: ${CLOUDFLARE_R2_PUBLIC_URL}
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}

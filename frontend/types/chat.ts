@@ -9,3 +9,35 @@ export interface ChatRoom {
   time: string;
   unread: number;
 }
+
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE';
+export type ChatRoomType = 'DIRECT' | 'POST' | 'PROJECT';
+
+export interface ChatPostSummary {
+  id: string;
+  title: string;
+  priceMin: number | null;
+  priceMax: number | null;
+  deadline: string | null;
+}
+
+export interface MyChatRoom {
+  id: string;
+  partnerName: string;
+  lastMessage: string;
+  time: string;
+  type: ChatRoomType;
+  unreadCount: number;
+  post: ChatPostSummary | null;
+  partnerDeleted?: boolean;
+  partnerWithdrawn?: boolean;
+}
+
+export interface ChatMessage {
+  messageId: string;
+  roomId: string;
+  senderId: string;
+  content: string;
+  messageType: MessageType;
+  createdAt: string;
+}

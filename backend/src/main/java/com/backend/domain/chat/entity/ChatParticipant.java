@@ -28,10 +28,20 @@ public class ChatParticipant extends BaseEntity {
     @Column(name = "joined_at", insertable = false, updatable = false)
     private LocalDateTime joinedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public ChatParticipant(ChatRoom room, User user) {
         this.chatRoom = room;
         this.user = user;
+    }
+
+    public void delete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
     }
 
 

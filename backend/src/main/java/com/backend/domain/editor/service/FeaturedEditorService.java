@@ -2,11 +2,11 @@ package com.backend.domain.editor.service;
 
 import com.backend.domain.editor.dto.FeaturedEditorResponse;
 import com.backend.domain.profile.entity.Portfolio;
-import com.backend.domain.profile.entity.ProjectStatus;
+import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.profile.repository.PortfolioRepository;
-import com.backend.domain.profile.repository.ProjectRepository;
+import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.user.entity.User;

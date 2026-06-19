@@ -1,6 +1,7 @@
 export type BoardType = "JOB" | "COMMUNITY";
 export type JobPostType = "RECRUITING" | "JOB_SEARCH";
 export type CommunityCategory = "INFO" | "FREE";
+export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
 export interface AuthorDto {
   id: string;

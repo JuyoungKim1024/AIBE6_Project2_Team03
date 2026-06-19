@@ -34,3 +34,14 @@ app:
     secret: test-jwt-secret-change-before-production-32bytes
     access-token-validity-seconds: 3600
     refresh-token-validity-seconds: 1209600
+
+cloudflare:
+  r2:
+    account-id: test-account-id
+    access-key-id: test-access-key-id
+    secret-access-key: test-secret-access-key
+    bucket-name: test-bucket
+    public-url: https://example.com/test-bucket
+
+gemini:
+  api-key: test-gemini-api-key

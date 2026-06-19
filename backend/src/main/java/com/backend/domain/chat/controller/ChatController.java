@@ -1,5 +1,6 @@
 package com.backend.domain.chat.controller;
 
+import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.chat.dto.ChatMessageResponseDTO;
 import com.backend.domain.chat.dto.ChatMessageSendRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
@@ -21,6 +22,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AuthService authService;
 
     @GetMapping
     public List<ChatRoomResponseDTO> findRoomsByUserId (@RequestParam String userId) {
@@ -35,6 +37,15 @@ public class ChatController {
     @GetMapping("/{roomId}")
     public ChatRoomResponseDTO findByChatRoom(@PathVariable String roomId) {
         return chatService.findByChatRoomId(roomId);
+    }
+
+    @DeleteMapping("/{roomId}")
+    public void deleteRoom(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String roomId
+    ) {
+        String userId = authService.resolveUserId(authorizationHeader);
+        chatService.deleteRoomForUser(roomId, userId);
     }
 
     @GetMapping("/{roomId}/messages")

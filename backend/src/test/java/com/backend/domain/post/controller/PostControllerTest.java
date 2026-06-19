@@ -1,5 +1,6 @@
 package com.backend.domain.post.controller;
 
+import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.post.dto.AuthorResponse;
 import com.backend.domain.post.dto.CommunityPostResponse;
 import com.backend.domain.post.dto.JobPostResponse;
@@ -24,13 +25,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PostControllerTest {
 
     private PostService postService;
+    private AuthService authService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         postService = mock(PostService.class);
+        authService = mock(AuthService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new PostController(postService))
+                .standaloneSetup(new PostController(postService, authService))
                 .build();
     }
 
@@ -45,7 +48,7 @@ class PostControllerTest {
                 "job-id-1", author(), "숏폼 편집자 구인합니다",
                 300000, 500000, true, JobPost.PostType.RECRUITING,
                 List.of("숏폼"), List.of("After Effects"),
-                null, 215, 31, 0, LocalDateTime.now()
+                null, 215, 31, 0, 0, LocalDateTime.now()
         );
         when(postService.getJobPosts(JobPost.PostType.RECRUITING, null)).thenReturn(List.of(post));
 
@@ -63,13 +66,13 @@ class PostControllerTest {
                 "job-id-2", author(), "편집 경력 3년 에디터 구직합니다",
                 300000, 500000, true, JobPost.PostType.JOB_SEARCH,
                 List.of("롱폼"), List.of("Premiere Pro"),
-                null, 342, 45, 0, LocalDateTime.now()
+                null, 342, 45, 0, 0, LocalDateTime.now()
         );
         JobPostResponse post2 = new JobPostResponse(
                 "job-id-3", author(), "브이로그 전문 편집자 구직",
                 200000, 350000, false, JobPost.PostType.JOB_SEARCH,
                 List.of("브이로그"), List.of("Final Cut"),
-                null, 87, 12, 0, LocalDateTime.now()
+                null, 87, 12, 0, 0, LocalDateTime.now()
         );
         when(postService.getJobPosts(JobPost.PostType.JOB_SEARCH, null)).thenReturn(List.of(post1, post2));
 
@@ -94,7 +97,7 @@ class PostControllerTest {
         CommunityPostResponse post = new CommunityPostResponse(
                 "comm-id-1", author(), "편집 툴 추천 받아요",
                 CommunityPost.Category.FREE, List.of("편집"),
-                null, 63, 0, 0, LocalDateTime.now()
+                null, 63, 0, 0, 0, LocalDateTime.now()
         );
         when(postService.getCommunityPosts(CommunityPost.Category.FREE, null)).thenReturn(List.of(post));
 
@@ -111,7 +114,7 @@ class PostControllerTest {
         CommunityPostResponse post = new CommunityPostResponse(
                 "comm-id-2", author(), "숏폼 편집 팁 공유합니다",
                 CommunityPost.Category.INFO, List.of("숏폼"),
-                null, 290, 0, 0, LocalDateTime.now()
+                null, 290, 0, 0, 0, LocalDateTime.now()
         );
         when(postService.getCommunityPosts(CommunityPost.Category.INFO, null)).thenReturn(List.of(post));
 

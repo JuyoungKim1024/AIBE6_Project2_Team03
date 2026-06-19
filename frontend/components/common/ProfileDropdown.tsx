@@ -83,6 +83,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   const [open, setOpen] = useState(false);
   const [matchingPrice, setMatchingPrice] = useState<MatchingPrice | null>(null);
   const [isMatchSaving, setIsMatchSaving] = useState(false);
+  const [pointBalance, setPointBalance] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const isEditor = user.role === 'EDITOR';
   const matchEnabled = matchingPrice?.matchEnabled ?? false;
@@ -96,6 +97,20 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     if (open) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+
+    fetch(`${API_BASE_URL}/api/point`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { point: number; escrowPoint: number } | null) => {
+        if (data) setPointBalance(data.point);
+      })
+      .catch(() => {});
+  }, [user.id]);
 
   useEffect(() => {
     if (!isEditor) {
@@ -249,6 +264,16 @@ export function ProfileDropdown({ user, onLogout }: Props) {
               <RoleBadge role={user.role} />
             </div>
             <div className="text-xs text-text-muted mt-0.5">{getRoleLabel(user.role)}</div>
+            <Link
+              href="/mypage?tab=point"
+              onClick={() => setOpen(false)}
+              className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+            >
+              <span className="text-xs text-text-secondary">보유 포인트</span>
+              <span className="text-sm font-bold text-primary">
+                {pointBalance !== null ? pointBalance.toLocaleString() + ' P' : '- P'}
+              </span>
+            </Link>
           </div>
 
           <div className="px-2 py-1">

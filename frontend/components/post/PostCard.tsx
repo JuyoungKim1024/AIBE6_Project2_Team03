@@ -9,8 +9,9 @@ import { UserActionMenu } from "@/components/common/UserActionMenu";
 import { RankBadge } from "@/components/common/RankBadge";
 import { togglePostLike } from "@/lib/api/post";
 import type { RankTier } from "@/types/user";
+import { UserDmDropdown } from "@/components/common/UserDmDropdown";
 
-export type PostType = "hiring" | "looking" | "info" | "free";
+export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
 export interface PostCardProps {
   id: string;
@@ -41,6 +42,8 @@ const typeConfig: Record<
   hiring: { label: "구인", color: "text-accent", bg: "bg-accent/10" },
   looking: { label: "구직", color: "text-primary", bg: "bg-primary/10" },
   info: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+  rate: { label: "단가 토크", color: "text-amber-500", bg: "bg-amber-500/10" },
+  portfolio: { label: "포트폴리오", color: "text-violet-400", bg: "bg-violet-400/10" },
   free: {
     label: "자유게시판",
     color: "text-text-secondary",
@@ -115,15 +118,17 @@ export function PostCard({
             {config.label}
           </span>
           <div className="flex items-center gap-2 text-sm">
-            <UserActionMenu
-              userId={author.id}
-              nickname={author.name}
-              profileImage={author.avatar}
-              size="sm"
-            />
+            <span className="scale-[0.8] origin-center flex-shrink-0 inline-flex">
+              <UserActionMenu
+                userId={author.id}
+                nickname={author.name}
+                profileImage={author.avatar}
+                size="sm"
+              />
+            </span>
             <span className="font-medium text-text-primary">{author.name}</span>
             {author.rank && (
-              <span className={`scale-75 origin-left ${{
+              <span className={`scale-[0.6] origin-left ${{
                 bronze:   'drop-shadow-[0_0_6px_rgba(205,120,50,1)] drop-shadow-[0_0_12px_rgba(205,120,50,0.7)]',
                 silver:   'drop-shadow-[0_0_6px_rgba(190,200,210,1)] drop-shadow-[0_0_12px_rgba(190,200,210,0.7)]',
                 gold:     'drop-shadow-[0_0_8px_rgba(250,195,0,1)] drop-shadow-[0_0_16px_rgba(250,195,0,0.7)]',

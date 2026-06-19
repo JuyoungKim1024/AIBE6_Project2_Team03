@@ -31,7 +31,7 @@ class AuthControllerTest {
     void setUp() {
         authService = mock(AuthService.class);
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new AuthController(authService, "http://localhost:3000"))
+                .standaloneSetup(new AuthController(authService, "http://localhost:3000", false, 1209600))
                 .build();
     }
 
