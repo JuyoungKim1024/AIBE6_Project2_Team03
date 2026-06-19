@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { mergeAttributes } from "@tiptap/core";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import { Color } from "@tiptap/extension-color";
-import TextStyle from "@tiptap/extension-text-style";
+import { TextStyle, Color } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import ResizableImage from "tiptap-extension-resize-image";
@@ -15,6 +14,26 @@ import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
   AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2,
 } from "lucide-react";
+
+const ResizableImageWithAlign = ResizableImage.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      dataAlign: {
+        default: "left",
+        parseHTML: (element) => element.getAttribute("data-align") ?? "left",
+        renderHTML: () => ({}),
+      },
+    };
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  renderHTML({ node, HTMLAttributes }: { node: any; HTMLAttributes: Record<string, any> }) {
+    return [
+      "img",
+      mergeAttributes(HTMLAttributes, { "data-align": node.attrs.dataAlign ?? "left" }),
+    ];
+  },
+});
 
 const COLORS = [
   "#ffffff", "#e2e8f0", "#94a3b8", "#475569", "#1e293b",
@@ -39,7 +58,17 @@ function ToolbarButton({
   );
 }
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({
+  editor,
+  selectedImagePosRef,
+  selectedImageAlign,
+  setSelectedImageAlign,
+}: {
+  editor: Editor;
+  selectedImagePosRef: React.RefObject<number | null>;
+  selectedImageAlign: string | null;
+  setSelectedImageAlign: (align: string | null) => void;
+}) {
   const [showColors, setShowColors] = useState(false);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -66,25 +95,25 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   const insertImageUrl = () => {
     const url = window.prompt("이미지 URL을 입력하세요");
-    if (url) editor.chain().focus().setImage({ src: url, wrapperStyle: imgWrapperStyle("left") }).createParagraphNear().run();
-  };
-
-  const imgWrapperStyle = (align: "left" | "center" | "right") => {
-    return `display: block; width: 100%; text-align: ${align}; margin: 12px 0;`;
+    if (url) editor.chain().focus().setImage({ src: url }).createParagraphNear().run();
   };
 
   const setAlignment = (align: "left" | "center" | "right") => {
-    if (editor.isActive("image")) {
-      editor.chain().updateAttributes("image", { wrapperStyle: imgWrapperStyle(align) }).run();
-    } else {
-      editor.chain().focus().setTextAlign(align).run();
+    const imagePos = selectedImagePosRef.current;
+    if (imagePos !== null) {
+      editor.chain()
+        .setNodeSelection(imagePos)
+        .updateAttributes("image", { dataAlign: align })
+        .run();
+      setSelectedImageAlign(align);
+      return;
     }
+    editor.chain().focus().setTextAlign(align).run();
   };
 
   const isAlignActive = (align: "left" | "center" | "right") => {
-    if (editor.isActive("image")) {
-      const style: string = editor.getAttributes("image").wrapperStyle ?? "";
-      return style.includes(`text-align: ${align}`);
+    if (selectedImagePosRef.current !== null && selectedImageAlign !== null) {
+      return selectedImageAlign === align;
     }
     return editor.isActive({ textAlign: align });
   };
@@ -105,7 +134,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       });
       if (!res.ok) throw new Error("upload failed");
       const data = await res.json();
-      editor.chain().focus("end").setImage({ src: data.url, wrapperStyle: imgWrapperStyle("left") }).createParagraphNear().run();
+      editor.chain().focus("end").setImage({ src: data.url }).createParagraphNear().run();
     } catch {
       alert("이미지 업로드에 실패했습니다.");
     } finally {
@@ -182,7 +211,7 @@ function Toolbar({ editor }: { editor: Editor }) {
                 <button
                   key={color}
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().setColor(color).run(); setShowColors(false); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor.commands.setColor(color); setShowColors(false); }}
                   className="w-6 h-6 rounded border border-border/50 hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
                 />
@@ -190,7 +219,7 @@ function Toolbar({ editor }: { editor: Editor }) {
             </div>
             <button
               type="button"
-              onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().unsetColor().run(); setShowColors(false); }}
+              onMouseDown={(e) => { e.preventDefault(); editor.commands.unsetColor(); setShowColors(false); }}
               className="mt-2 w-full text-xs text-text-muted hover:text-text-primary text-center"
             >
               색상 초기화
@@ -253,15 +282,18 @@ export function RichTextEditor({
   placeholder = "내용을 입력하세요.",
   minHeight = "300px",
 }: RichTextEditorProps) {
+  const selectedImagePosRef = useRef<number | null>(null);
+  const [selectedImageAlign, setSelectedImageAlign] = useState<string | null>(null);
+
   const editor = useEditor({
+    immediatelyRender: true,
     extensions: [
-      StarterKit,
-      Underline,
+      StarterKit.configure({ link: false }),
       TextStyle,
       Color,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: false }),
-      ResizableImage,
+      ResizableImageWithAlign,
       Placeholder.configure({ placeholder }),
     ],
     content: value,
@@ -275,11 +307,48 @@ export function RichTextEditor({
     },
   });
 
+  // 캡처 단계 클릭으로 이미지 선택 감지 (NodeView가 이벤트를 가로채도 동작)
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "IMG") {
+        let foundPos: number | null = null;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "image" && foundPos === null) {
+            const nodeDom = editor.view.nodeDOM(pos);
+            if (nodeDom instanceof Element && nodeDom.contains(target)) {
+              foundPos = pos;
+            }
+          }
+        });
+        if (foundPos !== null) {
+          selectedImagePosRef.current = foundPos;
+          const node = editor.state.doc.nodeAt(foundPos);
+          setSelectedImageAlign(node?.attrs.dataAlign ?? "left");
+        }
+      } else {
+        selectedImagePosRef.current = null;
+        setSelectedImageAlign(null);
+      }
+    };
+
+    dom.addEventListener("click", handleClick, true);
+    return () => dom.removeEventListener("click", handleClick, true);
+  }, [editor]);
+
   if (!editor) return null;
 
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden focus-within:border-primary transition-colors">
-      <Toolbar editor={editor} />
+      <Toolbar
+        editor={editor}
+        selectedImagePosRef={selectedImagePosRef}
+        selectedImageAlign={selectedImageAlign}
+        setSelectedImageAlign={setSelectedImageAlign}
+      />
       <EditorContent
         editor={editor}
         style={{ minHeight }}

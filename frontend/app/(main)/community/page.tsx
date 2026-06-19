@@ -3,11 +3,11 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PostCard } from '@/components/post/PostCard';
 import { WritePostModal } from '@/components/post/WritePostModal';
 import { fetchCommunityPosts, getLikedPostIds } from '@/lib/api/post';
+import { API_BASE_URL } from '@/lib/api';
 import { CommunityPostDto } from '@/types/post';
 import { formatTimeAgo } from '@/lib/utils/time';
 import type { PostType } from '@/types/post';
@@ -20,6 +20,7 @@ const categories = [
 
 function CommunityContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get('q') ?? '';
 
   const [activeCategory, setActiveCategory] = useState('all');
@@ -28,10 +29,20 @@ function CommunityContent() {
   const [posts, setPosts] = useState<CommunityPostDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((user) => user && setCurrentUserId(user.id))
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -88,9 +99,15 @@ function CommunityContent() {
                 </button>
               ))}
             </div>
-            <Link href="/community/write" className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+            <button
+              onClick={() => {
+                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
+                router.push("/community/write");
+              }}
+              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+            >
               <Plus size={16} />글쓰기
-            </Link>
+            </button>
           </div>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-4 mb-2 border-b border-border">
@@ -127,6 +144,7 @@ function CommunityContent() {
                     timeAgo={formatTimeAgo(post.createdAt)}
                     thumbnail={post.thumbnailUrl ?? undefined}
                     initialLiked={likedIds.has(post.id)}
+                    isOwn={currentUserId === post.author.id}
                   />
                 </motion.div>
               ))

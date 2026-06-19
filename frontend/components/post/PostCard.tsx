@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
@@ -28,6 +29,7 @@ export interface PostCardProps {
   thumbnail?: string;
   onUnlike?: (id: string) => void;
   initialLiked?: boolean;
+  isOwn?: boolean;
 }
 
 const typeConfig: Record<
@@ -63,7 +65,9 @@ export function PostCard({
   thumbnail,
   onUnlike,
   initialLiked = false,
+  isOwn = false,
 }: PostCardProps) {
+  const router = useRouter();
   const config = typeConfig[type];
   const isJobPost = type === "hiring" || type === "looking";
   const hasPrice = isJobPost && (minPrice !== undefined || priceHidden);
@@ -74,6 +78,10 @@ export function PostCard({
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
     try {
       const result = await togglePostLike(id);
       setLiked(result.liked);
@@ -95,7 +103,7 @@ export function PostCard({
   return (
     <Link
       href={linkTo}
-      className={`block bg-surface rounded-xl border p-5 transition-all hover:border-primary/50 ${isDeprioritized ? "border-border/40 opacity-75 hover:opacity-100" : "border-border"}`}
+      className={`block rounded-xl border p-5 transition-all hover:border-primary/50 ${isOwn ? "bg-primary/[0.04] border-primary/25" : "bg-surface " + (isDeprioritized ? "border-border/40 opacity-75 hover:opacity-100" : "border-border")}`}
     >
       <div className="flex justify-between items-start mb-3 gap-4">
         <div className="flex items-center gap-3 flex-wrap">
@@ -104,6 +112,11 @@ export function PostCard({
           >
             {config.label}
           </span>
+          {isOwn && (
+            <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-primary/15 text-primary border border-primary/30">
+              내 글
+            </span>
+          )}
           <div className="flex items-center gap-2 text-sm">
             <UserActionMenu
               userId={author.id}

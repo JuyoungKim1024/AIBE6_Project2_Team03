@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -17,6 +17,9 @@ import {
   Edit2,
   Trash2,
   Reply,
+  Play,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
@@ -35,6 +38,7 @@ import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [post, setPost] = useState<JobPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [showChatPanel, setShowChatPanel] = useState(false);
@@ -56,6 +60,9 @@ export default function JobDetailPage() {
   } | null>(null);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [selectedPortfolioIndex, setSelectedPortfolioIndex] = useState<number | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -73,6 +80,7 @@ export default function JobDetailPage() {
     fetchComments(id).then(setComments).catch(console.error);
     incrementPostView(id).catch(() => {});
     getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
+    setUserRole(localStorage.getItem("userRole"));
     const token = localStorage.getItem("accessToken");
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
@@ -84,7 +92,28 @@ export default function JobDetailPage() {
     }
   }, [id]);
 
+  const handleDeletePost = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/posts/job/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("삭제 실패");
+      router.push("/jobs");
+    } catch {
+      alert("게시글 삭제에 실패했습니다.");
+    } finally {
+      setPostDeleteConfirm(false);
+    }
+  };
+
   const handleLike = async () => {
+    if (!localStorage.getItem("accessToken")) {
+      router.push("/login");
+      return;
+    }
     try {
       const result = await togglePostLike(id!);
       setLiked(result.liked);
@@ -264,21 +293,41 @@ export default function JobDetailPage() {
             {post.title}
           </h1>
 
-          <div className="flex items-center gap-3 mb-6">
-            <UserActionMenu
-              userId={post.author.id}
-              nickname={post.author.nickname}
-              profileImage={post.author.profileImage}
-            />
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-text-primary">
-                {post.author.nickname}
-              </span>
-              <span className="text-text-muted text-sm">·</span>
-              <span className="text-text-muted text-sm">
-                {formatTimeAgo(post.createdAt)}
-              </span>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-3">
+              <UserActionMenu
+                userId={post.author.id}
+                nickname={post.author.nickname}
+                profileImage={post.author.profileImage}
+              />
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-text-primary">
+                  {post.author.nickname}
+                </span>
+                <span className="text-text-muted text-sm">·</span>
+                <span className="text-text-muted text-sm">
+                  {formatTimeAgo(post.createdAt)}
+                </span>
+              </div>
             </div>
+            {currentUserId === post.author.id && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => router.push(`/jobs/write?edit=${id}`)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Edit2 size={14} />
+                  수정
+                </button>
+                <button
+                  onClick={() => setPostDeleteConfirm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors"
+                >
+                  <Trash2 size={14} />
+                  삭제
+                </button>
+              </div>
+            )}
           </div>
 
           {post.priceVisible && (post.minPrice || post.maxPrice) && (
@@ -303,9 +352,53 @@ export default function JobDetailPage() {
 
         {/* Body */}
         <div
-          className="prose prose-invert max-w-none mb-10 text-text-secondary leading-relaxed"
+          className="mb-10 text-text-secondary leading-relaxed [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-text-primary [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-text-primary [&_h2]:mb-2 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-text-primary [&_h3]:mb-2 [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_strong]:text-text-primary [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
+
+        {/* Attached Portfolios */}
+        {post.portfolios && post.portfolios.length > 0 && (
+          <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
+            <div className="flex items-center gap-3 mb-5">
+              <h2 className="text-lg font-bold text-text-primary">포트폴리오</h2>
+              <span className="text-xs font-medium text-text-muted bg-surface-elevated px-2 py-1 rounded-md">
+                첨부된 작업물 {post.portfolios.length}개
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {post.portfolios.map((p, index) => (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedPortfolioIndex(index)}
+                  className="relative aspect-video rounded-lg overflow-hidden border border-border cursor-pointer group bg-surface-elevated"
+                >
+                  {p.url && (
+                    <img
+                      src={p.url}
+                      alt={p.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+                    />
+                  )}
+                  {p.type === "video" && (
+                    <>
+                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                          <Play size={20} className="ml-1" fill="currentColor" />
+                        </div>
+                      </div>
+                      <div className="absolute top-2 left-2 bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        영상
+                      </div>
+                    </>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <p className="text-white text-xs font-medium truncate">{p.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Work Condition Summary */}
         <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
@@ -354,23 +447,32 @@ export default function JobDetailPage() {
           </h2>
 
           {/* Comment Input */}
-          <div className="bg-surface border border-border rounded-2xl p-4 mb-6 focus-within:border-primary transition-colors">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="댓글을 입력하세요..."
-              rows={3}
-              className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
-            />
-            <div className="flex justify-end pt-3 border-t border-border/50 mt-2">
-              <button
-                onClick={addComment}
-                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
-              >
-                댓글 등록
-              </button>
+          {currentUserId ? (
+            <div className="bg-surface border border-border rounded-2xl p-4 mb-6 focus-within:border-primary transition-colors">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="댓글을 입력하세요..."
+                rows={3}
+                className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none"
+              />
+              <div className="flex justify-end pt-3 border-t border-border/50 mt-2">
+                <button
+                  onClick={addComment}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors"
+                >
+                  댓글 등록
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-surface border border-border rounded-2xl p-5 mb-6 flex items-center justify-between gap-4">
+              <span className="text-sm text-text-muted">로그인 후 댓글을 작성할 수 있습니다.</span>
+              <Link href="/login" className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors whitespace-nowrap">
+                로그인
+              </Link>
+            </div>
+          )}
 
           {/* Comments */}
           <div className="space-y-4">
@@ -450,11 +552,10 @@ export default function JobDetailPage() {
                   )}
 
                   <button
-                    onClick={() =>
-                      setReplyingTo(
-                        replyingTo === comment.id ? null : comment.id,
-                      )
-                    }
+                    onClick={() => {
+                      if (!currentUserId) { router.push("/login"); return; }
+                      setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                    }}
                     className="flex items-center gap-1 text-xs font-bold text-text-muted hover:text-text-primary transition-colors"
                   >
                     <Reply size={14} /> 답글 달기
@@ -594,18 +695,122 @@ export default function JobDetailPage() {
                 <span className="text-sm font-bold">{comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)}</span>
               </div>
             </div>
-            <button
-              onClick={() => setShowChatPanel(true)}
-              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-            >
-              <Send size={16} />
-              채팅 문의하기
-            </button>
+            {!(userRole === "EDITOR" && post.postType === "JOB_SEARCH") && (
+              <button
+                onClick={() => setShowChatPanel(true)}
+                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+              >
+                <Send size={16} />
+                채팅 문의하기
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Portfolio Lightbox */}
+      <AnimatePresence>
+        {selectedPortfolioIndex !== null && post.portfolios && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPortfolioIndex(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-4xl"
+            >
+              <button
+                onClick={() => setSelectedPortfolioIndex(null)}
+                className="absolute -top-10 right-0 p-2 text-white/70 hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+                {post.portfolios[selectedPortfolioIndex].type === "video" ? (
+                  <video
+                    src={post.portfolios[selectedPortfolioIndex].url}
+                    className="w-full h-full object-contain"
+                    controls
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={post.portfolios[selectedPortfolioIndex].url}
+                    alt={post.portfolios[selectedPortfolioIndex].title}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+                {post.portfolios.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPortfolioIndex((selectedPortfolioIndex - 1 + post.portfolios.length) % post.portfolios.length); }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPortfolioIndex((selectedPortfolioIndex + 1) % post.portfolios.length); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </>
+                )}
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-white font-bold">{post.portfolios[selectedPortfolioIndex].title}</p>
+                <span className="text-white/50 text-sm">{selectedPortfolioIndex + 1} / {post.portfolios.length}</span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Post Delete Confirmation Modal */}
+      <AnimatePresence>
+        {postDeleteConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPostDeleteConfirm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm bg-surface border border-border rounded-2xl p-6 text-center shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-text-primary mb-2">게시글을 삭제하시겠습니까?</h3>
+              <p className="text-sm text-text-secondary mb-6">삭제된 게시글은 복구할 수 없습니다.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPostDeleteConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-surface-elevated text-text-primary font-bold text-sm hover:bg-border transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeletePost}
+                  className="flex-1 py-2.5 rounded-xl bg-accent text-white font-bold text-sm hover:bg-accent/90 transition-colors"
+                >
+                  삭제
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Comment Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

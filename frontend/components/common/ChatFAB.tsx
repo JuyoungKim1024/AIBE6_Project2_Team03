@@ -126,7 +126,7 @@ export function ChatFAB() {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => { setIsOpen(!isOpen); if (isDMActive) closeDM(); }}
-        className="fixed bottom-40 right-6 md:bottom-24 md:right-6 z-[55] w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary/90 transition-colors"
+        className="fixed bottom-6 right-6 z-[55] w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center hover:bg-primary/90 transition-colors"
         aria-label="채팅 열기"
       >
         <Send size={22} className="-ml-1 mt-1" />
