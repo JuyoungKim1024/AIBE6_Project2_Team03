@@ -6,7 +6,7 @@ import { ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-r
 import { useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
-import { createDirectChatRequest } from '@/lib/api/chat';
+import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
@@ -18,6 +18,7 @@ type AuthUser = {
 
 type MyChatRoom = {
   id: string;
+  partnerId?: string;
   partnerName: string;
   lastMessage: string;
   time: string;
@@ -120,7 +121,7 @@ export function ChatFAB() {
     } catch {
       try {
         const data = await fetchJson<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           setCurrentProject({
             id: project.id,
@@ -260,6 +261,7 @@ export function ChatFAB() {
     setErrorMessage('');
     try {
       await createDirectChatRequest(activeDMUser.id, message);
+      markInitialChatRequestMessageUsed(activeDMUser.id);
       closeDM();
       setErrorMessage('DM 요청을 보냈습니다.');
     } catch (error) {
@@ -292,7 +294,8 @@ export function ChatFAB() {
           messageType: 'TEXT',
         }),
       });
-      setMessages((current) => [...current, saved]);
+      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
+      setMessages((current) => [...current, savedMessage]);
       setDraft('');
       loadRooms();
     } catch {
@@ -307,6 +310,7 @@ export function ChatFAB() {
       {activeDMUser && (
         <DirectChatRequestModal
           targetName={activeDMUser.name}
+          initialMessage={getInitialChatRequestMessage(activeDMUser.id, '안녕하세요. DM 문의드립니다.')}
           isSubmitting={isRequestingDm}
           onClose={closeDM}
           onSubmit={submitDmRequest}
@@ -442,7 +446,9 @@ export function ChatFAB() {
                                   ? '완료된 프로젝트입니다'
                                   : displayProject.status === 'REJECTED'
                                     ? '거절된 프로젝트입니다'
-                                    : '프로젝트';
+                                    : displayProject.status === 'CANCELED'
+                                      ? '취소된 프로젝트입니다'
+                                      : '프로젝트';
 
                           return (
                             <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>

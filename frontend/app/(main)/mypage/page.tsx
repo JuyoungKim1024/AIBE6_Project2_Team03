@@ -177,7 +177,7 @@ function isOpenProject(project: ProjectMessagePayload | null | undefined) {
 }
 
 function isVisibleChatProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETED', 'REJECTED'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
 }
 
 function getProjectMessageLabel(project: ProjectMessagePayload) {
@@ -1111,9 +1111,14 @@ function ChatsSection() {
     } catch {
       try {
         const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
-          const memo = project.status === 'REJECTED' ? '거절된 프로젝트입니다.' : '완료된 프로젝트입니다.';
+          const memo =
+            project.status === 'REJECTED'
+              ? '거절된 프로젝트입니다.'
+              : project.status === 'CANCELED'
+                ? '취소된 프로젝트입니다.'
+                : '완료된 프로젝트입니다.';
           const completedProject: ProjectMessagePayload = {
             id: project.id,
             roomId,
@@ -1215,7 +1220,8 @@ function ChatsSection() {
       if (!response.ok) throw new Error('Failed to send message');
 
       const saved = await response.json() as ChatMessage;
-      setMessages((current) => [...current, saved]);
+      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
+      setMessages((current) => [...current, savedMessage]);
       setDraft('');
       loadRooms();
     } catch {
@@ -1619,7 +1625,15 @@ function ChatsSection() {
             {pinnedProject ? (
               <div className="shrink-0 border-b border-border bg-surface px-5 py-3">
                 <button type="button" onClick={() => setShowProjectCard((current) => !current)} className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm font-bold text-text-primary transition-colors hover:border-primary/60">
-                  <span className="min-w-0 truncate">{pinnedProject.status === 'COMPLETED' ? '완료된 프로젝트' : '진행 중인 프로젝트'}</span>
+                  <span className="min-w-0 truncate">
+                    {pinnedProject.status === 'COMPLETED'
+                      ? '완료된 프로젝트'
+                      : pinnedProject.status === 'REJECTED'
+                        ? '거절된 프로젝트'
+                        : pinnedProject.status === 'CANCELED'
+                          ? '취소된 프로젝트'
+                          : '진행 중인 프로젝트'}
+                  </span>
                   <ChevronDown size={16} className={`flex-shrink-0 text-text-muted transition-transform ${showProjectCard ? 'rotate-180' : ''}`} />
                 </button>
                 {showProjectCard ? <div className="mt-3"><ProjectMessageCard project={pinnedProject} pinned actions={renderProjectActions(pinnedProject)} /></div> : null}

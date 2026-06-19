@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageCircle, User } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
-import { createDirectChatRequest } from "@/lib/api/chat";
+import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 
 type UserActionMenuProps = {
@@ -73,6 +73,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
     setIsStartingDm(true);
     try {
       await createDirectChatRequest(userId, message);
+      markInitialChatRequestMessageUsed(userId);
       setShowRequestModal(false);
       setOpen(false);
     } catch (error) {
@@ -135,6 +136,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
       {showRequestModal && (
         <DirectChatRequestModal
           targetName={nickname}
+          initialMessage={getInitialChatRequestMessage(userId, "안녕하세요. DM 문의드립니다.")}
           isSubmitting={isStartingDm}
           onClose={() => setShowRequestModal(false)}
           onSubmit={submitDmRequest}

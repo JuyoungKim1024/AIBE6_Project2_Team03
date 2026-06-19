@@ -9,6 +9,26 @@ type ChatRoomResponse = {
   id?: string;
 };
 
+const DEFAULT_MESSAGE_USED_KEY = 'chat-default-message-used';
+
+function getDefaultMessageUsedIds() {
+  try {
+    return JSON.parse(localStorage.getItem(DEFAULT_MESSAGE_USED_KEY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+
+export function getInitialChatRequestMessage(receiverId: string, message: string) {
+  return getDefaultMessageUsedIds().includes(receiverId) ? '' : message;
+}
+
+export function markInitialChatRequestMessageUsed(receiverId: string) {
+  const ids = getDefaultMessageUsedIds();
+  if (ids.includes(receiverId)) return;
+  localStorage.setItem(DEFAULT_MESSAGE_USED_KEY, JSON.stringify([...ids, receiverId]));
+}
+
 async function fetchMe(accessToken: string) {
   const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },

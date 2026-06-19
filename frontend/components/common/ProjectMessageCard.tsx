@@ -49,12 +49,12 @@ function getProjectStatusLabel(status: string) {
   if (status === 'WORKING') return '진행 중';
   if (status === 'COMPLETED') return '완료된 프로젝트입니다';
   if (status === 'REJECTED') return '거절된 프로젝트입니다';
-  if (status === 'CANCELED') return '취소됨';
+  if (status === 'CANCELED') return '취소된 프로젝트입니다';
   return status;
 }
 
 function getProjectTone(status: string) {
-  if (status === 'COMPLETED' || status === 'REJECTED') {
+  if (status === 'COMPLETED' || status === 'REJECTED' || status === 'CANCELED') {
     return {
       card: 'border-border bg-surface-elevated',
       badge: 'bg-surface text-text-secondary',
