@@ -85,6 +85,19 @@ public class MyPageController {
         return myPageService.getPortfolios(authService.resolveUserId(authorizationHeader));
     }
 
+    @GetMapping("/portfolio-groups")
+    public List<PortfolioGroupResponse> getPortfolioGroups(@RequestHeader("Authorization") String authorizationHeader) {
+        return myPageService.getPortfolioGroups(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PutMapping("/portfolio-groups")
+    public List<PortfolioGroupResponse> savePortfolioGroups(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody List<PortfolioGroupRequest> groups
+    ) {
+        return myPageService.savePortfolioGroups(authService.resolveUserId(authorizationHeader), groups);
+    }
+
     @PutMapping("/portfolios")
     public ResponseEntity<Void> savePortfolios(
             @RequestHeader("Authorization") String authorizationHeader,

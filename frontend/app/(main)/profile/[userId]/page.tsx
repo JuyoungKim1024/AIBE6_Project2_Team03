@@ -16,6 +16,16 @@ type Portfolio = {
   thumbnailUrl: string | null;
   type?: 'video' | 'image';
   order: number;
+  groupId: string | null;
+  groupName: string;
+  representativeGroup: boolean;
+};
+
+type PortfolioGroup = {
+  id: string;
+  name: string;
+  order: number;
+  representative: boolean;
 };
 
 type Review = {
@@ -55,6 +65,7 @@ type PublicProfile = {
   battlePower: number;
   completedProjectCount: number;
   reviewCount: number;
+  portfolioGroups: PortfolioGroup[];
   portfolios: Portfolio[];
   reviews: Review[];
   recentDeals: Deal[];
@@ -168,6 +179,7 @@ export default function PublicProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [portfolioIndex, setPortfolioIndex] = useState(0);
+  const [selectedPortfolioGroupId, setSelectedPortfolioGroupId] = useState<string | null>(null);
   const [reviewPage, setReviewPage] = useState(1);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -192,6 +204,7 @@ export default function PublicProfilePage() {
     setIsLoading(true);
     setNotFound(false);
     setPortfolioIndex(0);
+    setSelectedPortfolioGroupId(null);
     setReviewPage(1);
 
     fetch(`${API_BASE_URL}/api/profiles/${userId}`)
@@ -222,6 +235,9 @@ export default function PublicProfilePage() {
                 thumbnailUrl: portfolio.dataUrl,
                 type: portfolio.type,
                 order: portfolio.order,
+                groupId: null,
+                groupName: '기본 그룹',
+                representativeGroup: true,
               }));
           }
         } catch {
@@ -230,18 +246,25 @@ export default function PublicProfilePage() {
 
         setData({
           ...profile,
+          portfolioGroups: profile.portfolioGroups ?? [],
           portfolios: profile.portfolios.length > 0 ? profile.portfolios : localPortfolios,
           posts: profile.posts ?? [],
           likedPosts: profile.likedPosts ?? [],
         });
+        const representativeGroup = profile.portfolioGroups?.find((group) => group.representative);
+        setSelectedPortfolioGroupId(representativeGroup?.id ?? profile.portfolioGroups?.[0]?.id ?? null);
       })
       .catch(() => setNotFound(true))
       .finally(() => setIsLoading(false));
   }, [currentUserId, userId]);
 
   const sortedPortfolios = useMemo(() => {
-    return data?.portfolios.slice().sort((a, b) => a.order - b.order) ?? [];
-  }, [data]);
+    if (!data) return [];
+    const grouped = selectedPortfolioGroupId
+      ? data.portfolios.filter((portfolio) => portfolio.groupId === selectedPortfolioGroupId)
+      : data.portfolios.filter((portfolio) => portfolio.groupId == null);
+    return grouped.slice().sort((a, b) => a.order - b.order);
+  }, [data, selectedPortfolioGroupId]);
 
   if (isLoading) {
     return (
@@ -344,6 +367,28 @@ export default function PublicProfilePage() {
                 <span className="text-sm text-text-muted">{portfolioIndex + 1} / {sortedPortfolios.length}</span>
               )}
             </div>
+            {data.portfolioGroups.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                {data.portfolioGroups.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPortfolioGroupId(group.id);
+                      setPortfolioIndex(0);
+                    }}
+                    className={`shrink-0 px-3 py-2 rounded-lg border text-sm font-bold transition-colors ${
+                      selectedPortfolioGroupId === group.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-surface-elevated text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {group.name}
+                    {group.representative && <span className="ml-1.5 text-xs">대표</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             {activePortfolio ? (
               <div>
                 <div className="relative aspect-video rounded-xl overflow-hidden bg-surface-elevated border border-border">
