@@ -1,6 +1,6 @@
 package com.backend.domain.post.entity;
 
-import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.profile.entity.PortfolioGroup;
 import com.backend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -35,11 +35,11 @@ public class JobPost extends Post {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "job_post_portfolios",
+            name = "job_post_portfolio_groups",
             joinColumns = @JoinColumn(name = "post_id"),
-            inverseJoinColumns = @JoinColumn(name = "portfolio_id")
+            inverseJoinColumns = @JoinColumn(name = "group_id")
     )
-    private List<Portfolio> portfolios = new ArrayList<>();
+    private List<PortfolioGroup> portfolioGroups = new ArrayList<>();
 
     public JobPost(User author, String title, String content, String thumbnailUrl,
                    Integer minPrice, Integer maxPrice, boolean priceVisible, PostType postType) {

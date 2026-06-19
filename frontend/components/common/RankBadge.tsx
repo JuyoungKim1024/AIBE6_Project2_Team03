@@ -20,18 +20,20 @@ const tierConfig: Record<RankTier, { color: string; bg: string; border: string; 
 };
 
 const sizeConfig = {
-  sm: { icon: 'w-6 h-6 -my-1', text: 'text-xs', padding: 'px-2 py-1' },
-  md: { icon: 'w-8 h-8 -my-1.5', text: 'text-sm', padding: 'px-2.5 py-1.5' },
-  lg: { icon: 'w-10 h-10 -my-2', text: 'text-base font-bold', padding: 'px-3 py-2' },
+  sm: { icon: 'w-6 h-6 -my-1', iconOnly: 'w-5 h-5', text: 'text-xs', padding: 'px-2 py-1', paddingIconOnly: 'p-1' },
+  md: { icon: 'w-8 h-8 -my-1.5', iconOnly: 'w-7 h-7', text: 'text-sm', padding: 'px-2.5 py-1.5', paddingIconOnly: 'p-1.5' },
+  lg: { icon: 'w-10 h-10 -my-2', iconOnly: 'w-9 h-9', text: 'text-base font-bold', padding: 'px-3 py-2', paddingIconOnly: 'p-2' },
 };
 
 export function RankBadge({ tier, size = 'md', showLabel = true }: RankBadgeProps) {
   const config = tierConfig[tier];
   const s = sizeConfig[size];
+  const padding = showLabel ? s.padding : s.paddingIconOnly;
+  const iconClass = showLabel ? s.icon : s.iconOnly;
 
   return (
-    <div className={`inline-flex items-center gap-1.5 rounded-full border ${config.bg} ${config.border} ${s.padding} ${config.glow || ''}`}>
-      <img src={config.icon} alt={`${config.label} 등급`} className={`${s.icon} object-contain flex-shrink-0`} />
+    <div className={`inline-flex items-center gap-1.5 rounded-full border ${config.bg} ${config.border} ${padding} ${config.glow || ''}`}>
+      <img src={config.icon} alt={`${config.label} 등급`} className={`${iconClass} object-contain flex-shrink-0`} />
       {showLabel && (
         <span className={`${config.color} ${s.text} font-medium tracking-wide text-center leading-none`}>{config.label}</span>
       )}

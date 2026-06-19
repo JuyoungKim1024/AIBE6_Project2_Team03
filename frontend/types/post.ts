@@ -7,6 +7,7 @@ export interface AuthorDto {
   id: string;
   nickname: string;
   profileImage: string | null;
+  rank?: string;
 }
 
 export interface JobPostDto {
@@ -27,16 +28,22 @@ export interface JobPostDto {
   createdAt: string;
 }
 
-export interface AttachedPortfolio {
+export interface AttachedPortfolioItem {
   id: string;
   title: string;
   url: string;
   type: "image" | "video";
 }
 
+export interface AttachedPortfolioGroup {
+  id: string;
+  name: string;
+  items: AttachedPortfolioItem[];
+}
+
 export interface JobPostDetailDto extends JobPostDto {
   content: string;
-  portfolios: AttachedPortfolio[];
+  portfolioGroups: AttachedPortfolioGroup[];
   revisionCount: number | null;
   updatedAt: string;
 }

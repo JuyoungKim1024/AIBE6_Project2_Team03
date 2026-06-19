@@ -38,7 +38,7 @@ class PostControllerTest {
     }
 
     private AuthorResponse author() {
-        return new AuthorResponse("user-id", "테스트유저", null);
+        return new AuthorResponse("user-id", "테스트유저", null, "bronze");
     }
 
     @Test

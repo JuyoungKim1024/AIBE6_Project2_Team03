@@ -12,5 +12,5 @@ public record JobPostUpdateRequest(
         Integer revisionCount,
         List<String> fieldTags,
         List<String> toolTags,
-        List<String> portfolioIds
+        List<String> portfolioGroupIds
 ) {}

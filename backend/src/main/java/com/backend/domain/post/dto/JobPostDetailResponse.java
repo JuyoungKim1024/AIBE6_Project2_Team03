@@ -3,6 +3,7 @@ package com.backend.domain.post.dto;
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.PostTag;
 import com.backend.domain.profile.entity.Portfolio;
+import com.backend.domain.profile.entity.PortfolioGroup;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,7 +17,7 @@ public record JobPostDetailResponse(
         Integer maxPrice,
         boolean priceVisible,
         JobPost.PostType postType,
-        List<AttachedPortfolio> portfolios,
+        List<AttachedPortfolioGroup> portfolioGroups,
         List<String> fieldTags,
         List<String> toolTags,
         String thumbnailUrl,
@@ -28,11 +29,21 @@ public record JobPostDetailResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public record AttachedPortfolio(String id, String title, String url, String type) {
-        public static AttachedPortfolio from(Portfolio p) {
+    public record AttachedPortfolioItem(String id, String title, String url, String type) {
+        public static AttachedPortfolioItem from(Portfolio p) {
             String url = p.getThumbnailUrl() != null ? p.getThumbnailUrl() : p.getImageUrl();
             String type = p.getImageUrl() != null && p.getThumbnailUrl() == null ? "image" : "video";
-            return new AttachedPortfolio(p.getId(), p.getTitle(), url, type);
+            return new AttachedPortfolioItem(p.getId(), p.getTitle(), url, type);
+        }
+    }
+
+    public record AttachedPortfolioGroup(String id, String name, List<AttachedPortfolioItem> items) {
+        public static AttachedPortfolioGroup from(PortfolioGroup g) {
+            return new AttachedPortfolioGroup(
+                    g.getId(),
+                    g.getName(),
+                    g.getPortfolios().stream().map(AttachedPortfolioItem::from).toList()
+            );
         }
     }
 
@@ -46,7 +57,7 @@ public record JobPostDetailResponse(
                 post.getMaxPrice(),
                 post.isPriceVisible(),
                 post.getPostType(),
-                post.getPortfolios().stream().map(AttachedPortfolio::from).toList(),
+                post.getPortfolioGroups().stream().map(AttachedPortfolioGroup::from).toList(),
                 post.getTags().stream()
                         .filter(t -> t.getTagType() == PostTag.TagType.FIELD)
                         .map(PostTag::getTagName)
