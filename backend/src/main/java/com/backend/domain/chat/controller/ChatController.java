@@ -45,7 +45,7 @@ public class ChatController {
             @PathVariable String roomId
     ) {
         String userId = authService.resolveUserId(authorizationHeader);
-        chatService.deleteRoomForUser(roomId, userId);
+        chatService.leaveRoom(roomId, userId);
     }
 
     @GetMapping("/{roomId}/messages")

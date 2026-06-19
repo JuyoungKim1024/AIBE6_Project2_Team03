@@ -50,6 +50,9 @@ public class Project extends BaseEntity {
     @Column(nullable = false, length = 30)
     private ProjectStatus status = ProjectStatus.WAITING;
 
+    @Column(name = "completion_requested_by", length = 36)
+    private String completionRequestedBy;
+
 
 
     public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer videoLength, LocalDateTime deadline, String memo) {
@@ -75,8 +78,21 @@ public class Project extends BaseEntity {
         this.status = ProjectStatus.WORKING;
     }
 
-    public void complete() {
-        this.status = ProjectStatus.COMPLETED;
+    public void requestComplete(String userId) {
+        if (status == ProjectStatus.WORKING) {
+            this.status = ProjectStatus.COMPLETION_PENDING;
+            this.completionRequestedBy = userId;
+            return;
+        }
+        if (status == ProjectStatus.COMPLETION_PENDING) {
+            if (userId.equals(completionRequestedBy)) {
+                throw new IllegalStateException("상대방의 완료 확인을 기다리는 중입니다.");
+            }
+            this.status = ProjectStatus.COMPLETED;
+            this.completionRequestedBy = null;
+            return;
+        }
+        throw new IllegalStateException("완료 처리할 수 없는 프로젝트 상태입니다.");
     }
 
     public void reject() {
@@ -85,5 +101,6 @@ public class Project extends BaseEntity {
 
     public void cancel() {
         this.status = ProjectStatus.CANCELED;
+        this.completionRequestedBy = null;
     }
 }

@@ -3,7 +3,8 @@
 import React, { MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
-import { createDirectChatRequest } from '@/lib/api/chat';
+import { API_BASE_URL } from '@/lib/api';
+import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 
 type UserDmDropdownProps = {
@@ -41,10 +42,33 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
     setOpen((current) => !current);
   };
 
-  const openRequestModal = (event: MouseEvent<HTMLButtonElement>) => {
+  const openRequestModal = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setErrorMessage('');
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error('로그인이 필요합니다.');
+      const me = await response.json() as { id: string };
+      if (me.id === targetUserId) {
+        alert('본인에게는 DM을 보낼 수 없습니다.');
+        setOpen(false);
+        return;
+      }
+    } catch {
+      router.push('/login');
+      return;
+    }
+
     setShowRequestModal(true);
   };
 
@@ -56,6 +80,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
 
     try {
       await createDirectChatRequest(targetUserId, message);
+      markInitialChatRequestMessageUsed(targetUserId);
       setOpen(false);
       setShowRequestModal(false);
       setErrorMessage('DM 요청을 보냈습니다.');
@@ -106,6 +131,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
       {showRequestModal && (
         <DirectChatRequestModal
           targetName={targetName}
+          initialMessage={getInitialChatRequestMessage(targetUserId, '안녕하세요. DM 문의드립니다.')}
           isSubmitting={isCreating}
           onClose={() => setShowRequestModal(false)}
           onSubmit={submitDmRequest}

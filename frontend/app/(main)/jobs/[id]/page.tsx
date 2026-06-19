@@ -34,7 +34,7 @@ import {
   togglePostLike,
   getPostLikedStatus,
 } from "@/lib/api/post";
-import { createPostChatRequest } from "@/lib/api/chat";
+import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
@@ -147,6 +147,7 @@ export default function JobDetailPage() {
 
     try {
       await createPostChatRequest(post.author.id, id, message);
+      markInitialChatRequestMessageUsed(post.author.id);
       setShowChatRequestModal(false);
       alert("채팅 요청을 보냈습니다.");
     } catch (error) {
@@ -746,7 +747,7 @@ export default function JobDetailPage() {
         <DirectChatRequestModal
           targetName={post.author.nickname}
           title="채팅 문의하기"
-          initialMessage="안녕하세요. 게시글 보고 문의드립니다."
+          initialMessage={getInitialChatRequestMessage(post.author.id, "안녕하세요. 게시글 보고 문의드립니다.")}
           isSubmitting={isStartingChat}
           onClose={() => setShowChatRequestModal(false)}
           onSubmit={submitChatRequest}
