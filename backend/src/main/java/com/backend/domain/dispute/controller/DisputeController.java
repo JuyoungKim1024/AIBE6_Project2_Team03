@@ -5,6 +5,7 @@ import com.backend.domain.dispute.dto.DisputeCreateRequest;
 import com.backend.domain.dispute.dto.DisputeRespondRequest;
 import com.backend.domain.dispute.dto.DisputeResponse;
 import com.backend.domain.dispute.service.DisputeService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,7 @@ public class DisputeController {
     @ResponseStatus(HttpStatus.CREATED)
     public DisputeResponse createDispute(
             @RequestHeader("Authorization") String authorization,
-            @RequestBody DisputeCreateRequest request
+            @Valid @RequestBody DisputeCreateRequest request
     ) {
         String userId = authService.resolveUserId(authorization);
         return disputeService.createDispute(userId, request);
