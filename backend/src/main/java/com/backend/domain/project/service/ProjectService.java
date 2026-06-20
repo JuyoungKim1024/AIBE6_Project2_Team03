@@ -102,7 +102,7 @@ public class ProjectService {
 
         Project project = projectRepository.findTopByRoom_IdAndStatusInOrderByCreatedAtDesc(
                 roomId,
-                List.of(ProjectStatus.WAITING, ProjectStatus.WORKING)
+                List.of(ProjectStatus.WAITING, ProjectStatus.WORKING, ProjectStatus.COMPLETION_PENDING)
         );
         if (project == null) {
             throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
