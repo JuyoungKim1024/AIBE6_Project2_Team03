@@ -1633,7 +1633,7 @@ function ChatsSection() {
                     <Briefcase size={14} />프로젝트 시작
                   </button>
                 ) : null}
-                {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && currentProject.id && (
+                {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
                   <button
                     type="button"
                     onClick={() => setShowDisputeModal(true)}
