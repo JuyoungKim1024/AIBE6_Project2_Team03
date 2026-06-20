@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Briefcase,
   Check,
   ChevronDown,
@@ -37,6 +38,8 @@ import {
   type ProjectMessagePayload,
 } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, ChatPostSummary, MyChatRoom } from '@/types/chat';
+import { DisputeModal } from '@/components/dispute/DisputeModal';
+import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import {
   fetchCommunityPosts,
   fetchJobPosts,
@@ -1051,6 +1054,8 @@ function ChatsSection() {
     memo: '',
   });
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
 
   const selectedRoom = chatRooms.find((room) => room.id === selectedRoomId);
   const selectedPost = selectedRoom?.post ?? null;
@@ -1628,6 +1633,17 @@ function ChatsSection() {
                     <Briefcase size={14} />프로젝트 시작
                   </button>
                 ) : null}
+                {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && currentProject.id && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisputeModal(true)}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
+                    aria-label="분쟁 신고"
+                  >
+                    <AlertTriangle size={14} />
+                    분쟁
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => selectedRoomId && loadMessages(selectedRoomId)}
@@ -1848,6 +1864,24 @@ function ChatsSection() {
             </div>
           </form>
         </div>
+      )}
+      {showDisputeModal && currentProject?.id && (
+        <DisputeModal
+          projectId={currentProject.id}
+          accessToken={getAccessToken()}
+          onClose={() => setShowDisputeModal(false)}
+          onCreated={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+          }}
+        />
+      )}
+      {activeDisputeId && (
+        <DisputeResultModal
+          disputeId={activeDisputeId}
+          accessToken={getAccessToken()}
+          onClose={() => setActiveDisputeId(null)}
+        />
       )}
     </SectionCard>
   );

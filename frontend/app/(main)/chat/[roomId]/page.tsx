@@ -3,9 +3,11 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { parseProjectMessage, ProjectMessageCard } from '@/components/common/ProjectMessageCard';
+import { DisputeModal } from '@/components/dispute/DisputeModal';
+import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
 
 type AuthUser = {
@@ -17,6 +19,11 @@ type ChatRoomDetail = {
   id: string;
   roomType: string;
   createdAt: string;
+};
+
+type CurrentProject = {
+  id: string;
+  status: string;
 };
 
 export default function ChatRoomPage() {
@@ -33,6 +40,9 @@ export default function ChatRoomPage() {
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
+  const [currentProject, setCurrentProject] = useState<CurrentProject | null>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -71,13 +81,15 @@ export default function ChatRoomPage() {
       fetchJson<ChatRoomDetail>(`/api/chat/rooms/${roomId}`),
       fetchJson<ChatMessage[]>(`/api/chat/rooms/${roomId}/messages`),
       fetchJson<MyChatRoom[]>('/api/users/me/chats'),
+      fetchJson<CurrentProject>(`/api/projects/rooms/${roomId}`).catch(() => null),
     ])
-      .then(([me, roomDetail, messageList, rooms]) => {
+      .then(([me, roomDetail, messageList, rooms, project]) => {
         setUser(me);
         setRoom(roomDetail);
         setMessages(messageList);
         const currentRoom = rooms.find((item) => item.id === roomId);
         setIsPartnerWithdrawn(Boolean(currentRoom?.partnerDeleted || currentRoom?.partnerWithdrawn));
+        setCurrentProject(project);
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
@@ -117,6 +129,25 @@ export default function ChatRoomPage() {
   };
 
   return (
+    <>
+      {showDisputeModal && currentProject && (
+        <DisputeModal
+          projectId={currentProject.id}
+          accessToken={accessToken}
+          onClose={() => setShowDisputeModal(false)}
+          onCreated={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+          }}
+        />
+      )}
+      {activeDisputeId && (
+        <DisputeResultModal
+          disputeId={activeDisputeId}
+          accessToken={accessToken}
+          onClose={() => setActiveDisputeId(null)}
+        />
+      )}
     <div className="min-h-screen px-4 py-8">
       <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-surface">
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -132,14 +163,27 @@ export default function ChatRoomPage() {
               <p className="truncate text-xs text-text-muted">{room?.roomType ?? '대화'} · {roomId}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
-            className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-            aria-label="새로고침"
-          >
-            <RefreshCw size={17} />
-          </button>
+          <div className="flex items-center gap-1">
+            {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
+              <button
+                type="button"
+                onClick={() => setShowDisputeModal(true)}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
+                aria-label="분쟁 신고"
+              >
+                <AlertTriangle size={14} />
+                분쟁
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
+              className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+              aria-label="새로고침"
+            >
+              <RefreshCw size={17} />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-background/40 px-4 py-5">
@@ -210,5 +254,6 @@ export default function ChatRoomPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }
