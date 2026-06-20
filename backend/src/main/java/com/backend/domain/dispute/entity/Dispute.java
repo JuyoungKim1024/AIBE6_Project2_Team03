@@ -68,8 +68,10 @@ public class Dispute extends BaseEntity {
         String editorId = project.getEditor().getId();
 
         if (userId.equals(requesterId)) {
+            if (this.requesterAccepted != null) throw new IllegalStateException("이미 응답하셨습니다.");
             this.requesterAccepted = accepted;
         } else if (userId.equals(editorId)) {
+            if (this.editorAccepted != null) throw new IllegalStateException("이미 응답하셨습니다.");
             this.editorAccepted = accepted;
         } else {
             throw new IllegalArgumentException("프로젝트 참여자만 응답할 수 있습니다.");
