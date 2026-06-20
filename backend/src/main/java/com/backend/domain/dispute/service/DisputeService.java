@@ -15,6 +15,8 @@ import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -59,7 +61,14 @@ public class DisputeService {
         Dispute dispute = new Dispute(project, reportedBy, request.type(), request.description());
         disputeRepository.save(dispute);
 
-        judgeService.judgeAsync(dispute.getId());
+        // @Async 쓰레드가 커밋 전 findById를 호출하는 race condition 방지
+        String disputeId = dispute.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                judgeService.judgeAsync(disputeId);
+            }
+        });
 
         return DisputeResponse.from(dispute);
     }

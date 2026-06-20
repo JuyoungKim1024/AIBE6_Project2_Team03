@@ -29,6 +29,15 @@ interface Props {
   onClose: () => void;
 }
 
+function parseJudgment(raw: string | null): AiJudgment | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim()) as AiJudgment;
+  } catch {
+    return null;
+  }
+}
+
 export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
   const [dispute, setDispute] = useState<DisputeData | null>(null);
   const [judgment, setJudgment] = useState<AiJudgment | null>(null);
@@ -49,14 +58,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
         if (pollingRef.current) clearInterval(pollingRef.current);
       }
 
-      if (data.aiJudgment) {
-        try {
-          const cleaned = data.aiJudgment.replace(/```json\n?|\n?```/g, '').trim();
-          setJudgment(JSON.parse(cleaned));
-        } catch {
-          // aiJudgment가 순수 JSON이 아닌 경우 무시
-        }
-      }
+      setJudgment(parseJudgment(data.aiJudgment));
     } catch {
       // 폴링 중 오류는 무시
     }
@@ -89,14 +91,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       }
       const data: DisputeData = await res.json();
       setDispute(data);
-      if (data.aiJudgment) {
-        try {
-          const cleaned = data.aiJudgment.replace(/```json\n?|\n?```/g, '').trim();
-          setJudgment(JSON.parse(cleaned));
-        } catch {
-          // ignore
-        }
-      }
+      setJudgment(parseJudgment(data.aiJudgment));
     } catch (err) {
       setResponseError(err instanceof Error ? err.message : '응답 처리에 실패했습니다.');
     } finally {
