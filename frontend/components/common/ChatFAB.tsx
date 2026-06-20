@@ -1,32 +1,19 @@
 'use client';
 
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
-import { DisputeModal } from '@/components/dispute/DisputeModal';
-import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
-import type { ChatMessage } from '@/types/chat';
+import type { ChatMessage, MyChatRoom } from '@/types/chat';
 
 type AuthUser = {
   id: string;
   nickname: string;
-};
-
-type MyChatRoom = {
-  id: string;
-  partnerId?: string;
-  partnerName: string;
-  lastMessage: string;
-  time: string;
-  unreadCount: number;
-  partnerDeleted?: boolean;
-  partnerWithdrawn?: boolean;
 };
 
 type MyProject = {
@@ -58,12 +45,9 @@ export function ChatFAB() {
   const [isSending, setIsSending] = useState(false);
   const [isRequestingDm, setIsRequestingDm] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [showDisputeModal, setShowDisputeModal] = useState(false);
-  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const { activeDMUser, closeDM } = useDM();
 
   const isDMActive = activeDMUser !== null;
-  const showPopup = isOpen;
   const activeRoom = chatRooms.find((chat) => chat.id === activeRoomId);
   const activePartnerName = activeRoom?.partnerName ?? '채팅방';
   const isPartnerWithdrawn = Boolean(activeRoom?.partnerDeleted || activeRoom?.partnerWithdrawn);
@@ -71,7 +55,7 @@ export function ChatFAB() {
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('accessToken');
-  }, [showPopup]);
+  }, [isOpen]);
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -150,7 +134,7 @@ export function ChatFAB() {
   };
 
   useEffect(() => {
-    if (!showPopup) return;
+    if (!isOpen) return;
     if (!accessToken) {
       router.push('/login');
       return;
@@ -164,13 +148,13 @@ export function ChatFAB() {
       });
 
     loadRooms();
-  }, [accessToken, router, showPopup]);
+  }, [accessToken, router, isOpen]);
 
   useEffect(() => {
-    if (!showPopup || !activeRoomId || isDMActive) return;
+    if (!isOpen || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
     loadProject(activeRoomId);
-  }, [activeRoomId, isDMActive, showPopup]);
+  }, [activeRoomId, isDMActive, isOpen]);
 
   useEffect(() => {
     if (!activeDMUser) return;
@@ -313,24 +297,6 @@ export function ChatFAB() {
 
   return (
     <>
-      {showDisputeModal && currentProject && (
-        <DisputeModal
-          projectId={currentProject.id}
-          accessToken={accessToken}
-          onClose={() => setShowDisputeModal(false)}
-          onCreated={(disputeId) => {
-            setShowDisputeModal(false);
-            setActiveDisputeId(disputeId);
-          }}
-        />
-      )}
-      {activeDisputeId && (
-        <DisputeResultModal
-          disputeId={activeDisputeId}
-          accessToken={accessToken}
-          onClose={() => setActiveDisputeId(null)}
-        />
-      )}
       {activeDMUser && (
         <DirectChatRequestModal
           targetName={activeDMUser.name}
@@ -341,7 +307,7 @@ export function ChatFAB() {
         />
       )}
       <AnimatePresence>
-        {showPopup && (
+        {isOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -431,17 +397,6 @@ export function ChatFAB() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
-                        <button
-                          type="button"
-                          onClick={() => setShowDisputeModal(true)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
-                          aria-label="분쟁 신고"
-                        >
-                          <AlertTriangle size={13} />
-                          분쟁
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={refreshActiveRoom}
