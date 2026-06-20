@@ -31,7 +31,7 @@ public class DisputeService {
 
     @Transactional
     public DisputeResponse createDispute(String userId, DisputeCreateRequest request) {
-        Project project = projectRepository.findById(request.projectId())
+        Project project = projectRepository.findByIdWithParticipants(request.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
 
         String requesterId = project.getRequester().getId();
