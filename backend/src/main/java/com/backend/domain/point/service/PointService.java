@@ -2,6 +2,7 @@ package com.backend.domain.point.service;
 
 import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
+import com.backend.domain.project.entity.Project;
 import com.backend.domain.point.dto.PointBalanceResponse;
 import com.backend.domain.point.dto.PointTransactionResponse;
 import com.backend.domain.point.entity.PointTransaction;
@@ -114,6 +115,38 @@ public class PointService {
                 request.getEditor().getNickname() + "님과의 매칭 취소 환불",
                 matchRequestId
         ));
+    }
+
+    // AI 분쟁 조정 정산 - finalAmount를 에디터에게, 나머지는 크리에이터에게 환불
+    @Transactional
+    public void settleDispute(Project project, int finalAmount) {
+        if (project.getPrice() == null || project.getPrice() <= 0) {
+            throw new IllegalStateException("프로젝트 금액이 설정되지 않아 정산할 수 없습니다.");
+        }
+        int originalAmount = project.getPrice();
+        int refundAmount = originalAmount - finalAmount;
+
+        User requester = project.getRequester();
+        User editor = project.getEditor();
+
+        if (finalAmount > 0) {
+            requester.releaseEscrow(finalAmount, editor);
+            transactionRepository.save(new PointTransaction(
+                    editor, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 정산 수령 (" + requester.getNickname() + "님)", null
+            ));
+            transactionRepository.save(new PointTransaction(
+                    requester, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 에디터 지급 (" + editor.getNickname() + "님)", null
+            ));
+        }
+        if (refundAmount > 0) {
+            requester.refundEscrow(refundAmount);
+            transactionRepository.save(new PointTransaction(
+                    requester, refundAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 환불 (" + editor.getNickname() + "님)", null
+            ));
+        }
     }
 
     private User getUser(String userId) {
