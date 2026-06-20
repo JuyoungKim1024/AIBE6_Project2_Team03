@@ -11,7 +11,6 @@ import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.user.entity.User;
-import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +26,6 @@ public class DisputeService {
 
     private final DisputeRepository disputeRepository;
     private final ProjectRepository projectRepository;
-    private final UserRepository userRepository;
     private final PointService pointService;
     private final DisputeJudgeService judgeService;
 
@@ -55,8 +53,7 @@ public class DisputeService {
             throw new IllegalStateException("이미 진행 중인 분쟁이 있습니다.");
         }
 
-        User reportedBy = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        User reportedBy = userId.equals(requesterId) ? project.getRequester() : project.getEditor();
 
         Dispute dispute = new Dispute(project, reportedBy, request.type(), request.description());
         disputeRepository.save(dispute);
