@@ -110,6 +110,7 @@ type MyProject = {
   roomId?: string;
   requesterId?: string;
   editorId?: string;
+  completionRequestedBy?: string | null;
   partnerName: string;
   field: string | null;
   status: string;
@@ -172,17 +173,22 @@ function isWorkingProject(project: ProjectMessagePayload | null | undefined) {
   return project?.status === 'WORKING';
 }
 
+function isCompletionPendingProject(project: ProjectMessagePayload | null | undefined) {
+  return project?.status === 'COMPLETION_PENDING';
+}
+
 function isOpenProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) : false;
 }
 
 function isVisibleChatProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETED', 'REJECTED'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
 }
 
 function getProjectMessageLabel(project: ProjectMessagePayload) {
   if (project.status === 'WAITING') return '프로젝트 수락 대기';
   if (project.status === 'WORKING') return '프로젝트 진행 중';
+  if (project.status === 'COMPLETION_PENDING') return '프로젝트 완료 대기';
   if (project.status === 'COMPLETED') return '프로젝트 완료';
   if (project.status === 'REJECTED') return '프로젝트 거절';
   if (project.status === 'CANCELED') return '프로젝트 취소';
@@ -192,7 +198,7 @@ function getProjectMessageLabel(project: ProjectMessagePayload) {
 function getChatLastMessageText(lastMessage: string) {
   if (!lastMessage) return '아직 메시지가 없습니다';
   const project = parseProjectMessage(lastMessage);
-  return project ? getProjectMessageLabel(project) : lastMessage;
+  return project ? '프로젝트' : lastMessage;
 }
 
 function canRespondProject(project: { status?: string; requesterId?: string } | null | undefined, userId: string | null | undefined) {
@@ -1014,6 +1020,7 @@ function LikedSection() {
 }
 
 function ChatsSection() {
+  const { openModal } = useModal();
   const searchParams = useSearchParams();
   const roomIdParam = searchParams.get('roomId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1111,13 +1118,21 @@ function ChatsSection() {
     } catch {
       try {
         const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETED', 'REJECTED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
-          const memo = project.status === 'REJECTED' ? '거절된 프로젝트입니다.' : '완료된 프로젝트입니다.';
+          const memo =
+            project.status === 'REJECTED'
+              ? '거절된 프로젝트입니다.'
+              : project.status === 'CANCELED'
+                ? '취소된 프로젝트입니다.'
+                : project.status === 'COMPLETION_PENDING'
+                  ? '상대방의 완료 확인을 기다리는 중입니다.'
+                  : '완료된 프로젝트입니다.';
           const completedProject: ProjectMessagePayload = {
             id: project.id,
             roomId,
             requesterId: project.requesterId,
+            completionRequestedBy: project.completionRequestedBy,
             field: project.field,
             price: null,
             videoLength: null,
@@ -1215,7 +1230,8 @@ function ChatsSection() {
       if (!response.ok) throw new Error('Failed to send message');
 
       const saved = await response.json() as ChatMessage;
-      setMessages((current) => [...current, saved]);
+      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
+      setMessages((current) => [...current, savedMessage]);
       setDraft('');
       loadRooms();
     } catch {
@@ -1225,36 +1241,41 @@ function ChatsSection() {
     }
   };
 
-  const deleteRoom = async (roomId: string) => {
-    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+  const deleteRoom = (roomId: string) => {
+    openModal({
+      title: '확인',
+      message: '채팅방을 목록에서 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${getAccessToken()}` },
+          });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      });
+          if (!response.ok) throw new Error('Failed to delete room');
 
-      if (!response.ok) throw new Error('Failed to delete room');
+          const nextRooms = chatRooms.filter((room) => room.id !== roomId);
+          setChatRooms(nextRooms);
 
-      const nextRooms = chatRooms.filter((room) => room.id !== roomId);
-      setChatRooms(nextRooms);
+          if (selectedRoomId === roomId) {
+            const nextSelectedRoomId = nextRooms.find((room) => {
+              if (activeFilter === 'POST') return room.type === 'POST';
+              if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
+              if (activeFilter === 'UNREAD') return room.unreadCount > 0;
+              return true;
+            })?.id ?? null;
 
-      if (selectedRoomId === roomId) {
-        const nextSelectedRoomId = nextRooms.find((room) => {
-          if (activeFilter === 'POST') return room.type === 'POST';
-          if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
-          if (activeFilter === 'UNREAD') return room.unreadCount > 0;
-          return true;
-        })?.id ?? null;
-
-        setSelectedRoomId(nextSelectedRoomId);
-        if (!nextSelectedRoomId) {
-          setMessages([]);
+            setSelectedRoomId(nextSelectedRoomId);
+            if (!nextSelectedRoomId) {
+              setMessages([]);
+            }
+          }
+        } catch {
+          setErrorMessage('채팅방을 삭제하지 못했습니다.');
         }
-      }
-    } catch {
-      setErrorMessage('채팅방을 삭제하지 못했습니다.');
-    }
+      },
+    });
   };
 
   const updateProjectForm = (key: keyof ProjectCreateForm, value: string) => {
@@ -1315,7 +1336,7 @@ function ChatsSection() {
     }));
   };
 
-  const updateProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
+  const updateProjectStatus = (project: ProjectMessagePayload, action: ProjectAction) => {
     const confirmMessage =
       action === 'start'
         ? '프로젝트를 수락하시겠습니까?'
@@ -1324,60 +1345,67 @@ function ChatsSection() {
           : action === 'complete'
             ? '프로젝트를 완료하시겠습니까?'
             : '프로젝트를 취소하시겠습니까?';
-    if (!window.confirm(confirmMessage)) return;
 
-    setProjectAction(action);
-    setErrorMessage('');
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/projects/${project.id}/${action}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-      });
+    openModal({
+      title: '확인',
+      message: confirmMessage,
+      confirmLabel: '확인',
+      onConfirm: async () => {
+        setProjectAction(action);
+        setErrorMessage('');
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/projects/${project.id}/${action}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${getAccessToken()}` },
+          });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.message ?? '프로젝트 상태를 변경하지 못했습니다.');
-      }
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            throw new Error(data?.message ?? '프로젝트 상태를 변경하지 못했습니다.');
+          }
 
-      const savedProject = await response.json() as ProjectMessagePayload;
-      upsertProjectMessage(savedProject);
+          const savedProject = await response.json() as ProjectMessagePayload;
+          upsertProjectMessage(savedProject);
 
-      if (action === 'reject' && user) {
-        const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${project.roomId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${getAccessToken()}`,
-          },
-          body: JSON.stringify({
-            senderId: user.id,
-            content: '프로젝트가 거절되었습니다.',
-            messageType: 'TEXT',
-          }),
-        }).catch(() => null);
-        if (messageResponse?.ok && project.roomId === selectedRoomId) {
-          const savedMessage = await messageResponse.json() as ChatMessage;
-          setMessages((current) => [...current, savedMessage]);
+          if (action === 'reject' && user) {
+            const messageResponse = await fetch(`${API_BASE_URL}/api/chat/rooms/${project.roomId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${getAccessToken()}`,
+              },
+              body: JSON.stringify({
+                senderId: user.id,
+                content: '프로젝트가 거절되었습니다.',
+                messageType: 'TEXT',
+              }),
+            }).catch(() => null);
+            if (messageResponse?.ok && project.roomId === selectedRoomId) {
+              const savedMessage = await messageResponse.json() as ChatMessage;
+              setMessages((current) => [...current, savedMessage]);
+            }
+          }
+
+          openModal({
+            title: '알림',
+            message: action === 'start'
+              ? '프로젝트를 수락했습니다.'
+              : action === 'reject'
+                ? '프로젝트를 거절했습니다.'
+                : action === 'complete'
+                  ? savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.'
+                  : '프로젝트를 취소했습니다.',
+          });
+          loadRooms();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+          setErrorMessage(message);
+          openModal({ title: '오류', message });
+        } finally {
+          setProjectAction(null);
         }
-      }
-
-      window.alert(
-        action === 'start'
-          ? '프로젝트를 수락했습니다.'
-          : action === 'reject'
-            ? '프로젝트를 거절했습니다.'
-            : action === 'complete'
-              ? '프로젝트를 완료했습니다.'
-              : '프로젝트를 취소했습니다.'
-      );
-      loadRooms();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
-      setErrorMessage(message);
-      window.alert(message);
-    } finally {
-      setProjectAction(null);
-    }
+      },
+    });
   };
 
   const deleteProject = async (project: ProjectMessagePayload) => {
@@ -1405,6 +1433,11 @@ function ChatsSection() {
             <X size={12} />취소
           </button>
         </>
+      ) : null}
+      {isCompletionPendingProject(project) && project.completionRequestedBy !== user?.id ? (
+        <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'complete')} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">
+          <Check size={12} />완료 확인
+        </button>
       ) : null}
       {isOpenProject(project) ? (
         <button type="button" onClick={() => openEditProjectForm(project)} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2.5 py-1.5 text-xs font-bold text-text-secondary transition-colors hover:border-primary/50 hover:text-primary">
@@ -1527,7 +1560,7 @@ function ChatsSection() {
           </div>
           {filteredRooms.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <div className="flex min-h-[780px] flex-col">
+          <div className="flex min-h-[720px] flex-col">
             <div className="flex-1 space-y-2 overflow-y-auto pr-1">
             {pagedRooms.map((room) => (
               <div
@@ -1576,7 +1609,7 @@ function ChatsSection() {
             ) : null}
           </div>
 
-          <div className="h-[calc(100vh-7rem)] min-h-[780px] max-h-[1040px] min-w-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col">
+          <div className="h-[calc(100vh-7rem)] min-h-[776px] max-h-[1036px] min-w-0 overflow-hidden rounded-xl border border-border bg-surface flex flex-col lg:-mt-14">
             <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
@@ -1619,7 +1652,17 @@ function ChatsSection() {
             {pinnedProject ? (
               <div className="shrink-0 border-b border-border bg-surface px-5 py-3">
                 <button type="button" onClick={() => setShowProjectCard((current) => !current)} className="flex w-full items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-left text-sm font-bold text-text-primary transition-colors hover:border-primary/60">
-                  <span className="min-w-0 truncate">{pinnedProject.status === 'COMPLETED' ? '완료된 프로젝트' : '진행 중인 프로젝트'}</span>
+                  <span className="min-w-0 truncate">
+                    {pinnedProject.status === 'COMPLETED'
+                      ? '완료된 프로젝트'
+                      : pinnedProject.status === 'REJECTED'
+                        ? '거절된 프로젝트'
+                        : pinnedProject.status === 'CANCELED'
+                          ? '취소된 프로젝트'
+                          : pinnedProject.status === 'COMPLETION_PENDING'
+                            ? '완료 대기 프로젝트'
+                            : '진행 중인 프로젝트'}
+                  </span>
                   <ChevronDown size={16} className={`flex-shrink-0 text-text-muted transition-transform ${showProjectCard ? 'rotate-180' : ''}`} />
                 </button>
                 {showProjectCard ? <div className="mt-3"><ProjectMessageCard project={pinnedProject} pinned actions={renderProjectActions(pinnedProject)} /></div> : null}
@@ -1839,10 +1882,12 @@ function formatChatPostPrice(minPrice: number | null, maxPrice: number | null) {
 }
 
 function ProjectsSection() {
+  const { openModal } = useModal();
   const [projects, setProjects] = useState<MyProjects>({ received: [], ongoing: [] });
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [projectActionId, setProjectActionId] = useState<string | null>(null);
+  const [completionRequestedProjectIds, setCompletionRequestedProjectIds] = useState<string[]>([]);
   const [message, setMessage] = useState('');
 
   const loadProjects = async () => {
@@ -1871,33 +1916,47 @@ function ProjectsSection() {
           ? '프로젝트를 거절하시겠습니까?'
           : '프로젝트를 완료하시겠습니까?';
 
-    if (!window.confirm(confirmMessage)) return;
-
-    setProjectActionId(project.id);
-    setMessage('');
-    try {
-      await patchMyPageData<MyProject>(`/api/projects/${project.id}/${action}`, {});
-      window.alert(
-        action === 'start'
-          ? '프로젝트를 수락했습니다.'
-          : action === 'reject'
-            ? '프로젝트를 거절했습니다.'
-            : '프로젝트를 완료했습니다.'
-      );
-      await loadProjects();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
-      setMessage(errorMessage);
-      window.alert(errorMessage);
-    } finally {
-      setProjectActionId(null);
-    }
+    openModal({
+      title: '확인',
+      message: confirmMessage,
+      confirmLabel: '확인',
+      onConfirm: async () => {
+        setProjectActionId(project.id);
+        setMessage('');
+        try {
+          const savedProject = await patchMyPageData<MyProject>(`/api/projects/${project.id}/${action}`, {});
+          if (action === 'complete' && savedProject.status === 'COMPLETION_PENDING') {
+            setCompletionRequestedProjectIds((current) => current.includes(project.id) ? current : [...current, project.id]);
+          }
+          openModal({
+            title: '알림',
+            message: action === 'start'
+              ? '프로젝트를 수락했습니다.'
+              : action === 'reject'
+                ? '프로젝트를 거절했습니다.'
+                : savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.',
+          });
+          await loadProjects();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.';
+          setMessage(errorMessage);
+          openModal({ title: '오류', message: errorMessage });
+        } finally {
+          setProjectActionId(null);
+        }
+      },
+    });
   };
 
   const visibleProjects = projects.ongoing.filter((project) => !['REJECTED', 'CANCELED'].includes(project.status));
   const pendingProjects = visibleProjects.filter((project) => project.status === 'WAITING');
   const workingProjects = visibleProjects.filter((project) => project.status === 'WORKING');
+  const completionPendingProjects = visibleProjects.filter((project) => project.status === 'COMPLETION_PENDING');
   const completedProjects = visibleProjects.filter((project) => project.status === 'COMPLETED');
+  const canConfirmCompletion = (project: MyProject) => {
+    if (project.completionRequestedBy) return project.completionRequestedBy !== user?.id;
+    return !completionRequestedProjectIds.includes(project.id);
+  };
 
   return (
     <SectionCard title="프로젝트 관리" description="받은 매칭 요청과 진행 중인 프로젝트를 관리합니다.">
@@ -1948,6 +2007,20 @@ function ProjectsSection() {
                 actions={(
                   <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
                 )}
+              />
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="완료 대기 프로젝트" emptyMessage="완료 확인 대기 중인 프로젝트가 없습니다">
+            {completionPendingProjects.map((project) => (
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="완료 대기"
+                accentClass="border-l-primary"
+                actions={canConfirmCompletion(project) ? (
+                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료 확인</button>
+                ) : null}
               />
             ))}
           </ProjectBoardColumn>
