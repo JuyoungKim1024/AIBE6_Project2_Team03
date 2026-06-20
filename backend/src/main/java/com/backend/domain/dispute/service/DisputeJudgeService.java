@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,16 +27,18 @@ public class DisputeJudgeService {
     private final ChatMessageRepository chatMessageRepository;
     private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
-    private final SimpMessagingTemplate messagingTemplate;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("MM/dd HH:mm");
     private static final int MAX_MESSAGES = 100;
 
-    @Async
+    @Async("disputeJudgeExecutor")
     @Transactional
     public void judgeAsync(String disputeId) {
         Dispute dispute = disputeRepository.findById(disputeId).orElse(null);
-        if (dispute == null) return;
+        if (dispute == null) {
+            log.error("judgeAsync: dispute를 찾을 수 없습니다. disputeId={}", disputeId);
+            return;
+        }
 
         try {
             Project project = dispute.getProject();
@@ -49,15 +50,15 @@ public class DisputeJudgeService {
 
             JsonNode node = objectMapper.readTree(cleaned);
             int finalAmount = node.path("adjustedAmount").asInt(-1);
-            if (finalAmount < 0) finalAmount = project.getPrice() != null ? project.getPrice() : 0;
+            if (finalAmount < 0) {
+                throw new IllegalStateException("AI 응답에 adjustedAmount 필드가 없습니다.");
+            }
 
             dispute.applyJudgment(cleaned, finalAmount);
         } catch (Exception e) {
             log.error("AI 분쟁 판정 실패 disputeId={}", disputeId, e);
             dispute.markFailed();
         }
-
-        messagingTemplate.convertAndSend("/topic/disputes/" + disputeId, "JUDGED");
     }
 
     private String buildChatHistory(String roomId) {

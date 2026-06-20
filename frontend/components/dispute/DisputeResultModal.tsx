@@ -50,7 +50,12 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}`, {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (res.status === 401 && pollingRef.current) {
+          clearInterval(pollingRef.current);
+        }
+        return;
+      }
       const data: DisputeData = await res.json();
       setDispute(data);
 
@@ -59,8 +64,8 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       }
 
       setJudgment(parseJudgment(data.aiJudgment));
-    } catch {
-      // 폴링 중 오류는 무시
+    } catch (err) {
+      console.error('분쟁 상태 조회 실패:', err);
     }
   }, [disputeId, accessToken]);
 

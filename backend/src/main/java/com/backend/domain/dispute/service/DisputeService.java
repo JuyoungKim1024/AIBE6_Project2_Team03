@@ -93,7 +93,7 @@ public class DisputeService {
     }
 
     private Dispute findAndValidateParticipant(String disputeId, String userId) {
-        Dispute dispute = disputeRepository.findById(disputeId)
+        Dispute dispute = disputeRepository.findByIdWithDetails(disputeId)
                 .orElseThrow(() -> new IllegalArgumentException("분쟁을 찾을 수 없습니다."));
 
         String requesterId = dispute.getProject().getRequester().getId();
