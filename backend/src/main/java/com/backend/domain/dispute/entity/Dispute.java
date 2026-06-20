@@ -50,7 +50,6 @@ public class Dispute extends BaseEntity {
         this.reportedBy = reportedBy;
         this.type = type;
         this.description = description;
-        this.status = DisputeStatus.AI_PENDING;
     }
 
     public void applyJudgment(String aiJudgment, Integer finalAmount) {
