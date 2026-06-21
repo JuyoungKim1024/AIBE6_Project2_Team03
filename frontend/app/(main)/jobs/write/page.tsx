@@ -583,7 +583,7 @@ function JobsWriteContent() {
               <label className="block text-sm font-bold text-text-primary mb-3">
                 포트폴리오 선택
               </label>
-              {portfolioGroups.length === 0 ? (
+              {portfolioGroups.filter((g) => g.items.length > 0).length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
                   <span className="text-sm font-medium mb-2">등록된 포트폴리오 그룹이 없습니다.</span>
                   <Link href="/profile" className="text-xs text-primary hover:underline">
@@ -592,7 +592,7 @@ function JobsWriteContent() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {portfolioGroups.map((g) => {
+                  {portfolioGroups.filter((g) => g.items.length > 0).map((g) => {
                     const selected = selectedGroupIds.includes(g.id);
                     const previews = g.items.slice(0, 4);
                     return (
