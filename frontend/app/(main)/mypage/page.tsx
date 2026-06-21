@@ -17,7 +17,9 @@ import {
   GripVertical,
   Heart,
   Image as ImageIcon,
+  Loader2,
   MessageCircle,
+  Paperclip,
   Pencil,
   Plus,
   RefreshCw,
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
+import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
 import {
   parseProjectMessage,
   ProjectMessageCard,
@@ -45,6 +48,7 @@ import {
   togglePostLike,
 } from '@/lib/api/post';
 import { requestPointPayment } from '@/lib/toss-payments';
+import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
@@ -1032,6 +1036,7 @@ function ChatsSection() {
   const searchParams = useSearchParams();
   const roomIdParam = searchParams.get('roomId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('ALL');
   const [chatPage, setChatPage] = useState(1);
@@ -1043,6 +1048,7 @@ function ChatsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectAction, setProjectAction] = useState<ProjectAction | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -1249,6 +1255,39 @@ function ChatsSection() {
       setErrorMessage('메시지를 보내지 못했습니다.');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const sendAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedRoomId || !user || isUploadingAttachment || isPartnerWithdrawn) return;
+
+    setIsUploadingAttachment(true);
+    setErrorMessage('');
+    try {
+      const attachment = await uploadChatAttachment(selectedRoomId, file);
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${selectedRoomId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content: attachment.fileName,
+          ...attachment,
+        }),
+      });
+      if (!response.ok) throw new Error('첨부파일 메시지를 저장하지 못했습니다.');
+
+      const saved = await response.json() as ChatMessage;
+      setMessages((current) => [...current, saved]);
+      loadRooms();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '첨부파일을 전송하지 못했습니다.');
+    } finally {
+      setIsUploadingAttachment(false);
     }
   };
 
@@ -1727,7 +1766,7 @@ function ChatsSection() {
                     return (
                       <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[72%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
-                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                          <ChatMessageContent message={message} isMine={isMine} />
                           <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
                             {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -1749,6 +1788,16 @@ function ChatsSection() {
 
             <form onSubmit={sendMessage} className="border-t border-border bg-surface px-4 py-4">
               <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-2">
+                <input ref={attachmentInputRef} type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={sendAttachment} className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  disabled={!selectedRoomId || isPartnerWithdrawn || isUploadingAttachment}
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="파일 첨부"
+                >
+                  {isUploadingAttachment ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                </button>
                 <input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -1758,7 +1807,7 @@ function ChatsSection() {
                 />
                 <button
                   type="submit"
-                  disabled={!draft.trim() || !selectedRoomId || isSending || isPartnerWithdrawn}
+                  disabled={!draft.trim() || !selectedRoomId || isSending || isUploadingAttachment || isPartnerWithdrawn}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="메시지 보내기"
                 >

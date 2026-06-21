@@ -42,5 +42,17 @@ export interface ChatMessage {
   senderId: string;
   content: string;
   messageType: MessageType;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  contentType?: string | null;
   createdAt: string;
 }
+
+export type ChatAttachment = {
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  messageType: 'IMAGE' | 'FILE';
+};
