@@ -1,7 +1,7 @@
 package com.backend.domain.dispute.service;
 
 import com.backend.domain.dispute.dto.DisputeCreateRequest;
-import com.backend.domain.dispute.dto.DisputeRespondRequest;
+import com.backend.domain.dispute.dto.DisputeNotificationResponse;
 import com.backend.domain.dispute.dto.DisputeResponse;
 import com.backend.domain.dispute.entity.Dispute;
 import com.backend.domain.dispute.entity.DisputeStatus;
@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -45,8 +46,8 @@ public class DisputeService {
         }
 
         boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
-                request.projectId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.ESCALATED)
+                project.getId(),
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
         );
         if (hasActiveDispute) {
             throw new IllegalStateException("이미 진행 중인 분쟁이 있습니다.");
@@ -69,20 +70,37 @@ public class DisputeService {
         return DisputeResponse.from(dispute);
     }
 
+    public List<DisputeNotificationResponse> getDisputeNotifications(String userId) {
+        return disputeRepository.findActiveDisputesReportedByOther(userId)
+                .stream()
+                .map(DisputeNotificationResponse::from)
+                .toList();
+    }
+
+    public Optional<DisputeResponse> getActiveDisputeByProject(String userId, String projectId) {
+        return disputeRepository.findActiveByProjectId(projectId)
+                .filter(d -> {
+                    String requesterId = d.getProject().getRequester().getId();
+                    String editorId = d.getProject().getEditor().getId();
+                    return userId.equals(requesterId) || userId.equals(editorId);
+                })
+                .map(DisputeResponse::from);
+    }
+
     public DisputeResponse getDispute(String userId, String disputeId) {
         Dispute dispute = findAndValidateParticipant(disputeId, userId);
         return DisputeResponse.from(dispute);
     }
 
     @Transactional
-    public DisputeResponse respond(String userId, String disputeId, DisputeRespondRequest request) {
+    public DisputeResponse accept(String userId, String disputeId) {
         Dispute dispute = findAndValidateParticipant(disputeId, userId);
-        dispute.respond(userId, request.accepted()); // 엔티티 내부에서 AI_JUDGED 상태 및 finalAmount 검사
+        dispute.accept(userId);
 
         if (dispute.getStatus() == DisputeStatus.ACCEPTED) {
             Integer finalAmount = dispute.getFinalAmount();
-            if (finalAmount == null) {
-                throw new IllegalStateException("AI 판정 금액이 없어 정산할 수 없습니다.");
+            if (finalAmount == null || finalAmount < 0) {
+                throw new IllegalStateException("정산 금액이 유효하지 않습니다.");
             }
             pointService.settleDispute(dispute.getProject(), finalAmount);
         }

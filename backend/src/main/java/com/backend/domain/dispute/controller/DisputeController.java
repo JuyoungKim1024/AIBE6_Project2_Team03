@@ -2,13 +2,16 @@ package com.backend.domain.dispute.controller;
 
 import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.dispute.dto.DisputeCreateRequest;
-import com.backend.domain.dispute.dto.DisputeRespondRequest;
+import com.backend.domain.dispute.dto.DisputeNotificationResponse;
 import com.backend.domain.dispute.dto.DisputeResponse;
 import com.backend.domain.dispute.service.DisputeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/disputes")
@@ -28,6 +31,23 @@ public class DisputeController {
         return disputeService.createDispute(userId, request);
     }
 
+    @GetMapping("/notifications")
+    public List<DisputeNotificationResponse> getDisputeNotifications(
+            @RequestHeader("Authorization") String authorization
+    ) {
+        String userId = authService.resolveUserId(authorization);
+        return disputeService.getDisputeNotifications(userId);
+    }
+
+    @GetMapping("/project/{projectId}/active")
+    public Optional<DisputeResponse> getActiveDisputeByProject(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String projectId
+    ) {
+        String userId = authService.resolveUserId(authorization);
+        return disputeService.getActiveDisputeByProject(userId, projectId);
+    }
+
     @GetMapping("/{disputeId}")
     public DisputeResponse getDispute(
             @RequestHeader("Authorization") String authorization,
@@ -40,10 +60,9 @@ public class DisputeController {
     @PatchMapping("/{disputeId}/respond")
     public DisputeResponse respond(
             @RequestHeader("Authorization") String authorization,
-            @PathVariable String disputeId,
-            @Valid @RequestBody DisputeRespondRequest request
+            @PathVariable String disputeId
     ) {
         String userId = authService.resolveUserId(authorization);
-        return disputeService.respond(userId, disputeId, request);
+        return disputeService.accept(userId, disputeId);
     }
 }

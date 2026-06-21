@@ -227,7 +227,7 @@ public class ProjectService {
     private void validateNoActiveDispute(Project project) {
         boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
                 project.getId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.ESCALATED)
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
         );
         if (hasActiveDispute) {
             throw new IllegalStateException("진행 중인 분쟁이 있어 프로젝트를 변경할 수 없습니다.");

@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+
 @Getter
 @Entity
 @Table(name = "disputes")
@@ -41,7 +42,7 @@ public class Dispute extends BaseEntity {
     @Column(name = "final_amount")
     private Integer finalAmount;
 
-    // null=미응답, true=수락, false=불복
+    // null=미응답, true=수락
     @Column(name = "requester_accepted")
     private Boolean requesterAccepted;
 
@@ -61,12 +62,11 @@ public class Dispute extends BaseEntity {
         this.status = DisputeStatus.AI_JUDGED;
     }
 
-    public void markFailed() {
-        this.aiJudgment = null;
-        this.status = DisputeStatus.ESCALATED;
+    public void markAiFailed() {
+        this.status = DisputeStatus.AI_FAILED;
     }
 
-    public void respond(String userId, Boolean accepted) {
+    public void accept(String userId) {
         if (this.status != DisputeStatus.AI_JUDGED) {
             throw new IllegalStateException("AI 판정이 완료된 분쟁에만 응답할 수 있습니다.");
         }
@@ -78,19 +78,18 @@ public class Dispute extends BaseEntity {
         String editorId = project.getEditor().getId();
 
         if (userId.equals(requesterId)) {
-            if (this.requesterAccepted != null) throw new IllegalStateException("이미 응답하셨습니다.");
-            this.requesterAccepted = accepted;
+            if (Boolean.TRUE.equals(this.requesterAccepted)) throw new IllegalStateException("이미 동의하셨습니다.");
+            this.requesterAccepted = true;
         } else if (userId.equals(editorId)) {
-            if (this.editorAccepted != null) throw new IllegalStateException("이미 응답하셨습니다.");
-            this.editorAccepted = accepted;
+            if (Boolean.TRUE.equals(this.editorAccepted)) throw new IllegalStateException("이미 동의하셨습니다.");
+            this.editorAccepted = true;
         } else {
             throw new IllegalArgumentException("프로젝트 참여자만 응답할 수 있습니다.");
         }
 
-        if (Boolean.FALSE.equals(this.requesterAccepted) || Boolean.FALSE.equals(this.editorAccepted)) {
-            this.status = DisputeStatus.ESCALATED;
-        } else if (Boolean.TRUE.equals(this.requesterAccepted) && Boolean.TRUE.equals(this.editorAccepted)) {
+        if (Boolean.TRUE.equals(this.requesterAccepted) && Boolean.TRUE.equals(this.editorAccepted)) {
             this.status = DisputeStatus.ACCEPTED;
         }
+        // 한쪽만 동의 → AI_JUDGED 유지, 채팅에서 재협의
     }
 }
