@@ -7,5 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MyPageMatchRequestRepository extends JpaRepository<MatchRequest, String> {
     List<MatchRequest> findByEditor_IdAndStatusOrderByCreatedAtDesc(String editorId, MatchRequestStatus status);
+    List<MatchRequest> findByEditor_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+            String editorId,
+            MatchRequestStatus status
+    );
     boolean existsByRequester_IdAndEditor_IdAndStatus(String requesterId, String editorId, MatchRequestStatus status);
 }

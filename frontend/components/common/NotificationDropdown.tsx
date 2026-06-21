@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, X } from 'lucide-react';
+import { Bell, Check, Trash2, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
 
@@ -12,6 +12,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const hasUnread = notifications.some((n) => n.status === 'PENDING');
@@ -100,6 +101,29 @@ export function NotificationDropdown({ userId }: { userId: string }) {
     } finally {
       setOpen(false);
       router.push(notification.chatRoomId ? `/chat/${notification.chatRoomId}` : '/chat');
+    }
+  };
+
+  const handleDelete = async (notification: Notification) => {
+    if (deletingId || !window.confirm('이 알림을 삭제하시겠습니까?')) return;
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+
+    setDeletingId(notification.id);
+    try {
+      const path = notification.type === 'CHAT_REQUEST'
+        ? `/api/chat/requests/${notification.id}`
+        : `/api/notifications/${notification.id}`;
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error('알림을 삭제하지 못했습니다.');
+      setNotifications((current) => current.filter((item) => item.id !== notification.id));
+    } catch {
+      window.alert('알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -201,6 +225,8 @@ export function NotificationDropdown({ userId }: { userId: string }) {
                   onAccept={handleAccept}
                   onReject={handleReject}
                   onOpenProject={openProjectNotification}
+                  onDelete={handleDelete}
+                  isDeleting={deletingId === notification.id}
                 />
               ))
             )}
@@ -230,9 +256,11 @@ interface NotificationItemProps {
   onAccept: (n: Notification) => void;
   onReject: (n: Notification) => void;
   onOpenProject: (n: Notification) => void;
+  onDelete: (n: Notification) => void;
+  isDeleting: boolean;
 }
 
-function NotificationItem({ notification, onAccept, onReject, onOpenProject }: NotificationItemProps) {
+function NotificationItem({ notification, onAccept, onReject, onOpenProject, onDelete, isDeleting }: NotificationItemProps) {
   const isPending = notification.status === 'PENDING';
   const isAccepted = notification.status === 'ACCEPTED';
   const isRejected = notification.status === 'REJECTED';
@@ -309,6 +337,16 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject }: N
             </div>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => onDelete(notification)}
+          disabled={isDeleting}
+          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="알림 삭제"
+          title="알림 삭제"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );

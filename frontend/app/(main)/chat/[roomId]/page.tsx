@@ -155,7 +155,9 @@ export default function ChatRoomPage() {
       start: '프로젝트를 수락하시겠습니까?',
       reject: '프로젝트를 거절하시겠습니까?',
       complete: '프로젝트 완료를 처리하시겠습니까?',
-      cancel: '프로젝트를 취소하시겠습니까?',
+      cancel: project.status === 'CANCELLATION_PENDING'
+        ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+        : '프로젝트 취소를 요청하시겠습니까?',
     };
     if (!window.confirm(labels[action])) return;
 
@@ -193,6 +195,9 @@ export default function ChatRoomPage() {
         )}
         {project.status === 'COMPLETION_PENDING' && project.completionRequestedBy !== user?.id && (
           <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료 확인</button>
+        )}
+        {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== user?.id && (
+          <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'cancel')} className={dangerClass}><X size={12} />취소 확인</button>
         )}
       </div>
     );

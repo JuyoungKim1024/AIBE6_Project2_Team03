@@ -5,6 +5,7 @@ import com.backend.domain.chat.dto.ChatRequestCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRequestResponseDTO;
 import com.backend.domain.chat.service.ChatRequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -53,6 +54,15 @@ public class ChatRequestController {
     ) {
         String receiverId = authService.resolveUserId(authorizationHeader);
         return chatRequestService.rejectRequest(requestId, receiverId);
+    }
+
+    @DeleteMapping("/{requestId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteNotification(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String requestId
+    ) {
+        chatRequestService.deleteNotification(requestId, authService.resolveUserId(authorizationHeader));
     }
 
 }

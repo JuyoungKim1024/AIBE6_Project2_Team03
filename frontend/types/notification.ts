@@ -9,6 +9,7 @@ export type NotificationType =
   | 'PROJECT_REJECTED'
   | 'PROJECT_COMPLETION_REQUESTED'
   | 'PROJECT_COMPLETED'
+  | 'PROJECT_CANCELLATION_REQUESTED'
   | 'PROJECT_CANCELED';
 
 export type NotificationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'READ';

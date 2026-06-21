@@ -29,7 +29,10 @@ public class NotificationService {
     // 로그인한 에디터에게 온 WAITING 상태 매칭 요청 목록 반환
     public List<NotificationResponse> getNotifications(String userId) {
         Stream<NotificationResponse> matchingNotifications = matchRequestRepository
-                .findByEditor_IdAndStatusOrderByCreatedAtDesc(userId, MatchRequestStatus.WAITING)
+                .findByEditor_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+                        userId,
+                        MatchRequestStatus.WAITING
+                )
                 .stream()
                 .map(NotificationResponse::from);
         Stream<NotificationResponse> projectNotifications = projectNotificationRepository
@@ -78,6 +81,21 @@ public class NotificationService {
         }
         notification.markAsRead();
         return NotificationResponse.from(notification);
+    }
+
+    @Transactional
+    public void delete(String notificationId, String userId) {
+        ProjectNotification projectNotification = projectNotificationRepository.findById(notificationId).orElse(null);
+        if (projectNotification != null) {
+            if (!projectNotification.getRecipient().getId().equals(userId)) {
+                throw new IllegalArgumentException("권한이 없습니다.");
+            }
+            projectNotificationRepository.delete(projectNotification);
+            return;
+        }
+
+        MatchRequest request = findAndValidate(notificationId, userId);
+        request.dismissNotification();
     }
 
     private MatchRequest findAndValidate(String notificationId, String userId) {

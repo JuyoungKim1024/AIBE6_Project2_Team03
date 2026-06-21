@@ -34,6 +34,7 @@ type MyProject = {
   roomId?: string;
   requesterId?: string;
   completionRequestedBy?: string | null;
+  cancellationRequestedBy?: string | null;
   field: string | null;
   status: string;
 };
@@ -144,13 +145,14 @@ export function ChatFAB() {
     } catch {
       try {
         const data = await fetchJson<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           setCurrentProject({
             id: project.id,
             roomId,
             requesterId: project.requesterId,
             completionRequestedBy: project.completionRequestedBy,
+            cancellationRequestedBy: project.cancellationRequestedBy,
             field: project.field,
             price: null,
             workAmount: null,
@@ -462,6 +464,8 @@ export function ChatFAB() {
                                 ? '프로젝트 진행 중'
                                 : displayProject.status === 'COMPLETION_PENDING'
                                   ? '프로젝트 완료 대기'
+                                  : displayProject.status === 'CANCELLATION_PENDING'
+                                    ? '프로젝트 취소 대기'
                                   : displayProject.status === 'COMPLETED'
                                     ? '완료된 프로젝트입니다'
                                     : displayProject.status === 'REJECTED'

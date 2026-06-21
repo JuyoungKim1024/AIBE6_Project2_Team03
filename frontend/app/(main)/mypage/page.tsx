@@ -112,6 +112,7 @@ type MyProject = {
   requesterId?: string;
   editorId?: string;
   completionRequestedBy?: string | null;
+  cancellationRequestedBy?: string | null;
   partnerName: string;
   field: string | null;
   status: string;
@@ -178,18 +179,23 @@ function isCompletionPendingProject(project: ProjectMessagePayload | null | unde
   return project?.status === 'COMPLETION_PENDING';
 }
 
+function isCancellationPendingProject(project: ProjectMessagePayload | null | undefined) {
+  return project?.status === 'CANCELLATION_PENDING';
+}
+
 function isOpenProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING'].includes(project.status) : false;
 }
 
 function isVisibleChatProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
 }
 
 function getProjectMessageLabel(project: ProjectMessagePayload) {
   if (project.status === 'WAITING') return '프로젝트 수락 대기';
   if (project.status === 'WORKING') return '프로젝트 진행 중';
   if (project.status === 'COMPLETION_PENDING') return '프로젝트 완료 대기';
+  if (project.status === 'CANCELLATION_PENDING') return '프로젝트 취소 대기';
   if (project.status === 'COMPLETED') return '프로젝트 완료';
   if (project.status === 'REJECTED') return '프로젝트 거절';
   if (project.status === 'CANCELED') return '프로젝트 취소';
@@ -1119,7 +1125,7 @@ function ChatsSection() {
     } catch {
       try {
         const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           const memo =
             project.status === 'REJECTED'
@@ -1128,12 +1134,15 @@ function ChatsSection() {
                 ? '취소된 프로젝트입니다.'
                 : project.status === 'COMPLETION_PENDING'
                   ? '상대방의 완료 확인을 기다리는 중입니다.'
+                  : project.status === 'CANCELLATION_PENDING'
+                    ? '상대방의 취소 확인을 기다리는 중입니다.'
                   : '완료된 프로젝트입니다.';
           const completedProject: ProjectMessagePayload = {
             id: project.id,
             roomId,
             requesterId: project.requesterId,
             completionRequestedBy: project.completionRequestedBy,
+            cancellationRequestedBy: project.cancellationRequestedBy,
             field: project.field,
             price: null,
             videoLength: null,
@@ -1345,7 +1354,9 @@ function ChatsSection() {
           ? '프로젝트를 거절하시겠습니까?'
           : action === 'complete'
             ? '프로젝트를 완료하시겠습니까?'
-            : '프로젝트를 취소하시겠습니까?';
+            : project.status === 'CANCELLATION_PENDING'
+              ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+              : '프로젝트 취소를 요청하시겠습니까?';
 
     openModal({
       title: '확인',
@@ -1395,7 +1406,7 @@ function ChatsSection() {
                 ? '프로젝트를 거절했습니다.'
                 : action === 'complete'
                   ? savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.'
-                  : '프로젝트를 취소했습니다.',
+                  : savedProject.status === 'CANCELLATION_PENDING' ? '프로젝트 취소 요청을 보냈습니다.' : '프로젝트를 취소했습니다.',
           });
           loadRooms();
         } catch (error) {
@@ -1438,6 +1449,11 @@ function ChatsSection() {
       {isCompletionPendingProject(project) && project.completionRequestedBy !== user?.id ? (
         <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'complete')} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">
           <Check size={12} />완료 확인
+        </button>
+      ) : null}
+      {isCancellationPendingProject(project) && project.cancellationRequestedBy !== user?.id ? (
+        <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'cancel')} className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">
+          <X size={12} />취소 확인
         </button>
       ) : null}
       {isOpenProject(project) ? (
@@ -1660,6 +1676,8 @@ function ChatsSection() {
                         ? '거절된 프로젝트'
                         : pinnedProject.status === 'CANCELED'
                           ? '취소된 프로젝트'
+                          : pinnedProject.status === 'CANCELLATION_PENDING'
+                            ? '취소 대기 프로젝트'
                           : pinnedProject.status === 'COMPLETION_PENDING'
                             ? '완료 대기 프로젝트'
                             : '진행 중인 프로젝트'}
@@ -1909,13 +1927,17 @@ function ProjectsSection() {
     loadProjects();
   }, []);
 
-  const updateProjectFromBoard = async (project: MyProject, action: 'start' | 'reject' | 'complete') => {
+  const updateProjectFromBoard = async (project: MyProject, action: ProjectAction) => {
     const confirmMessage =
       action === 'start'
         ? '프로젝트를 수락하시겠습니까?'
         : action === 'reject'
           ? '프로젝트를 거절하시겠습니까?'
-          : '프로젝트를 완료하시겠습니까?';
+          : action === 'complete'
+            ? '프로젝트를 완료하시겠습니까?'
+            : project.status === 'CANCELLATION_PENDING'
+              ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+              : '프로젝트 취소를 요청하시겠습니까?';
 
     openModal({
       title: '확인',
@@ -1935,7 +1957,9 @@ function ProjectsSection() {
               ? '프로젝트를 수락했습니다.'
               : action === 'reject'
                 ? '프로젝트를 거절했습니다.'
-                : savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.',
+                : action === 'complete'
+                  ? savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.'
+                  : savedProject.status === 'CANCELLATION_PENDING' ? '프로젝트 취소 요청을 보냈습니다.' : '프로젝트를 취소했습니다.',
           });
           await loadProjects();
         } catch (error) {
@@ -1953,11 +1977,13 @@ function ProjectsSection() {
   const pendingProjects = visibleProjects.filter((project) => project.status === 'WAITING');
   const workingProjects = visibleProjects.filter((project) => project.status === 'WORKING');
   const completionPendingProjects = visibleProjects.filter((project) => project.status === 'COMPLETION_PENDING');
+  const cancellationPendingProjects = visibleProjects.filter((project) => project.status === 'CANCELLATION_PENDING');
   const completedProjects = visibleProjects.filter((project) => project.status === 'COMPLETED');
   const canConfirmCompletion = (project: MyProject) => {
     if (project.completionRequestedBy) return project.completionRequestedBy !== user?.id;
     return !completionRequestedProjectIds.includes(project.id);
   };
+  const canConfirmCancellation = (project: MyProject) => project.cancellationRequestedBy !== user?.id;
 
   return (
     <SectionCard title="프로젝트 관리" description="받은 매칭 요청과 진행 중인 프로젝트를 관리합니다.">
@@ -2006,7 +2032,10 @@ function ProjectsSection() {
                 statusLabel="진행 중"
                 accentClass="border-l-amber-500"
                 actions={(
-                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
+                  <>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'cancel')} className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">취소</button>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
+                  </>
                 )}
               />
             ))}
@@ -2021,6 +2050,20 @@ function ProjectsSection() {
                 accentClass="border-l-primary"
                 actions={canConfirmCompletion(project) ? (
                   <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료 확인</button>
+                ) : null}
+              />
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="취소 대기 프로젝트" emptyMessage="취소 확인 대기 중인 프로젝트가 없습니다">
+            {cancellationPendingProjects.map((project) => (
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="취소 대기"
+                accentClass="border-l-accent"
+                actions={canConfirmCancellation(project) ? (
+                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'cancel')} className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">취소 확인</button>
                 ) : null}
               />
             ))}
