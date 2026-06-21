@@ -133,11 +133,11 @@ public class PointService {
             requester.releaseEscrow(finalAmount, editor);
             transactionRepository.save(new PointTransaction(
                     editor, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
-                    "분쟁 조정 정산 수령 (" + requester.getNickname() + "님)", null
+                    "분쟁 조정 수령 (" + requester.getNickname() + "님)", null
             ));
             transactionRepository.save(new PointTransaction(
-                    requester, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
-                    "분쟁 조정 에디터 지급 (" + editor.getNickname() + "님)", null
+                    requester, -finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 지급 (" + editor.getNickname() + "님)", null
             ));
         }
         if (refundAmount > 0) {
