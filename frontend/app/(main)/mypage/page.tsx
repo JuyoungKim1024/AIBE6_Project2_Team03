@@ -2792,6 +2792,7 @@ function PointSection() {
       setPoint(balance.point);
       setEscrowPoint(balance.safePaymentPoint);
       setChargeAmount('');
+      window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: balance }));
       loadData();
     } catch (e) {
       setChargeError(e instanceof Error ? e.message : '충전에 실패했습니다.');
