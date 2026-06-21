@@ -77,15 +77,14 @@ public class DisputeService {
     @Transactional
     public DisputeResponse respond(String userId, String disputeId, DisputeRespondRequest request) {
         Dispute dispute = findAndValidateParticipant(disputeId, userId);
-
-        if (dispute.getStatus() != DisputeStatus.AI_JUDGED) {
-            throw new IllegalStateException("AI 판정이 완료된 후에 응답할 수 있습니다.");
-        }
-
-        dispute.respond(userId, request.accepted());
+        dispute.respond(userId, request.accepted()); // 엔티티 내부에서 AI_JUDGED 상태 및 finalAmount 검사
 
         if (dispute.getStatus() == DisputeStatus.ACCEPTED) {
-            pointService.settleDispute(dispute.getProject(), dispute.getFinalAmount());
+            Integer finalAmount = dispute.getFinalAmount();
+            if (finalAmount == null) {
+                throw new IllegalStateException("AI 판정 금액이 없어 정산할 수 없습니다.");
+            }
+            pointService.settleDispute(dispute.getProject(), finalAmount);
         }
 
         return DisputeResponse.from(dispute);
