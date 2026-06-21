@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +73,10 @@ public class PostService {
     public List<JobPostResponse> getJobPosts(JobPost.PostType postType, String q) {
         String keyword = (q == null || q.isBlank()) ? null : q;
         return jobPostRepository.search(postType, keyword).stream()
+                .sorted(Comparator
+                        .<JobPost, java.time.LocalDate>comparing(p -> p.getCreatedAt().toLocalDate(), Comparator.reverseOrder())
+                        .thenComparingInt(p -> p.isPriceVisible() ? 0 : 1)
+                        .thenComparing(p -> p.getCreatedAt(), Comparator.reverseOrder()))
                 .map(JobPostResponse::from)
                 .toList();
     }

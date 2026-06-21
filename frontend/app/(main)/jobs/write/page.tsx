@@ -322,7 +322,7 @@ function JobsWriteContent() {
             <textarea
               value={aiDescription}
               onChange={(e) => setAiDescription(e.target.value)}
-              placeholder="예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."
+              placeholder={type === "looking" ? "예) 영상편집 3년차 에디터입니다. 롱폼 위주로 작업하며 Premiere Pro 사용 가능합니다." : "예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."}
               rows={3}
               className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary resize-none transition-colors"
             />
@@ -583,7 +583,7 @@ function JobsWriteContent() {
               <label className="block text-sm font-bold text-text-primary mb-3">
                 포트폴리오 선택
               </label>
-              {portfolioGroups.length === 0 ? (
+              {portfolioGroups.filter((g) => g.items.length > 0).length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
                   <span className="text-sm font-medium mb-2">등록된 포트폴리오 그룹이 없습니다.</span>
                   <Link href="/profile" className="text-xs text-primary hover:underline">
@@ -592,7 +592,7 @@ function JobsWriteContent() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {portfolioGroups.map((g) => {
+                  {portfolioGroups.filter((g) => g.items.length > 0).map((g) => {
                     const selected = selectedGroupIds.includes(g.id);
                     const previews = g.items.slice(0, 4);
                     return (
