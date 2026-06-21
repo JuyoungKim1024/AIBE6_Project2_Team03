@@ -28,19 +28,26 @@ public class Project extends BaseEntity {
     @JoinColumn(name = "editor_id", nullable = false)
     private User editor;
 
-    @Column(length = 50)
+    @Column(nullable = false, length = 50)
     private String field;
 
-    @Column
+    @Column(nullable=false)
     private Integer price;
 
-    @Column(name = "video_length")
-    private Integer videoLength;
+    @Column(name = "work_amount", nullable = false)
+    private Integer workAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "work_unit", nullable = false, length = 20)
+    private ProjectWorkUnit workUnit = ProjectWorkUnit.MINUTE;
 
     @Column(name = "revision_count", nullable=false)
     private int revisionCount = 0;
 
-    @Column
+    @Column(name = "revision_unlimited", nullable = false)
+    private boolean revisionUnlimited = false;
+
+    @Column(nullable=false)
     private LocalDateTime deadline;
 
     @Column(columnDefinition = "TEXT")
@@ -55,21 +62,27 @@ public class Project extends BaseEntity {
 
 
 
-    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer videoLength, LocalDateTime deadline, String memo) {
+    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
         this.room = room;
         this.requester = requester;
         this.editor = editor;
         this.field = field;
         this.price = price;
-        this.videoLength = videoLength;
+        this.workAmount = workAmount;
+        this.workUnit = workUnit == null ? ProjectWorkUnit.MINUTE : workUnit;
+        this.revisionCount = revisionCount;
+        this.revisionUnlimited = revisionUnlimited;
         this.deadline = deadline;
         this.memo = memo;
     }
 
-    public void update(String field, Integer price, Integer videoLength, LocalDateTime deadline, String memo) {
+    public void update(String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
         this.field = field;
         this.price = price;
-        this.videoLength = videoLength;
+        this.workAmount = workAmount;
+        this.workUnit = workUnit == null ? ProjectWorkUnit.MINUTE : workUnit;
+        this.revisionCount = revisionCount;
+        this.revisionUnlimited = revisionUnlimited;
         this.deadline = deadline;
         this.memo = memo;
     }

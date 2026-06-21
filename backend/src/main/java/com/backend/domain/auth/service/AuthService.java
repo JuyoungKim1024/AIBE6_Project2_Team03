@@ -50,6 +50,7 @@ public class AuthService {
     private final VerificationMailService verificationMailService;
     private final PasswordEncoder passwordEncoder;
     private final long refreshTokenValiditySeconds;
+    private final boolean testAccountsEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(
@@ -62,7 +63,8 @@ public class AuthService {
             EmailVerificationRepository emailVerificationRepository,
             VerificationMailService verificationMailService,
             PasswordEncoder passwordEncoder,
-            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds
+            @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds,
+            @Value("${app.test-accounts.enabled:false}") boolean testAccountsEnabled
     ) {
         this.oAuthClient = oAuthClient;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -74,6 +76,7 @@ public class AuthService {
         this.verificationMailService = verificationMailService;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
+        this.testAccountsEnabled = testAccountsEnabled;
     }
 
     public String getAuthorizationUrl(SocialProvider provider) {
@@ -200,6 +203,19 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse testLogin(UserRole role) {
+        if (!testAccountsEnabled) {
+            throw new IllegalArgumentException("테스트 계정 로그인이 비활성화되어 있습니다.");
+        }
+        if (role != UserRole.YOUTUBER && role != UserRole.EDITOR) {
+            throw new IllegalArgumentException("올바른 테스트 계정 유형이 아닙니다.");
+        }
+        User user = userRepository.findByTestAccountTrueAndRole(role)
+                .orElseThrow(() -> new IllegalArgumentException("테스트 계정을 찾을 수 없습니다. 서버를 재시작해주세요."));
+        return issueTokens(user);
+    }
+
+    @Transactional
     public AuthResponse refresh(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new IllegalArgumentException("리프레시 토큰이 필요합니다.");
@@ -225,6 +241,13 @@ public class AuthService {
         }
         User user = getUser(userId);
         user.updateRole(role);
+        return toUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse agreeToTerms(String userId) {
+        User user = getUser(userId);
+        user.agreeToTerms();
         return toUserResponse(user);
     }
 
@@ -292,6 +315,12 @@ public class AuthService {
             throw new IllegalArgumentException("탈퇴 문구를 정확히 입력해주세요");
         }
         User user = getUser(userId);
+        if (user.isAdmin()) {
+            throw new IllegalArgumentException("관리자 계정은 탈퇴할 수 없습니다.");
+        }
+        if (user.isTestAccount()) {
+            throw new IllegalArgumentException("테스트 계정은 탈퇴할 수 없습니다.");
+        }
         profileRepository.findByUser_Id(userId).ifPresent(Profile::withdraw);
         user.withdraw();
     }
@@ -330,6 +359,9 @@ public class AuthService {
     }
 
     private boolean isOnboardingRequired(User user) {
+        if (user.isAdmin()) {
+            return false;
+        }
         if (user.getRole() == null) {
             return true;
         }

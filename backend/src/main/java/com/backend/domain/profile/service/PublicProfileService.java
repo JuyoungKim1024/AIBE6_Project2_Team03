@@ -78,6 +78,9 @@ public class PublicProfileService {
     public PublicProfileResponse getPublicProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다"));
+        if (user.isAdmin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정은 프로필을 제공하지 않습니다");
+        }
         if (user.isDeleted()) {
             throw new ResponseStatusException(HttpStatus.GONE, "탈퇴한 계정입니다");
         }

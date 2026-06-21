@@ -23,6 +23,8 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     boolean existsByNicknameAndIdNot(String nickname, String id);
 
+    Optional<User> findByTestAccountTrueAndRole(UserRole role);
+
     @Query("SELECT AVG(u.matchPriceMin) FROM User u WHERE u.role = :role AND u.matchEnabled = true AND u.matchPriceUnit = :unit AND u.matchPriceMin IS NOT NULL")
     Double avgMatchPriceByRoleAndUnit(@Param("role") UserRole role, @Param("unit") MatchPriceUnit unit);
 

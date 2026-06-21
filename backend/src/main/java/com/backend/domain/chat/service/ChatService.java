@@ -4,6 +4,7 @@ import com.backend.domain.chat.dto.ChatMessageResponseDTO;
 import com.backend.domain.chat.dto.ChatMessageSendRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomResponseDTO;
+import com.backend.domain.chat.dto.ChatUnreadResponseDTO;
 import com.backend.domain.chat.entity.ChatMessage;
 import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.entity.ChatRequest;
@@ -21,6 +22,7 @@ import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -38,6 +40,7 @@ public class ChatService {
     private final DirectChatRoomService directChatRoomService;
     private final PostRepository postRepository;
     private final ProjectService projectService;
+    private final SimpMessagingTemplate messagingTemplate;
 
 
     @Transactional(readOnly = true)
@@ -170,6 +173,15 @@ public class ChatService {
         );
 
         ChatMessage saveMessage = chatMessageRepository.save(message);
+        if (!dto.content().startsWith("__PROJECT_CARD__")) {
+            chatParticipantRepository.findByChatRoom_Id(roomId).stream()
+                    .filter(participant -> participant.getDeletedAt() == null)
+                    .filter(participant -> !participant.getUser().getId().equals(sender.getId()))
+                    .forEach(participant -> {
+                        participant.incrementUnreadCount();
+                        publishUnreadCount(participant.getUser().getId(), roomId, participant.getUnreadCount());
+                    });
+        }
         return new ChatMessageResponseDTO(saveMessage);
 
     }
@@ -201,6 +213,36 @@ public class ChatService {
         projectService.cancelWaitingProjectByRoom(roomId);
 
         participant.delete();
+    }
+
+    @Transactional
+    public ChatUnreadResponseDTO markRoomAsRead(String roomId, String userId) {
+        ChatParticipant participant = chatParticipantRepository
+                .findByChatRoom_IdAndUser_Id(roomId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
+        participant.markAsRead();
+        return publishUnreadCount(userId, roomId, 0);
+    }
+
+    @Transactional(readOnly = true)
+    public ChatUnreadResponseDTO getUnreadCount(String userId) {
+        return new ChatUnreadResponseDTO(null, 0, getTotalUnreadCount(userId));
+    }
+
+    private ChatUnreadResponseDTO publishUnreadCount(String userId, String roomId, int roomUnreadCount) {
+        ChatUnreadResponseDTO response = new ChatUnreadResponseDTO(
+                roomId,
+                roomUnreadCount,
+                getTotalUnreadCount(userId)
+        );
+        messagingTemplate.convertAndSend("/topic/users/" + userId + "/chat/unread", response);
+        return response;
+    }
+
+    private int getTotalUnreadCount(String userId) {
+        return chatParticipantRepository.findByUser_IdAndDeletedAtIsNull(userId).stream()
+                .mapToInt(ChatParticipant::getUnreadCount)
+                .sum();
     }
 
 

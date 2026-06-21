@@ -31,6 +31,7 @@ import {
   X,
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
+import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import {
   parseProjectMessage,
   ProjectMessageCard,
@@ -2111,7 +2112,7 @@ function ProjectBoardCard({
   accentClass: string;
   actions?: React.ReactNode;
 }) {
-  const roomHref = project.roomId ? `/mypage?tab=chats&roomId=${project.roomId}` : '/mypage?tab=chats';
+  const roomHref = project.roomId ? `/chat/${project.roomId}` : '/chat';
 
   return (
     <div className={`rounded-xl border border-border border-l-4 ${accentClass} bg-surface-elevated p-4`}>
@@ -3096,7 +3097,11 @@ function MypageContent() {
             {activeSection === 'editor-profile' && <EditorProfileSection userId={userId} onSaved={() => setIsEditorProfileRegistered(true)} />}
             {activeSection === 'posts' && <PostsSection userRole={userRole} />}
             {activeSection === 'liked' && <LikedSection />}
-            {activeSection === 'chats' && <ChatsSection />}
+            {activeSection === 'chats' && (
+              <SectionCard title="채팅" description="채팅방 목록을 확인하고 전용 채팅 페이지로 이동합니다.">
+                <ChatRoomList compact />
+              </SectionCard>
+            )}
             {activeSection === 'portfolio' && <PortfolioManagementSection userId={userId} />}
             {activeSection === 'projects' && <ProjectsSection />}
             {activeSection === 'pricing' && <PricingSection userId={userId} />}

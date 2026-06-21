@@ -30,12 +30,16 @@ function LoginCallbackContent() {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
-    })
+      })
       .then((response) => response.ok ? response.json() : null)
       .then((user) => {
+        if (!user?.termsAgreed) {
+          router.replace('/onboarding/terms');
+          return;
+        }
         router.replace(user?.role ? '/onboarding/profile' : '/onboarding/role');
       })
-      .catch(() => router.replace('/onboarding/role'));
+      .catch(() => router.replace('/onboarding/terms'));
   }, [router, searchParams]);
 
   return (

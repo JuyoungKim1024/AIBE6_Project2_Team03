@@ -15,6 +15,7 @@ import com.backend.domain.auth.dto.RoleUpdateRequest;
 import com.backend.domain.auth.dto.UserResponse;
 import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.user.entity.SocialProvider;
+import com.backend.domain.user.entity.UserRole;
 import java.net.URI;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
@@ -103,6 +104,11 @@ public class AuthController {
         return withRefreshCookie(response);
     }
 
+    @PostMapping("/auth/test-login/{role}")
+    public ResponseEntity<AuthResponse> testLogin(@PathVariable UserRole role) {
+        return withRefreshCookie(authService.testLogin(role));
+    }
+
     @PostMapping("/auth/refresh")
     public ResponseEntity<AuthResponse> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken
@@ -133,6 +139,13 @@ public class AuthController {
             @RequestBody RoleUpdateRequest request
     ) {
         return authService.updateRole(authService.resolveUserId(authorizationHeader), request.role());
+    }
+
+    @PatchMapping("/users/me/terms")
+    public UserResponse agreeToTerms(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        return authService.agreeToTerms(authService.resolveUserId(authorizationHeader));
     }
 
     @PatchMapping("/users/me/profile")

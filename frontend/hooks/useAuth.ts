@@ -9,6 +9,9 @@ export type AuthUser = {
   profileImage?: string | null;
   role: 'YOUTUBER' | 'EDITOR' | null;
   onboardingRequired: boolean;
+  termsAgreed: boolean;
+  admin: boolean;
+  testAccount: boolean;
 };
 
 export function clearTokens() {

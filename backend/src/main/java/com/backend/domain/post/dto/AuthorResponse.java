@@ -6,13 +6,14 @@ public record AuthorResponse(
         String id,
         String nickname,
         String profileImage,
-        String rank
+        String rank,
+        boolean isDeleted
 ) {
     public static AuthorResponse from(User user) {
         if (user.isDeleted()) {
-            return new AuthorResponse(user.getId(), "탈퇴한 사용자", null, "bronze");
+            return new AuthorResponse(user.getId(), "탈퇴한 사용자", null, "bronze", true);
         }
-        return new AuthorResponse(user.getId(), user.getNickname(), user.getProfileImage(), toRank(user.getMannerScore()));
+        return new AuthorResponse(user.getId(), user.getNickname(), user.getProfileImage(), toRank(user.getMannerScore()), false);
     }
 
     private static String toRank(int score) {

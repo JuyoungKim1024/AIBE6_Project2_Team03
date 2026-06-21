@@ -4,11 +4,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
+import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 const POLL_INTERVAL_MS = 5_000;
 
-export function NotificationDropdown() {
+export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -72,7 +73,7 @@ export function NotificationDropdown() {
       const data = await res.json();
       updateNotification(notification.id, 'ACCEPTED', data.chatRoomId);
       setOpen(false);
-      router.push(data.chatRoomId ? `/mypage?tab=chats&roomId=${data.chatRoomId}` : '/mypage?tab=chats');
+      router.push(data.chatRoomId ? `/chat/${data.chatRoomId}` : '/chat');
     } catch {
       // 네트워크 에러 무시
     }
@@ -93,11 +94,75 @@ export function NotificationDropdown() {
     }
   };
 
+  const openProjectNotification = async (notification: Notification) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.ok) updateNotification(notification.id, 'READ');
+    } finally {
+      setOpen(false);
+      router.push(notification.chatRoomId ? `/chat/${notification.chatRoomId}` : '/chat');
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
     const timer = setInterval(fetchNotifications, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let socket: WebSocket | null = null;
+
+    const connect = () => {
+      socket = new WebSocket(getWebSocketUrl());
+      socket.onopen = () => socket?.send(createStompFrame('CONNECT', {
+        'accept-version': '1.2',
+        'heart-beat': '0,0',
+      }));
+      socket.onmessage = (event) => {
+        String(event.data).split('\0').forEach((rawFrame) => {
+          const frame = rawFrame.replace(/^\n+/, '');
+          if (frame.startsWith('CONNECTED')) {
+            socket?.send(createStompFrame('SUBSCRIBE', {
+              id: `notifications-${userId}`,
+              destination: `/topic/users/${userId}/notifications`,
+              ack: 'auto',
+            }));
+            return;
+          }
+          if (!frame.startsWith('MESSAGE')) return;
+          const bodyStart = frame.indexOf('\n\n');
+          if (bodyStart === -1) return;
+          try {
+            const notification = JSON.parse(frame.slice(bodyStart + 2)) as Notification;
+            setNotifications((current) => current.some((item) => item.id === notification.id)
+              ? current
+              : [notification, ...current]);
+          } catch {
+            // 다음 알림 이벤트 수신을 유지한다.
+          }
+        });
+      };
+      socket.onerror = () => socket?.close();
+      socket.onclose = () => {
+        if (isActive) reconnectTimer = setTimeout(connect, 2000);
+      };
+    };
+
+    connect();
+    return () => {
+      isActive = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, [userId]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -143,6 +208,7 @@ export function NotificationDropdown() {
                   notification={notification}
                   onAccept={handleAccept}
                   onReject={handleReject}
+                  onOpenProject={openProjectNotification}
                 />
               ))
             )}
@@ -171,15 +237,17 @@ interface NotificationItemProps {
   notification: Notification;
   onAccept: (n: Notification) => void;
   onReject: (n: Notification) => void;
+  onOpenProject: (n: Notification) => void;
 }
 
-function NotificationItem({ notification, onAccept, onReject }: NotificationItemProps) {
+function NotificationItem({ notification, onAccept, onReject, onOpenProject }: NotificationItemProps) {
   const router = useRouter();
   const isPending = notification.status === 'PENDING';
   const isAccepted = notification.status === 'ACCEPTED';
   const isRejected = notification.status === 'REJECTED';
   const isChatRequest = notification.type === 'CHAT_REQUEST';
   const isDispute = notification.type === 'DISPUTE_FILED';
+  const isProjectNotification = notification.type.startsWith('PROJECT_');
   const actionLabel = isChatRequest ? '채팅 문의' : '매칭';
 
   if (isDispute) {
@@ -222,21 +290,25 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-text-primary">
-            <span className="font-bold">{notification.senderName}</span>님이 {actionLabel}를 요청했습니다.
+            {isProjectNotification ? (
+              <><span className="font-bold">{notification.senderName}</span>님 · {notification.message}</>
+            ) : (
+              <><span className="font-bold">{notification.senderName}</span>님이 {actionLabel}를 요청했습니다.</>
+            )}
           </p>
           {notification.postTitle && (
             <p className="mt-0.5 truncate text-xs font-medium text-text-secondary">
               {notification.postTitle}
             </p>
           )}
-          {notification.message && (
+          {notification.message && !isProjectNotification && (
             <p className="mt-1 line-clamp-2 text-xs text-text-muted">
               {notification.message}
             </p>
           )}
           <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
 
-          {isPending && (
+          {isPending && !isProjectNotification && (
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => onAccept(notification)}
@@ -253,14 +325,20 @@ function NotificationItem({ notification, onAccept, onReject }: NotificationItem
             </div>
           )}
 
-          {isAccepted && (
+          {isProjectNotification && (
+            <button onClick={() => onOpenProject(notification)} className="mt-2 text-xs font-bold text-primary hover:underline">
+              채팅방에서 확인
+            </button>
+          )}
+
+          {isAccepted && !isProjectNotification && (
             <div className="flex items-center gap-1 mt-2 text-xs text-primary font-medium">
               <Check size={13} />
               {actionLabel} 수락됨 · 채팅방으로 이동했습니다.
             </div>
           )}
 
-          {isRejected && (
+          {isRejected && !isProjectNotification && (
             <div className="flex items-center gap-1 mt-2 text-xs text-text-muted">
               <X size={13} />
               {actionLabel} 거절됨 · 상대방에게 알림이 전송됩니다.

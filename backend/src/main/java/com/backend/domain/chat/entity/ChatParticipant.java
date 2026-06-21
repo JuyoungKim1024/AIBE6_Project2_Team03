@@ -44,5 +44,13 @@ public class ChatParticipant extends BaseEntity {
         this.deletedAt = null;
     }
 
+    public void incrementUnreadCount() {
+        this.unreadCount++;
+    }
+
+    public void markAsRead() {
+        this.unreadCount = 0;
+    }
+
 
 }

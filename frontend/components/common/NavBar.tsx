@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { ProfileDropdown } from '@/components/common/ProfileDropdown';
 import { NotificationDropdown } from '@/components/common/NotificationDropdown';
 import { SearchBar } from '@/components/common/SearchBar';
+import { AdminNavBar } from '@/components/admin/AdminNavBar';
+import { useChatUnreadCount } from '@/hooks/useChatUnreadCount';
 
 type NavLink = { name: string; path: string; requireAuth?: boolean; hideForEditor?: boolean };
 
@@ -23,6 +25,11 @@ export function NavBar() {
   const router = useRouter();
   const { user, setUser, isAuthChecked } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const unreadChatCount = useChatUnreadCount(user?.id);
+
+  if (user?.admin) {
+    return <AdminNavBar user={user} onLogout={() => setUser(null)} />;
+  }
 
   const handleNavClick = (e: React.MouseEvent, link: NavLink, closeMobile?: () => void) => {
     if (link.requireAuth && !user) {
@@ -83,18 +90,13 @@ export function NavBar() {
           <div className="hidden md:flex items-center gap-4">
             {user && (
               <>
-                {/* TODO: 백엔드 연동 후 읽지 않은 메시지 수 API 호출로 교체
-                    - GET /api/chat/unread-count 또는 유사 엔드포인트
-                    - 응답값 > 0 이면 hasUnread = true로 세팅
-                    - const [hasUnread, setHasUnread] = useState(false);
-                    - useEffect로 폴링 or 웹소켓 이벤트 수신 */}
-                <Link href="/mypage?tab=chats" className="relative p-2 text-text-secondary hover:text-text-primary transition-colors">
+                <Link href="/chat" className="relative p-2 text-text-secondary hover:text-text-primary transition-colors">
                   <MessageSquare size={20} />
-                  {/* TODO: hasUnread && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-                  ) */}
+                  {unreadChatCount > 0 && (
+                    <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" aria-label="읽지 않은 새 메시지 또는 프로젝트 알림" />
+                  )}
                 </Link>
-                <NotificationDropdown />
+                <NotificationDropdown userId={user.id} />
                 <div className="h-6 w-px bg-border" />
               </>
             )}

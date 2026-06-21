@@ -1,19 +1,10 @@
-import { NavBar } from '@/components/common/NavBar';
-import { PriceTicker } from '@/components/common/PriceTicker';
-import { ChatFAB } from '@/components/common/ChatFAB';
 import { ModalProvider } from '@/store/modalStore';
-import { GlobalModal } from '@/components/common/GlobalModal';
+import { MainChrome } from '@/components/common/MainChrome';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <ModalProvider>
-      <div className="min-h-screen text-text-primary font-sans flex flex-col">
-        <NavBar />
-        <PriceTicker />
-        <main className="flex-grow">{children}</main>
-        <ChatFAB />
-        <GlobalModal />
-      </div>
+      <MainChrome>{children}</MainChrome>
     </ModalProvider>
   );
 }

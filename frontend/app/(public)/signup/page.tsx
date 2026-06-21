@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, Circle, MailCheck } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { TermsAgreement } from '@/components/auth/TermsAgreement';
 
 type AuthResponse = {
   accessToken: string;
@@ -12,6 +13,7 @@ type AuthResponse = {
 
 export default function SignupPage() {
   const router = useRouter();
+  const [signupStep, setSignupStep] = useState<'terms' | 'account'>('terms');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -145,10 +147,14 @@ export default function SignupPage() {
         </div>
 
         <div className="bg-surface border border-border rounded-2xl p-8">
-          <h1 className="text-xl font-bold text-text-primary text-center mb-1">이메일 회원가입</h1>
-          <p className="text-sm text-text-secondary text-center mb-6">이메일 인증 후 비밀번호를 설정해주세요.</p>
+          {signupStep === 'terms' ? (
+            <TermsAgreement onContinue={() => setSignupStep('account')} showLoginLink />
+          ) : (
+            <>
+              <h1 className="text-xl font-bold text-text-primary text-center mb-1">이메일 회원가입</h1>
+              <p className="text-sm text-text-secondary text-center mb-6">이메일 인증 후 비밀번호를 설정해주세요.</p>
 
-          <form onSubmit={completeSignup} className="space-y-3">
+              <form onSubmit={completeSignup} className="space-y-3">
             <div className="grid grid-cols-[minmax(0,1fr)_112px] gap-2">
               <input
                 type="email"
@@ -250,15 +256,17 @@ export default function SignupPage() {
                 {isSubmitting ? '가입 중...' : '회원가입'}
               </button>
             </div>
-          </form>
+              </form>
 
-          {message && !emailVerified && <p className="text-sm font-bold text-primary mt-4">{message}</p>}
-          {emailVerified && <p className="text-sm font-bold text-primary mt-4">이메일 인증이 완료되었습니다.</p>}
-          {error && <p className="text-sm font-bold text-accent mt-4">{error}</p>}
+              {message && !emailVerified && <p className="text-sm font-bold text-primary mt-4">{message}</p>}
+              {emailVerified && <p className="text-sm font-bold text-primary mt-4">이메일 인증이 완료되었습니다.</p>}
+              {error && <p className="text-sm font-bold text-accent mt-4">{error}</p>}
 
-          <Link href="/login" className="block text-center text-sm text-text-secondary mt-6 hover:text-text-primary">
-            이미 계정이 있나요? 로그인
-          </Link>
+              <Link href="/login" className="block text-center text-sm text-text-secondary mt-6 hover:text-text-primary">
+                이미 계정이 있나요? 로그인
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>
