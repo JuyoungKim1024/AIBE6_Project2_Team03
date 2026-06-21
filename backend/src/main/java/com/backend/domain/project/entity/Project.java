@@ -34,6 +34,9 @@ public class Project extends BaseEntity {
     @Column(nullable=false)
     private Integer price;
 
+    @Column(nullable=false)
+    private Integer videoLength;
+
     @Column(name = "work_amount", nullable = false)
     private Integer workAmount;
 
