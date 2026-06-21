@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
+import { saveAuthSession } from '@/lib/auth-session';
 
 function LoginCallbackContent() {
   const router = useRouter();
@@ -18,8 +19,7 @@ function LoginCallbackContent() {
       return;
     }
 
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    saveAuthSession(accessToken, refreshToken, onboardingRequired);
 
     if (!onboardingRequired) {
       router.replace('/');

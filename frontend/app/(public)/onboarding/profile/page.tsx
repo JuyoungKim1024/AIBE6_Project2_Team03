@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Camera, User, Video } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { completeOnboarding } from '@/lib/auth-session';
 
 async function readErrorMessage(response: Response) {
   try {
@@ -89,6 +90,7 @@ export default function OnboardingProfilePage() {
     }
 
     const user = await response.json();
+    completeOnboarding();
     router.push(user.role === 'EDITOR' ? '/onboarding/editor-profile' : '/');
   };
 
