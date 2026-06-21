@@ -5,6 +5,7 @@ import com.backend.domain.chat.repository.ChatMessageRepository;
 import com.backend.domain.dispute.entity.Dispute;
 import com.backend.domain.dispute.repository.DisputeRepository;
 import com.backend.domain.project.entity.Project;
+import com.backend.domain.project.entity.ProjectWorkUnit;
 import com.backend.global.ai.GeminiClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,7 +15,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static java.util.stream.Collectors.joining;
@@ -66,10 +71,10 @@ public class DisputeJudgeService {
     }
 
     private String buildChatHistory(String roomId) {
-        List<ChatMessage> messages = chatMessageRepository.findByChatRoom_IdOrderByCreatedAtAsc(roomId);
-        if (messages.size() > MAX_MESSAGES) {
-            messages = messages.subList(messages.size() - MAX_MESSAGES, messages.size());
-        }
+        List<ChatMessage> messages = new ArrayList<>(
+                chatMessageRepository.findLastMessagesByRoomId(roomId, PageRequest.of(0, MAX_MESSAGES))
+        );
+        Collections.reverse(messages);
         return messages.stream()
                 .map(m -> String.format("[%s] %s: %s",
                         m.getCreatedAt().format(FORMATTER),
@@ -86,7 +91,7 @@ public class DisputeJudgeService {
 [프로젝트 명세]
 분야: %s
 합의 금액: %s원
-영상 길이: %s분
+작업량: %s
 수정 허용 횟수: %d회
 마감일: %s
 메모: %s
@@ -109,7 +114,7 @@ public class DisputeJudgeService {
 """,
                 project.getField() != null ? project.getField() : "미지정",
                 project.getPrice() != null ? project.getPrice() : "미지정",
-                project.getVideoLength() != null ? project.getVideoLength() : "미지정",
+                project.getWorkAmount() != null ? project.getWorkAmount() + (project.getWorkUnit() == ProjectWorkUnit.MINUTE ? "분" : "건") : "미지정",
                 project.getRevisionCount(),
                 project.getDeadline() != null ? project.getDeadline().format(FORMATTER) : "미지정",
                 project.getMemo() != null ? project.getMemo() : "없음",

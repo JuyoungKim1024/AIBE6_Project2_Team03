@@ -8,12 +8,10 @@ import com.backend.domain.dispute.service.DisputeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import org.springframework.http.ResponseEntity;
-
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/disputes")
@@ -24,13 +22,14 @@ public class DisputeController {
     private final AuthService authService;
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public DisputeResponse createDispute(
+    public ResponseEntity<DisputeResponse> createDispute(
             @RequestHeader("Authorization") String authorization,
             @Valid @RequestBody DisputeCreateRequest request
     ) {
         String userId = authService.resolveUserId(authorization);
-        return disputeService.createDispute(userId, request);
+        DisputeService.DisputeCreateResult result = disputeService.createDispute(userId, request);
+        HttpStatus status = result.isNew() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(result.dispute());
     }
 
     @GetMapping("/notifications")

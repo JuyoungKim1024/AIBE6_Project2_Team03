@@ -24,13 +24,18 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class DisputeService {
 
+    private static final List<DisputeStatus> ACTIVE_STATUSES =
+            List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED);
+
+    public record DisputeCreateResult(DisputeResponse dispute, boolean isNew) {}
+
     private final DisputeRepository disputeRepository;
     private final ProjectRepository projectRepository;
     private final PointService pointService;
     private final DisputeJudgeService judgeService;
 
     @Transactional
-    public DisputeResponse createDispute(String userId, DisputeCreateRequest request) {
+    public DisputeCreateResult createDispute(String userId, DisputeCreateRequest request) {
         Project project = projectRepository.findByIdWithParticipants(request.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
 
@@ -48,7 +53,7 @@ public class DisputeService {
         // 이미 진행 중인 분쟁이 있으면 기존 분쟁 반환 (프론트에서 결과 모달로 바로 열 수 있도록)
         List<Dispute> existingDisputes = disputeRepository.findActiveByProjectId(project.getId(), ACTIVE_STATUSES);
         if (!existingDisputes.isEmpty()) {
-            return DisputeResponse.from(existingDisputes.get(0));
+            return new DisputeCreateResult(DisputeResponse.from(existingDisputes.get(0)), false);
         }
 
         var reportedBy = userId.equals(requesterId) ? project.getRequester() : project.getEditor();
@@ -65,18 +70,15 @@ public class DisputeService {
             }
         });
 
-        return DisputeResponse.from(dispute);
+        return new DisputeCreateResult(DisputeResponse.from(dispute), true);
     }
 
     public List<DisputeNotificationResponse> getDisputeNotifications(String userId) {
-        return disputeRepository.findActiveDisputesReportedByOther(userId)
+        return disputeRepository.findActiveDisputesReportedByOther(userId, ACTIVE_STATUSES)
                 .stream()
                 .map(DisputeNotificationResponse::from)
                 .toList();
     }
-
-    private static final List<DisputeStatus> ACTIVE_STATUSES =
-            List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED);
 
     public Optional<DisputeResponse> getActiveDisputeByProject(String userId, String projectId) {
         return disputeRepository.findActiveByProjectId(projectId, ACTIVE_STATUSES)

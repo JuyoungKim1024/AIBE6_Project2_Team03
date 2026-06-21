@@ -32,10 +32,10 @@ public interface DisputeRepository extends JpaRepository<Dispute, String> {
         JOIN FETCH p.editor
         JOIN FETCH p.room
         JOIN FETCH d.reportedBy
-        WHERE d.status IN ('AI_PENDING', 'AI_JUDGED')
+        WHERE d.status IN :statuses
         AND d.reportedBy.id != :userId
         AND (p.requester.id = :userId OR p.editor.id = :userId)
         ORDER BY d.createdAt DESC
         """)
-    List<Dispute> findActiveDisputesReportedByOther(@Param("userId") String userId);
+    List<Dispute> findActiveDisputesReportedByOther(@Param("userId") String userId, @Param("statuses") List<DisputeStatus> statuses);
 }
