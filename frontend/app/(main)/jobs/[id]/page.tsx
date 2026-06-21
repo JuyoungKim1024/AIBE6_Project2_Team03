@@ -537,7 +537,11 @@ export default function JobDetailPage() {
           </h2>
 
           {/* Comment Input */}
-          {currentUserId ? (
+          {post.author.isDeleted ? (
+            <div className="bg-surface border border-border rounded-2xl p-5 mb-6">
+              <span className="text-sm text-text-muted">탈퇴한 사용자의 게시글에는 댓글을 작성할 수 없습니다.</span>
+            </div>
+          ) : currentUserId ? (
             <div className="bg-surface border border-border rounded-2xl p-4 mb-6 focus-within:border-primary transition-colors">
               <textarea
                 value={newComment}

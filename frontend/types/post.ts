@@ -8,6 +8,7 @@ export interface AuthorDto {
   nickname: string;
   profileImage: string | null;
   rank?: string;
+  isDeleted?: boolean;
 }
 
 export interface JobPostDto {
