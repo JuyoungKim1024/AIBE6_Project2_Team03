@@ -137,10 +137,19 @@ public class ChatRequestService {
     @Transactional(readOnly = true)
     public List<ChatRequestResponseDTO> getReceivedRequests(String receiverId) {
         return chatRequestRepository
-                .findByReceiver_IdAndStatusOrderByCreatedAtDesc(receiverId, ChatRequestStatus.WAITING)
+                .findByReceiver_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+                        receiverId,
+                        ChatRequestStatus.WAITING
+                )
                 .stream()
                 .map(ChatRequestResponseDTO::from)
                 .toList();
+    }
+
+    @Transactional
+    public void deleteNotification(String requestId, String receiverId) {
+        ChatRequest request = findAndValidateReceiver(requestId, receiverId);
+        request.dismissNotification();
     }
 
 }

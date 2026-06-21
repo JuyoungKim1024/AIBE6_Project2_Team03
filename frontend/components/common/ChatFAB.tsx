@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ExternalLink, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Loader2, MessageSquare, Paperclip, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
@@ -12,6 +12,8 @@ import { parseProjectMessage, type ProjectMessagePayload } from '@/components/co
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
+import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
+import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
 
 type AuthUser = {
   id: string;
@@ -23,6 +25,7 @@ type MyProject = {
   roomId?: string;
   requesterId?: string;
   completionRequestedBy?: string | null;
+  cancellationRequestedBy?: string | null;
   field: string | null;
   status: string;
 };
@@ -36,6 +39,7 @@ export function ChatFAB() {
   const router = useRouter();
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -47,6 +51,7 @@ export function ChatFAB() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isRequestingDm, setIsRequestingDm] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const { activeDMUser, closeDM } = useDM();
 
   const isDMActive = activeDMUser !== null;
@@ -132,13 +137,14 @@ export function ChatFAB() {
     } catch {
       try {
         const data = await fetchJson<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           setCurrentProject({
             id: project.id,
             roomId,
             requesterId: project.requesterId,
             completionRequestedBy: project.completionRequestedBy,
+            cancellationRequestedBy: project.cancellationRequestedBy,
             field: project.field,
             price: null,
             workAmount: null,
@@ -309,6 +315,28 @@ export function ChatFAB() {
     setDraft('');
   };
 
+  const sendAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !activeRoomId || !user || !isConnected || isPartnerWithdrawn || isUploadingAttachment) return;
+
+    setIsUploadingAttachment(true);
+    setErrorMessage('');
+    try {
+      const attachment = await uploadChatAttachment(activeRoomId, file);
+      const published = publishMessage({
+        senderId: user.id,
+        content: attachment.fileName,
+        ...attachment,
+      });
+      if (!published) throw new Error('실시간 채팅 서버에 연결되어 있지 않습니다.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '첨부파일을 전송하지 못했습니다.');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
   if (pathname.startsWith('/chat')) return null;
 
   return (
@@ -459,6 +487,8 @@ export function ChatFAB() {
                                 ? '프로젝트 진행 중'
                                 : displayProject.status === 'COMPLETION_PENDING'
                                   ? '프로젝트 완료 대기'
+                                  : displayProject.status === 'CANCELLATION_PENDING'
+                                    ? '프로젝트 취소 대기'
                                   : displayProject.status === 'COMPLETED'
                                     ? '완료된 프로젝트입니다'
                                     : displayProject.status === 'REJECTED'
@@ -481,7 +511,7 @@ export function ChatFAB() {
                         return (
                           <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
-                              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                              <ChatMessageContent message={message} isMine={isMine} />
                               <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
                                 {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                               </p>
@@ -498,6 +528,16 @@ export function ChatFAB() {
                   {errorMessage && <div className="border-t border-border px-4 py-2 text-xs text-primary">{errorMessage}</div>}
                   <form onSubmit={sendMessage} className="p-3 border-t border-border bg-surface">
                     <div className="flex items-center gap-2 bg-surface-elevated border border-border rounded-xl p-1.5">
+                      <input ref={attachmentInputRef} type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={sendAttachment} className="hidden" />
+                      <button
+                        type="button"
+                        onClick={() => attachmentInputRef.current?.click()}
+                        disabled={!activeRoomId || isPartnerWithdrawn || !isConnected || isUploadingAttachment}
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="파일 첨부"
+                      >
+                        {isUploadingAttachment ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
+                      </button>
                       <input
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
@@ -507,7 +547,7 @@ export function ChatFAB() {
                       />
                       <button
                         type="submit"
-                        disabled={!draft.trim() || !activeRoomId || isPartnerWithdrawn || !isConnected}
+                        disabled={!draft.trim() || !activeRoomId || isPartnerWithdrawn || !isConnected || isUploadingAttachment}
                         className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="메시지 보내기"
                       >

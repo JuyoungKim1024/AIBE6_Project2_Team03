@@ -11,6 +11,10 @@ public record ChatMessageResponseDTO (
         String senderId,
         String content,
         MessageType messageType,
+        String fileUrl,
+        String fileName,
+        Long fileSize,
+        String contentType,
         LocalDateTime createdAt
 ){
     public ChatMessageResponseDTO(ChatMessage chatMessage) {
@@ -20,6 +24,10 @@ public record ChatMessageResponseDTO (
                 chatMessage.getSender().getId(),
                 chatMessage.getContent(),
                 chatMessage.getMessageType(),
+                chatMessage.getFileUrl(),
+                chatMessage.getFileName(),
+                chatMessage.getFileSize(),
+                chatMessage.getContentType(),
                 chatMessage.getCreatedAt()
         );
     }
@@ -31,6 +39,10 @@ public record ChatMessageResponseDTO (
                 senderId,
                 content,
                 messageType,
+                null,
+                null,
+                null,
+                null,
                 LocalDateTime.now()
         );
     }

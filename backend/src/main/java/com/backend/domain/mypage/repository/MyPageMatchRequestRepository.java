@@ -12,5 +12,10 @@ public interface MyPageMatchRequestRepository extends JpaRepository<MatchRequest
     @Query("SELECT m FROM MatchRequest m JOIN FETCH m.requester WHERE m.editor.id = :editorId AND m.status = :status ORDER BY m.createdAt DESC")
     List<MatchRequest> findByEditor_IdAndStatusOrderByCreatedAtDesc(@Param("editorId") String editorId, @Param("status") MatchRequestStatus status);
 
+    List<MatchRequest> findByEditor_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+            String editorId,
+            MatchRequestStatus status
+    );
+
     boolean existsByRequester_IdAndEditor_IdAndStatus(String requesterId, String editorId, MatchRequestStatus status);
 }

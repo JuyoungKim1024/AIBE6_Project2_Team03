@@ -459,6 +459,7 @@ public class MyPageService {
                 project.getField(),
                 project.getStatus().name(),
                 project.getCompletionRequestedBy(),
+                project.getCancellationRequestedBy(),
                 formatDate(project.getUpdatedAt())
         );
     }

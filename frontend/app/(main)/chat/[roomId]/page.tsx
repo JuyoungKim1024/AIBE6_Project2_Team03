@@ -3,11 +3,13 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Check, MessageSquare, RefreshCw, Send, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Loader2, MessageSquare, Paperclip, RefreshCw, Send, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
+import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
 import { useChatSocket } from '@/hooks/useChatSocket';
+import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import { DisputeModal } from '@/components/dispute/DisputeModal';
@@ -33,6 +35,7 @@ export default function ChatRoomPage() {
   const searchParams = useSearchParams();
   const roomId = params.roomId;
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [room, setRoom] = useState<ChatRoomDetail | null>(null);
@@ -49,6 +52,7 @@ export default function ChatRoomPage() {
     () => searchParams.get('disputeId')
   );
   const [isCheckingDispute, setIsCheckingDispute] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
   const getToken = () => localStorage.getItem('accessToken');
   const accessToken = getToken();
@@ -174,13 +178,37 @@ export default function ChatRoomPage() {
     setDraft('');
   };
 
+  const sendAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !user || !isConnected || isPartnerWithdrawn || isUploadingAttachment) return;
+
+    setIsUploadingAttachment(true);
+    setErrorMessage('');
+    try {
+      const attachment = await uploadChatAttachment(roomId, file);
+      const published = publishMessage({
+        senderId: user.id,
+        content: attachment.fileName,
+        ...attachment,
+      });
+      if (!published) throw new Error('실시간 채팅 서버에 연결되어 있지 않습니다.');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '첨부파일을 전송하지 못했습니다.');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
   const changeProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
     if (activeProjectAction) return;
     const labels: Record<ProjectAction, string> = {
       start: '프로젝트를 수락하시겠습니까?',
       reject: '프로젝트를 거절하시겠습니까?',
       complete: '프로젝트 완료를 처리하시겠습니까?',
-      cancel: '프로젝트를 취소하시겠습니까?',
+      cancel: project.status === 'CANCELLATION_PENDING'
+        ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+        : '프로젝트 취소를 요청하시겠습니까?',
     };
     if (!window.confirm(labels[action])) return;
 
@@ -218,6 +246,9 @@ export default function ChatRoomPage() {
         )}
         {project.status === 'COMPLETION_PENDING' && project.completionRequestedBy !== user?.id && (
           <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료 확인</button>
+        )}
+        {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== user?.id && (
+          <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'cancel')} className={dangerClass}><X size={12} />취소 확인</button>
         )}
       </div>
     );
@@ -348,7 +379,7 @@ export default function ChatRoomPage() {
                 return (
                   <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      <ChatMessageContent message={message} isMine={isMine} />
                       <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
                         {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
@@ -370,6 +401,16 @@ export default function ChatRoomPage() {
 
         <form onSubmit={sendMessage} className="border-t border-border bg-surface px-3 py-3">
           <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-1.5">
+            <input ref={attachmentInputRef} type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={sendAttachment} className="hidden" />
+            <button
+              type="button"
+              onClick={() => attachmentInputRef.current?.click()}
+              disabled={isPartnerWithdrawn || !isConnected || isUploadingAttachment}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="파일 첨부"
+            >
+              {isUploadingAttachment ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+            </button>
             <input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -379,7 +420,7 @@ export default function ChatRoomPage() {
             />
             <button
               type="submit"
-              disabled={!draft.trim() || isPartnerWithdrawn || !isConnected}
+              disabled={!draft.trim() || isPartnerWithdrawn || !isConnected || isUploadingAttachment}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="메시지 보내기"
             >

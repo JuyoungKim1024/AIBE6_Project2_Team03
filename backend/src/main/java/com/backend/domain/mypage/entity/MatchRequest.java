@@ -42,6 +42,9 @@ public class MatchRequest {
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "notification_dismissed_at")
+    private LocalDateTime notificationDismissedAt;
+
     public MatchRequest(User requester, User editor) {
         this.requester = requester;
         this.editor = editor;
@@ -67,5 +70,9 @@ public class MatchRequest {
             throw new IllegalStateException("이미 처리된 요청입니다.");
         }
         this.status = MatchRequestStatus.REJECTED;
+    }
+
+    public void dismissNotification() {
+        this.notificationDismissedAt = LocalDateTime.now();
     }
 }

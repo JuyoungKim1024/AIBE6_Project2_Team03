@@ -113,11 +113,7 @@ export function useChatSocket(
     };
   }, [roomId]);
 
-  const publishMessage = useCallback((message: {
-    senderId: string;
-    content: string;
-    messageType: ChatMessage['messageType'];
-  }) => {
+  const publishMessage = useCallback((message: Omit<ChatMessage, 'messageId' | 'roomId' | 'createdAt'>) => {
     const socket = socketRef.current;
     if (!roomId || !socket || socket.readyState !== WebSocket.OPEN || !isConnected) return false;
 

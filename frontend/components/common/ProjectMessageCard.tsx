@@ -8,6 +8,7 @@ export type ProjectMessagePayload = {
   requesterId?: string;
   editorId?: string;
   completionRequestedBy?: string | null;
+  cancellationRequestedBy?: string | null;
   field: string | null;
   price: number | null;
   workAmount?: number | null;
@@ -64,6 +65,7 @@ function getProjectStatusLabel(status: string) {
   if (status === 'WAITING') return '수락 대기';
   if (status === 'WORKING') return '진행 중';
   if (status === 'COMPLETION_PENDING') return '완료 대기';
+  if (status === 'CANCELLATION_PENDING') return '취소 대기';
   if (status === 'COMPLETED') return '완료된 프로젝트입니다';
   if (status === 'REJECTED') return '거절된 프로젝트입니다';
   if (status === 'CANCELED') return '취소된 프로젝트입니다';

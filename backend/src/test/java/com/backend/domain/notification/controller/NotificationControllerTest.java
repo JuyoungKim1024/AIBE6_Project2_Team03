@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -171,5 +172,24 @@ class NotificationControllerTest {
                 .andExpect(handler().methodName("accept"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("권한이 없습니다."));
+    }
+
+    @Test
+    @DisplayName("t7 알림을 삭제하면 요청 데이터는 유지하고 알림 목록에서 숨긴다")
+    void t7_delete_hidesNotificationWithoutDeletingRequest() throws Exception {
+        mockMvc.perform(delete("/api/notifications/{id}", matchRequest.getId())
+                        .header("Authorization", editorToken))
+                .andDo(print())
+                .andExpect(handler().handlerType(NotificationController.class))
+                .andExpect(handler().methodName("delete"))
+                .andExpect(status().isNoContent());
+
+        MatchRequest updated = matchRequestRepository.findById(matchRequest.getId()).orElseThrow();
+        assertThat(updated.getNotificationDismissedAt()).isNotNull();
+
+        mockMvc.perform(get("/api/notifications")
+                        .header("Authorization", editorToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 }
