@@ -89,6 +89,12 @@ public class User {
     @Column(name = "is_test_account", nullable = false)
     private boolean testAccount = false;
 
+    @Column(name = "suspended_until")
+    private LocalDateTime suspendedUntil;
+
+    @Column(name = "suspension_reason", length = 255)
+    private String suspensionReason;
+
     public User(SocialProvider provider, String socialId, String providerEmail, String nickname, String profileImage) {
         this.provider = provider;
         this.socialId = socialId;
@@ -165,6 +171,21 @@ public class User {
 
     public boolean hasAgreedToTerms() {
         return termsAgreedAt != null;
+    }
+
+    public boolean isSuspended() {
+        return suspendedUntil != null && suspendedUntil.isAfter(LocalDateTime.now());
+    }
+
+    public void suspendUntil(LocalDateTime suspendedUntil, String reason) {
+        this.suspendedUntil = suspendedUntil;
+        this.suspensionReason = reason;
+        this.matchEnabled = false;
+    }
+
+    public void liftSuspension() {
+        this.suspendedUntil = null;
+        this.suspensionReason = null;
     }
 
     public void promoteToAdmin(String email, String passwordHash) {

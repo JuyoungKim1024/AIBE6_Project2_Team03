@@ -36,7 +36,7 @@ export function GlobalModal() {
               <X size={18} />
             </button>
             <h3 className="text-lg font-bold text-text-primary mb-3">{options.title}</h3>
-            <p className="text-sm text-text-secondary leading-relaxed mb-6">{options.message}</p>
+            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line mb-6">{options.message}</p>
             <div className="flex gap-3 justify-end">
               {options.onConfirm && (
                 <button

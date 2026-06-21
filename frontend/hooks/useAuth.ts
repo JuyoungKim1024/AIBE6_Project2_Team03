@@ -9,6 +9,10 @@ import {
   discardPendingAuthSession,
   isOnboardingPending,
 } from '@/lib/auth-session';
+import {
+  announceAccountSuspension,
+  isSuspensionResponse,
+} from '@/lib/suspension';
 
 export type AuthUser = {
   id: string;
@@ -23,6 +27,7 @@ export type AuthUser = {
 
 export function clearTokens() {
   clearAuthSession();
+  window.dispatchEvent(new Event('authSessionCleared'));
 }
 
 export function useAuth() {
@@ -48,9 +53,14 @@ export function useAuth() {
     fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-      .then((res) => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (res.status === 423 && isSuspensionResponse(data)) {
+          announceAccountSuspension(data);
+          throw new Error('Account suspended');
+        }
         if (!res.ok) throw new Error('Unauthorized');
-        return res.json();
+        return data;
       })
       .then((data: AuthUser) => {
         if (data.onboardingRequired && !isOnboardingPath) {
@@ -81,7 +91,12 @@ export function useAuth() {
     };
 
     window.addEventListener('authUserUpdated', handleUserUpdated);
-    return () => window.removeEventListener('authUserUpdated', handleUserUpdated);
+    const handleSessionCleared = () => setUser(null);
+    window.addEventListener('authSessionCleared', handleSessionCleared);
+    return () => {
+      window.removeEventListener('authUserUpdated', handleUserUpdated);
+      window.removeEventListener('authSessionCleared', handleSessionCleared);
+    };
   }, []);
 
   return { user, setUser, isAuthChecked };
