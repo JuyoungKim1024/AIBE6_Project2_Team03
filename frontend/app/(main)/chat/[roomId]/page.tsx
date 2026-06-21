@@ -46,17 +46,18 @@ export default function ChatRoomPage() {
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(
     () => searchParams.get('disputeId')
   );
+  const [preloadedDisputeId, setPreloadedDisputeId] = useState<string | null>(null);
+  const [isCheckingDispute, setIsCheckingDispute] = useState(false);
 
-  const accessToken = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  }, []);
+  const getToken = () => localStorage.getItem('accessToken');
+  const accessToken = getToken();
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
+    const token = getToken();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers: {
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -74,7 +75,7 @@ export default function ChatRoomPage() {
   };
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!getToken()) {
       router.replace('/login');
       return;
     }
@@ -98,6 +99,22 @@ export default function ChatRoomPage() {
       .finally(() => setIsLoading(false));
 
   }, [accessToken, roomId, router]);
+
+  // currentProject 로드 후 진행 중인 분쟁 ID 자동 조회
+  useEffect(() => {
+    if (!currentProject?.id) return;
+    if (searchParams.get('disputeId')) return;
+
+    const token = getToken();
+    if (!token) return;
+
+    fetch(`${API_BASE_URL}/api/disputes/project/${currentProject.id}/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.status === 200 ? r.json() : null))
+      .then((d) => { if (d?.id) setPreloadedDisputeId(d.id); })
+      .catch(() => {});
+  }, [currentProject?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -141,6 +158,13 @@ export default function ChatRoomPage() {
           onCreated={(disputeId) => {
             setShowDisputeModal(false);
             setActiveDisputeId(disputeId);
+            // 새로고침해도 유지되도록 URL에 disputeId 저장
+            window.history.replaceState(null, '', `?disputeId=${disputeId}`);
+          }}
+          onExistingDispute={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+            window.history.replaceState(null, '', `?disputeId=${disputeId}`);
           }}
         />
       )}
@@ -171,20 +195,27 @@ export default function ChatRoomPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  if (!currentProject) return;
+                  if (!currentProject || isCheckingDispute) return;
+                  setIsCheckingDispute(true);
                   try {
+                    const token = getToken();
                     const res = await fetch(`${API_BASE_URL}/api/disputes/project/${currentProject.id}/active`, {
-                      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
                     });
-                    if (res.ok) {
+                    if (res.status === 200) {
                       const dispute = await res.json();
                       if (dispute?.id) {
                         setActiveDisputeId(dispute.id);
                         return;
                       }
                     }
-                  } catch { /* 무시 */ }
-                  setShowDisputeModal(true);
+                    // 404 = 진행 중인 분쟁 없음 → 신규 신고
+                    setShowDisputeModal(true);
+                  } catch {
+                    setShowDisputeModal(true);
+                  } finally {
+                    setIsCheckingDispute(false);
+                  }
                 }}
                 className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
                 aria-label="AI 분쟁 조정"

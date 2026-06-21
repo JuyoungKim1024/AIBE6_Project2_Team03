@@ -45,12 +45,10 @@ public class DisputeService {
             throw new IllegalArgumentException("진행 중인 프로젝트에서만 분쟁을 신고할 수 있습니다.");
         }
 
-        boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
-                project.getId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
-        );
-        if (hasActiveDispute) {
-            throw new IllegalStateException("이미 진행 중인 분쟁이 있습니다.");
+        // 이미 진행 중인 분쟁이 있으면 기존 분쟁 반환 (프론트에서 결과 모달로 바로 열 수 있도록)
+        List<Dispute> existingDisputes = disputeRepository.findActiveByProjectId(project.getId(), ACTIVE_STATUSES);
+        if (!existingDisputes.isEmpty()) {
+            return DisputeResponse.from(existingDisputes.get(0));
         }
 
         var reportedBy = userId.equals(requesterId) ? project.getRequester() : project.getEditor();
@@ -77,13 +75,18 @@ public class DisputeService {
                 .toList();
     }
 
+    private static final List<DisputeStatus> ACTIVE_STATUSES =
+            List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED);
+
     public Optional<DisputeResponse> getActiveDisputeByProject(String userId, String projectId) {
-        return disputeRepository.findActiveByProjectId(projectId)
+        return disputeRepository.findActiveByProjectId(projectId, ACTIVE_STATUSES)
+                .stream()
                 .filter(d -> {
                     String requesterId = d.getProject().getRequester().getId();
                     String editorId = d.getProject().getEditor().getId();
                     return userId.equals(requesterId) || userId.equals(editorId);
                 })
+                .findFirst()
                 .map(DisputeResponse::from);
     }
 
@@ -103,6 +106,7 @@ public class DisputeService {
                 throw new IllegalStateException("정산 금액이 유효하지 않습니다.");
             }
             pointService.settleDispute(dispute.getProject(), finalAmount);
+            dispute.getProject().completeByDispute();
         }
 
         return DisputeResponse.from(dispute);

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ExternalLink, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
@@ -397,6 +397,15 @@ export function ChatFAB() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { router.push(`/chat/${activeRoomId}`); handleClose(); }}
+                        className="text-text-muted hover:text-text-primary"
+                        aria-label="전체 화면으로 열기"
+                        title="전체 화면으로 열기"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
                       <button
                         type="button"
                         onClick={refreshActiveRoom}

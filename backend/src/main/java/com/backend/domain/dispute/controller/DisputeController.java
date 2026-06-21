@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.ResponseEntity;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -40,12 +42,14 @@ public class DisputeController {
     }
 
     @GetMapping("/project/{projectId}/active")
-    public Optional<DisputeResponse> getActiveDisputeByProject(
+    public ResponseEntity<DisputeResponse> getActiveDisputeByProject(
             @RequestHeader("Authorization") String authorization,
             @PathVariable String projectId
     ) {
         String userId = authService.resolveUserId(authorization);
-        return disputeService.getActiveDisputeByProject(userId, projectId);
+        return disputeService.getActiveDisputeByProject(userId, projectId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{disputeId}")

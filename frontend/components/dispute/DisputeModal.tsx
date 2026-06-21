@@ -20,9 +20,10 @@ interface Props {
   accessToken: string | null;
   onClose: () => void;
   onCreated: (disputeId: string) => void;
+  onExistingDispute?: (disputeId: string) => void;
 }
 
-export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Props) {
+export function DisputeModal({ projectId, accessToken, onClose, onCreated, onExistingDispute }: Props) {
   const [selectedType, setSelectedType] = useState<DisputeType | null>(null);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

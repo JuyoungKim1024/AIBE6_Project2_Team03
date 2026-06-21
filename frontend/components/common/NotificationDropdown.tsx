@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown() {
   const router = useRouter();
@@ -94,6 +95,8 @@ export function NotificationDropdown() {
 
   useEffect(() => {
     fetchNotifications();
+    const timer = setInterval(fetchNotifications, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
