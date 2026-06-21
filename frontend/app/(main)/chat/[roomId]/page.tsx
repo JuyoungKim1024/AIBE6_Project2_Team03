@@ -3,9 +3,12 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
+import { ArrowLeft, Check, MessageSquare, RefreshCw, Send, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
-import { parseProjectMessage, ProjectMessageCard } from '@/components/common/ProjectMessageCard';
+import { ChatRoomList } from '@/components/chat/ChatRoomList';
+import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
+import { useChatSocket } from '@/hooks/useChatSocket';
+import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
 
 type AuthUser = {
@@ -19,6 +22,8 @@ type ChatRoomDetail = {
   createdAt: string;
 };
 
+type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
+
 export default function ChatRoomPage() {
   const router = useRouter();
   const params = useParams<{ roomId: string }>();
@@ -27,17 +32,25 @@ export default function ChatRoomPage() {
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [room, setRoom] = useState<ChatRoomDetail | null>(null);
+  const [roomSummary, setRoomSummary] = useState<MyChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentProject, setCurrentProject] = useState<ProjectMessagePayload | null>(null);
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [activeProjectAction, setActiveProjectAction] = useState<ProjectAction | null>(null);
   const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('accessToken');
   }, []);
+
+  const { isConnected, publishMessage } = useChatSocket(roomId, (message) => {
+    setMessages((current) => current.some((item) => item.messageId === message.messageId)
+      ? current
+      : [...current, message]);
+  }, setCurrentProject);
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -77,6 +90,7 @@ export default function ChatRoomPage() {
         setRoom(roomDetail);
         setMessages(messageList);
         const currentRoom = rooms.find((item) => item.id === roomId);
+        setRoomSummary(currentRoom ?? null);
         setIsPartnerWithdrawn(Boolean(currentRoom?.partnerDeleted || currentRoom?.partnerWithdrawn));
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
@@ -91,56 +105,103 @@ export default function ChatRoomPage() {
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !user || isSending || isPartnerWithdrawn) return;
+    if (!content || !user || isPartnerWithdrawn) return;
 
-    setIsSending(true);
     setErrorMessage('');
 
+    const published = publishMessage({
+      senderId: user.id,
+      content,
+      messageType: 'TEXT',
+    });
+    if (!published) {
+      setErrorMessage('실시간 채팅 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    setDraft('');
+  };
+
+  const changeProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
+    if (activeProjectAction) return;
+    const labels: Record<ProjectAction, string> = {
+      start: '프로젝트를 수락하시겠습니까?',
+      reject: '프로젝트를 거절하시겠습니까?',
+      complete: '프로젝트 완료를 처리하시겠습니까?',
+      cancel: '프로젝트를 취소하시겠습니까?',
+    };
+    if (!window.confirm(labels[action])) return;
+
+    setActiveProjectAction(action);
+    setErrorMessage('');
     try {
-      const saved = await fetchJson<ChatMessage>(`/api/chat/rooms/${roomId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: user.id,
-          content,
-          messageType: 'TEXT',
-        }),
-      });
-      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
-      setMessages((current) => [...current, savedMessage]);
-      setDraft('');
+      const saved = await fetchJson<ProjectMessagePayload>(`/api/projects/${project.id}/${action}`, { method: 'PATCH' });
+      setCurrentProject(saved);
     } catch {
-      setErrorMessage('메시지를 보내지 못했습니다.');
+      setErrorMessage('프로젝트 상태를 변경하지 못했습니다.');
     } finally {
-      setIsSending(false);
+      setActiveProjectAction(null);
     }
   };
 
+  const renderMessageProjectActions = (project: ProjectMessagePayload) => {
+    if (currentProject?.id !== project.id) return null;
+    const disabled = Boolean(activeProjectAction);
+    const primaryClass = 'inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary disabled:opacity-50';
+    const dangerClass = 'inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-xs font-bold text-accent disabled:opacity-50';
+
+    return (
+      <div className="flex flex-wrap justify-end gap-2">
+        {project.status === 'WAITING' && project.requesterId !== user?.id && (
+          <>
+            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'start')} className={primaryClass}><Check size={12} />수락</button>
+            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'reject')} className={dangerClass}><X size={12} />거절</button>
+          </>
+        )}
+        {project.status === 'WORKING' && (
+          <>
+            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료</button>
+            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'cancel')} className={dangerClass}><X size={12} />취소</button>
+          </>
+        )}
+        {project.status === 'COMPLETION_PENDING' && project.completionRequestedBy !== user?.id && (
+          <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료 확인</button>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen px-4 py-8">
-      <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-surface">
+    <div className="flex h-[calc(100dvh-6rem)] min-h-[560px] w-full overflow-hidden border-y border-border bg-surface">
+      <aside className="hidden h-full w-80 flex-shrink-0 border-r border-border bg-surface md:block">
+        <ChatRoomList compact sidebar activeRoomId={roomId} />
+      </aside>
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface">
         <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/mypage?tab=chats" className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary">
+            <Link href="/chat" className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary" aria-label="채팅 목록으로 이동">
               <ArrowLeft size={18} />
             </Link>
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
               <MessageSquare size={18} className="text-text-muted" />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-base font-bold text-text-primary">채팅방</h1>
-              <p className="truncate text-xs text-text-muted">{room?.roomType ?? '대화'} · {roomId}</p>
+              <h1 className="truncate text-base font-bold text-text-primary">{roomSummary?.partnerName ?? '채팅방'}</h1>
+              <p className="truncate text-xs text-text-muted">
+                {roomSummary?.type === 'POST' ? '문의채팅' : roomSummary?.type === 'DIRECT' ? 'DM' : room?.roomType ?? '채팅'}
+                <span className={`ml-2 ${isConnected ? 'text-green-500' : 'text-text-muted'}`}>● {isConnected ? '온라인' : '오프라인'}</span>
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
-            className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-            aria-label="새로고침"
-          >
-            <RefreshCw size={17} />
-          </button>
+
         </header>
+
+        <ChatProjectPanel
+          roomId={roomId}
+          userId={user?.id ?? null}
+          project={currentProject}
+          onProjectChange={setCurrentProject}
+          publishMessage={publishMessage}
+        />
 
         <main className="flex-1 overflow-y-auto bg-background/40 px-4 py-5">
           {isLoading ? (
@@ -159,9 +220,12 @@ export default function ChatRoomPage() {
                 const projectMessage = parseProjectMessage(message.content);
 
                 if (projectMessage) {
+                  const displayProject = currentProject?.id === projectMessage.id
+                    ? { ...projectMessage, ...currentProject }
+                    : projectMessage;
                   return (
                     <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <ProjectMessageCard project={projectMessage} />
+                      <ProjectMessageCard project={displayProject} actions={renderMessageProjectActions(displayProject)} />
                     </div>
                   );
                 }
@@ -200,7 +264,7 @@ export default function ChatRoomPage() {
             />
             <button
               type="submit"
-              disabled={!draft.trim() || isSending || isPartnerWithdrawn}
+              disabled={!draft.trim() || isPartnerWithdrawn || !isConnected}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="메시지 보내기"
             >

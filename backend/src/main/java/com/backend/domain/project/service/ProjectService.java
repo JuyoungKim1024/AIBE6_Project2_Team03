@@ -9,6 +9,7 @@ import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.dto.ProjectUpdateRequestDTO;
 import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
+import com.backend.domain.project.entity.ProjectWorkUnit;
 import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
@@ -53,6 +54,8 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponseDTO createProject(String userId, ProjectCreateRequestDTO request) {
+        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.deadline());
+
         ChatRoom room = chatRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
 
@@ -86,7 +89,8 @@ public class ProjectService {
                 editor,
                 request.field(),
                 request.price(),
-                request.videoLength(),
+                request.workAmount(),
+                request.workUnit(),
                 request.deadline(),
                 request.memo()
         );
@@ -112,6 +116,8 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponseDTO updateProject(String userId, String projectId, ProjectUpdateRequestDTO request) {
+        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.deadline());
+
         Project project = getProject(projectId);
         validateRequester(project, userId);
         if (isClosed(project)) {
@@ -121,7 +127,8 @@ public class ProjectService {
         project.update(
                 request.field(),
                 request.price(),
-                request.videoLength(),
+                request.workAmount(),
+                request.workUnit(),
                 request.deadline(),
                 request.memo()
         );
@@ -170,6 +177,30 @@ public class ProjectService {
     private Project getProject(String projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("프로젝트를 찾을 수 없습니다."));
+    }
+
+    private void validateRequiredFields(
+            String field,
+            Integer price,
+            Integer workAmount,
+            ProjectWorkUnit workUnit,
+            java.time.LocalDateTime deadline
+    ) {
+        if (field == null || field.isBlank()) {
+            throw new IllegalArgumentException("작업 분야를 입력해주세요.");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("금액을 입력해주세요.");
+        }
+        if (workAmount == null) {
+            throw new IllegalArgumentException("작업량을 입력해주세요.");
+        }
+        if (workUnit == null) {
+            throw new IllegalArgumentException("작업량 단위를 선택해주세요.");
+        }
+        if (deadline == null) {
+            throw new IllegalArgumentException("마감일을 입력해주세요.");
+        }
     }
 
     private void validateEditor(Project project, String userId) {

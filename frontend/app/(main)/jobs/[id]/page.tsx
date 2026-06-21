@@ -35,7 +35,6 @@ import {
   getPostLikedStatus,
 } from "@/lib/api/post";
 import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
-import { JobPostDetailDto, CommentDto } from "@/types/post";
 import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 

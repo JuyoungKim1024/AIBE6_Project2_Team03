@@ -66,7 +66,7 @@ export function NotificationDropdown() {
       const data = await res.json();
       updateNotification(notification.id, 'ACCEPTED', data.chatRoomId);
       setOpen(false);
-      router.push(data.chatRoomId ? `/mypage?tab=chats&roomId=${data.chatRoomId}` : '/mypage?tab=chats');
+      router.push(data.chatRoomId ? `/chat/${data.chatRoomId}` : '/chat');
     } catch {
       // 네트워크 에러 무시
     }

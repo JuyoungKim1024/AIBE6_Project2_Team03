@@ -45,7 +45,7 @@ const dropdownLinkClass =
 const activityItems = [
   { label: '내가 쓴 글', icon: FileText, to: '/mypage?tab=posts' },
   { label: '받은 프로젝트 요청', icon: Inbox, to: '/mypage?tab=projects' },
-  { label: '채팅 목록', icon: MessageSquare, to: '/mypage?tab=chats' },
+  { label: '채팅 목록', icon: MessageSquare, to: '/chat' },
 ];
 
 const editorItems = [

@@ -10,12 +10,21 @@ export type ProjectMessagePayload = {
   completionRequestedBy?: string | null;
   field: string | null;
   price: number | null;
-  videoLength: number | null;
+  workAmount?: number | null;
+  workUnit?: 'MINUTE' | 'CASE';
+  /** 이전 채팅 카드 데이터 호환용 */
+  videoLength?: number | null;
   revisionCount?: number;
   deadline: string | null;
   memo: string | null;
   status: string;
 };
+
+function formatWorkAmount(project: ProjectMessagePayload) {
+  const amount = project.workAmount ?? project.videoLength;
+  if (!amount) return '미정';
+  return project.workUnit === 'CASE' ? `${amount}건` : `${amount}분`;
+}
 
 export function serializeProjectMessage(project: ProjectMessagePayload) {
   return `${PROJECT_MESSAGE_PREFIX}${JSON.stringify(project)}`;
@@ -108,10 +117,8 @@ export function ProjectMessageCard({
                 <p className="font-bold text-text-primary">{formatPrice(project.price)}</p>
               </div>
               <div>
-                <p className="text-text-muted">길이</p>
-                <p className="font-bold text-text-primary">
-                  {project.videoLength ? `${project.videoLength}분` : '미정'}
-                </p>
+                <p className="text-text-muted">작업량</p>
+                <p className="font-bold text-text-primary">{formatWorkAmount(project)}</p>
               </div>
               <div>
                 <p className="text-text-muted">마감</p>
@@ -142,10 +149,8 @@ export function ProjectMessageCard({
           <p className="mt-0.5 font-bold text-text-primary">{formatPrice(project.price)}</p>
         </div>
         <div className="rounded-lg bg-surface-elevated p-2">
-          <p className="text-text-muted">영상 길이</p>
-          <p className="mt-0.5 font-bold text-text-primary">
-            {project.videoLength ? `${project.videoLength}분` : '미정'}
-          </p>
+          <p className="text-text-muted">작업량</p>
+          <p className="mt-0.5 font-bold text-text-primary">{formatWorkAmount(project)}</p>
         </div>
       </div>
       <p className="mt-2 text-xs text-text-secondary">{formatDeadline(project.deadline)}</p>
