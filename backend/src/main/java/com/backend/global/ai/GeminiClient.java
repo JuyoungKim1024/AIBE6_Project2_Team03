@@ -33,7 +33,8 @@ public class GeminiClient {
 
         String response = RestClient.create()
                 .post()
-                .uri(GEMINI_URL + "?key=" + apiKey)
+                .uri(GEMINI_URL)
+                .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
