@@ -76,7 +76,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
 
   useEffect(() => {
     fetchDispute();
-    pollingRef.current = setInterval(fetchDispute, 2000);
+    pollingRef.current = setInterval(fetchDispute, 5000);
     return stopPolling;
   }, [fetchDispute, stopPolling]);
 
@@ -101,7 +101,10 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       const data: DisputeData = await res.json();
       setDispute(data);
       setJudgment(parseJudgment(data.aiJudgment));
-      stopPolling();
+      // 상대방이 아직 응답하지 않았으면 폴링 유지
+      if (data.status !== 'AI_JUDGED') {
+        stopPolling();
+      }
     } catch (err) {
       setResponseError(err instanceof Error ? err.message : '응답 처리에 실패했습니다.');
     } finally {
