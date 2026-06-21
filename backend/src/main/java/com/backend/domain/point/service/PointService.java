@@ -84,7 +84,7 @@ public class PointService {
         requester.releaseEscrow(amount, editor);
 
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_RELEASE,
+                requester, -amount, PointTransactionType.ESCROW_RELEASE,
                 editor.getNickname() + "님께 작업 완료 정산",
                 matchRequestId
         ));
@@ -145,7 +145,7 @@ public class PointService {
                 null
         ));
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_RELEASE,
+                requester, -amount, PointTransactionType.ESCROW_RELEASE,
                 editor.getNickname() + "님께 프로젝트 완료 정산",
                 null
         ));
