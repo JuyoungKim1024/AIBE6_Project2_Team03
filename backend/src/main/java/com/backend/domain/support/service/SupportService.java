@@ -71,6 +71,13 @@ public class SupportService {
         return ticketRepository.findByTypeOrderByCreatedAtDesc(type).stream().map(TicketResponse::from).toList();
     }
 
+    public List<TicketResponse> getMyTickets(String userId, SupportTicket.Type type) {
+        return ticketRepository.findByUser_IdAndTypeOrderByCreatedAtDesc(userId, type)
+                .stream()
+                .map(TicketResponse::from)
+                .toList();
+    }
+
     @Transactional
     public TicketResponse updateTicket(String adminId, String ticketId, TicketStatusRequest request) {
         requireAdmin(adminId);

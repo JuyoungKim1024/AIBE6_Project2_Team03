@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { MySupportTickets } from '@/components/support/MySupportTickets';
 
 export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
   const router = useRouter();
@@ -15,6 +16,7 @@ export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -38,6 +40,7 @@ export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
       setContent('');
       setTargetUrl('');
       setMessage(isReport ? '신고가 접수되었습니다.' : '문의가 접수되었습니다.');
+      setRefreshKey((value) => value + 1);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '접수에 실패했습니다.');
     } finally {
@@ -50,6 +53,7 @@ export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
     : ['서비스 이용', '계정·로그인', '결제·포인트', '매칭·프로젝트', '오류 신고', '기타'];
 
   return (
+    <>
     <form onSubmit={submit} className="bg-surface border border-border rounded-xl p-6 sm:p-8 space-y-5">
       <label className="block">
         <span className="block text-sm font-bold text-text-primary mb-2">유형</span>
@@ -77,5 +81,7 @@ export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
         <Send size={16} />{submitting ? '접수 중...' : '접수하기'}
       </button>
     </form>
+    <MySupportTickets type={isReport ? 'REPORT' : 'INQUIRY'} refreshKey={refreshKey} />
+    </>
   );
 }

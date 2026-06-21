@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SupportTicketRepository extends JpaRepository<SupportTicket, String> {
     List<SupportTicket> findByTypeOrderByCreatedAtDesc(SupportTicket.Type type);
+    List<SupportTicket> findByUser_IdAndTypeOrderByCreatedAtDesc(String userId, SupportTicket.Type type);
 }

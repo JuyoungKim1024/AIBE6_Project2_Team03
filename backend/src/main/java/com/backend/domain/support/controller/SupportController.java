@@ -38,6 +38,14 @@ public class SupportController {
         return supportService.createTicket(authService.resolveUserId(authorization), SupportTicket.Type.REPORT, request);
     }
 
+    @GetMapping("/support/my-tickets")
+    public List<TicketResponse> myTickets(
+            @RequestHeader("Authorization") String authorization,
+            @RequestParam SupportTicket.Type type
+    ) {
+        return supportService.getMyTickets(authService.resolveUserId(authorization), type);
+    }
+
     @GetMapping("/admin/notices")
     public List<NoticeResponse> adminNotices(@RequestHeader("Authorization") String authorization) {
         return supportService.getAdminNotices(authService.resolveUserId(authorization));
