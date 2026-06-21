@@ -8,7 +8,12 @@ const serviceLinks = [
   { label: '커뮤니티', href: '/community' },
 ];
 
-const pendingSupportLinks = ['공지사항', '자주 묻는 질문', '문의하기', '신고센터'];
+const supportLinks = [
+  { label: '공지사항', href: '/notices' },
+  { label: '자주 묻는 질문', href: '/faq' },
+  { label: '문의하기', href: '/contact' },
+  { label: '신고센터', href: '/report' },
+];
 const policyLinks = [
   { label: '이용약관', href: '/terms' },
   { label: '개인정보처리방침', href: '/privacy' },
@@ -17,8 +22,10 @@ const policyLinks = [
 
 export function HomeFooter({
   onQuickAccessClick,
+  onSupportClick,
 }: {
   onQuickAccessClick: (event: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+  onSupportClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <footer className="border-t border-border bg-surface/50">
@@ -52,14 +59,18 @@ export function HomeFooter({
           </FooterColumn>
 
           <FooterColumn title="고객지원">
-            {pendingSupportLinks.map((label) => (
-              <PendingItem key={label} label={label} />
+            {supportLinks.map((item) => (
+              <Link key={item.href} href={item.href} onClick={onSupportClick} className="text-sm text-text-secondary hover:text-text-primary transition-colors">
+                {item.label}
+              </Link>
             ))}
           </FooterColumn>
 
           <div>
             <h2 className="text-sm font-bold text-text-primary mb-4">사업자 정보</h2>
             <p className="text-sm font-bold text-text-secondary">크크킄</p>
+            <p className="mt-2 text-sm text-text-secondary">영상 편집자 매칭 플랫폼</p>
+            <p className="mt-2 text-sm text-text-secondary">고객지원 평일 10:00–18:00</p>
             <a
               href="mailto:keukeukkeu47@gmail.com"
               className="inline-flex items-center gap-2 mt-3 text-sm text-text-secondary hover:text-primary transition-colors"
@@ -91,14 +102,5 @@ function FooterColumn({ title, children }: { title: string; children: React.Reac
       <h2 className="text-sm font-bold text-text-primary mb-4">{title}</h2>
       <div className="flex flex-col items-start gap-3">{children}</div>
     </div>
-  );
-}
-
-function PendingItem({ label, compact = false }: { label: string; compact?: boolean }) {
-  return (
-    <span className={`inline-flex items-center gap-2 text-text-muted ${compact ? 'text-xs' : 'text-sm'}`}>
-      {label}
-      <span className="text-[10px] text-text-muted/70">준비 중</span>
-    </span>
   );
 }

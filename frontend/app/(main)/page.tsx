@@ -63,6 +63,13 @@ export default function HomePage() {
     }
   };
 
+  const handleSupportClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!user) {
+      event.preventDefault();
+      router.push('/login');
+    }
+  };
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -290,7 +297,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-      <HomeFooter onQuickAccessClick={handleQuickCardClick} />
+      <HomeFooter onQuickAccessClick={handleQuickCardClick} onSupportClick={handleSupportClick} />
     </div>
   );
 }

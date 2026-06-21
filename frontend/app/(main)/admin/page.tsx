@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Bell, Flag, Inbox, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { AdminNoticesPanel, AdminTicketsPanel } from '@/components/admin/AdminSupportPanels';
 
 const sections = {
   dashboard: {
@@ -67,22 +69,20 @@ export default function AdminPage() {
         {tab === 'dashboard' ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
-              { label: '공지사항', value: '작성 및 관리', icon: Bell },
-              { label: '문의', value: '접수 내역 관리', icon: Inbox },
-              { label: '신고', value: '신고 검토 및 처리', icon: Flag },
+              { label: '공지사항', value: '작성 및 관리', icon: Bell, href: '/admin?tab=notices' },
+              { label: '문의', value: '접수 내역 관리', icon: Inbox, href: '/admin?tab=inquiries' },
+              { label: '신고', value: '신고 검토 및 처리', icon: Flag, href: '/admin?tab=reports' },
             ].map((item) => (
-              <div key={item.label} className="bg-surface border border-border rounded-xl p-6">
+              <Link key={item.label} href={item.href} className="bg-surface border border-border rounded-xl p-6 hover:border-primary/50 transition-colors">
                 <item.icon size={20} className="text-primary mb-4" />
                 <div className="text-sm text-text-muted">{item.label}</div>
                 <div className="font-bold text-text-primary mt-1">{item.value}</div>
-              </div>
+              </Link>
             ))}
           </div>
-        ) : (
-          <div className="bg-surface border border-border rounded-xl p-8">
-            <p className="text-sm text-text-secondary">관리 API와 목록 UI를 연결할 준비가 된 관리자 전용 영역입니다.</p>
-          </div>
-        )}
+        ) : tab === 'notices' ? <AdminNoticesPanel />
+          : tab === 'inquiries' ? <AdminTicketsPanel type="INQUIRY" />
+            : <AdminTicketsPanel type="REPORT" />}
       </div>
     </div>
   );

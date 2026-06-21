@@ -1,0 +1,6 @@
+# Copy this block into application-local.yml.
+# Share the actual password through a private team channel. Never commit it.
+app:
+  admin:
+    email: keukeukkeu47@gmail.com
+    password: YOUR_SHARED_ADMIN_PASSWORD
