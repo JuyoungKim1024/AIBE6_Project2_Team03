@@ -86,6 +86,9 @@ public class User {
     @Column(name = "is_admin", nullable = false)
     private boolean admin = false;
 
+    @Column(name = "is_test_account", nullable = false)
+    private boolean testAccount = false;
+
     public User(SocialProvider provider, String socialId, String providerEmail, String nickname, String profileImage) {
         this.provider = provider;
         this.socialId = socialId;
@@ -176,6 +179,21 @@ public class User {
         this.matchEnabled = false;
         this.termsAgreedAt = LocalDateTime.now();
         this.admin = true;
+    }
+
+    public void configureTestAccount(String email, String passwordHash, String nickname, UserRole role) {
+        this.provider = SocialProvider.LOCAL;
+        this.socialId = email;
+        this.providerEmail = email;
+        this.passwordHash = passwordHash;
+        this.emailVerified = true;
+        this.nickname = nickname;
+        this.profileImage = null;
+        this.role = role;
+        this.matchEnabled = false;
+        this.termsAgreedAt = LocalDateTime.now();
+        this.admin = false;
+        this.testAccount = true;
     }
 
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {
