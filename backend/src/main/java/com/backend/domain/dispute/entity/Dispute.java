@@ -13,6 +13,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Dispute extends BaseEntity {
 
+    @Version
+    private Long version;  // 동시 응답 방지 (낙관적 잠금)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
@@ -64,6 +67,13 @@ public class Dispute extends BaseEntity {
     }
 
     public void respond(String userId, Boolean accepted) {
+        if (this.status != DisputeStatus.AI_JUDGED) {
+            throw new IllegalStateException("AI 판정이 완료된 분쟁에만 응답할 수 있습니다.");
+        }
+        if (this.finalAmount == null) {
+            throw new IllegalStateException("AI 판정 금액이 설정되지 않아 응답할 수 없습니다.");
+        }
+
         String requesterId = project.getRequester().getId();
         String editorId = project.getEditor().getId();
 
