@@ -20,10 +20,9 @@ interface Props {
   accessToken: string | null;
   onClose: () => void;
   onCreated: (disputeId: string) => void;
-  onExistingDispute?: (disputeId: string) => void;
 }
 
-export function DisputeModal({ projectId, accessToken, onClose, onCreated, onExistingDispute }: Props) {
+export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Props) {
   const [selectedType, setSelectedType] = useState<DisputeType | null>(null);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +54,14 @@ export function DisputeModal({ projectId, accessToken, onClose, onCreated, onExi
 
       const data = await res.json();
       if (!data?.id) throw new Error('서버 응답이 올바르지 않습니다.');
-      onCreated(data.id);
+
+      if (res.status === 200) {
+        // 이미 진행 중인 분쟁 — 결과 모달로 바로 이동
+        setError('이미 진행 중인 분쟁이 있습니다. 결과를 확인합니다.');
+        setTimeout(() => onCreated(data.id), 800);
+      } else {
+        onCreated(data.id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '분쟁 신고에 실패했습니다.');
     } finally {

@@ -32,7 +32,7 @@ interface Props {
 function parseJudgment(raw: string | null): AiJudgment | null {
   if (!raw) return null;
   try {
-    return JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim()) as AiJudgment;
+    return JSON.parse(raw.trim()) as AiJudgment;
   } catch {
     return null;
   }
@@ -110,7 +110,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
   const isFailed = dispute?.status === 'AI_FAILED';
   const isAccepted = dispute?.status === 'ACCEPTED';
 
-  const acceptedCount = [dispute?.requesterAccepted, dispute?.editorAccepted].filter(Boolean).length;
+  const acceptedCount = [dispute?.requesterAccepted, dispute?.editorAccepted].filter((v) => v === true).length;
 
   return (
     <AnimatePresence>
@@ -156,6 +156,14 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
                 <p className="text-sm text-text-muted leading-relaxed">
                   채팅에서 상대방과 직접 협의하여 해결해 주세요.
                 </p>
+              </div>
+            )}
+
+            {isJudged && !judgment && (
+              <div className="flex flex-col items-center justify-center py-6 gap-3 text-center">
+                <Scale size={28} className="text-text-muted opacity-40" />
+                <p className="text-sm font-bold text-text-primary">AI 판정 결과를 표시할 수 없습니다</p>
+                <p className="text-xs text-text-muted">채팅에서 상대방과 직접 협의해 주세요.</p>
               </div>
             )}
 
