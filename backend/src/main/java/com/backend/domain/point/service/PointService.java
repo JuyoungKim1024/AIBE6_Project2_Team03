@@ -1,7 +1,5 @@
 package com.backend.domain.point.service;
 
-import com.backend.domain.mypage.entity.MatchRequest;
-import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.project.entity.Project;
 import com.backend.domain.point.dto.PointBalanceResponse;
 import com.backend.domain.point.dto.PointTransactionResponse;
@@ -21,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PointService {
 
     private final UserRepository userRepository;
-    private final MyPageMatchRequestRepository matchRequestRepository;
     private final PointTransactionRepository transactionRepository;
 
     @Transactional
@@ -49,71 +46,17 @@ public class PointService {
                 .toList();
     }
 
-    // 매칭 수락 시 크리에이터 포인트 → 안전결제 보관
+    // 프로젝트 카드 수락(계약 확정) 시 크리에이터 포인트 → 안전결제 보관
     @Transactional
-    public void holdSafePayment(String matchRequestId) {
-        MatchRequest request = getMatchRequest(matchRequestId);
-        if (request.getAgreedAmount() == null) return;
-
-        User requester = request.getRequester();
-        int amount = request.getAgreedAmount();
-
+    public void holdSafePaymentForProject(Project project) {
+        if (project.getPrice() == null || project.getPrice() <= 0) return;
+        User requester = project.getRequester();
+        int amount = project.getPrice();
         requester.holdSafePayment(amount);
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.SAFE_PAYMENT_HOLD,
-                request.getEditor().getNickname() + "님과의 매칭 안전결제 차감",
-                matchRequestId
-        ));
-    }
-
-    // 작업 완료 확인 시 안전결제 → 에디터
-    @Transactional
-    public void releaseSafePayment(String matchRequestId, String requesterId) {
-        MatchRequest request = getMatchRequest(matchRequestId);
-        if (!request.getRequester().getId().equals(requesterId)) {
-            throw new IllegalArgumentException("권한이 없습니다.");
-        }
-        if (request.getAgreedAmount() == null) {
-            throw new IllegalStateException("합의 금액이 설정되지 않은 매칭입니다.");
-        }
-
-        User requester = request.getRequester();
-        User editor = request.getEditor();
-        int amount = request.getAgreedAmount();
-
-        requester.releaseSafePayment(amount, editor);
-
-        transactionRepository.save(new PointTransaction(
-                requester, -amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
-                editor.getNickname() + "님께 작업 완료 정산",
-                matchRequestId
-        ));
-        transactionRepository.save(new PointTransaction(
-                editor, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
-                requester.getNickname() + "님 작업 완료 수령",
-                matchRequestId
-        ));
-    }
-
-    // 취소 시 안전결제 → 크리에이터 환불
-    @Transactional
-    public void refundSafePayment(String matchRequestId, String userId) {
-        MatchRequest request = getMatchRequest(matchRequestId);
-        boolean isRequester = request.getRequester().getId().equals(userId);
-        boolean isEditor = request.getEditor().getId().equals(userId);
-        if (!isRequester && !isEditor) {
-            throw new IllegalArgumentException("권한이 없습니다.");
-        }
-        if (request.getAgreedAmount() == null) return;
-
-        User requester = request.getRequester();
-        int amount = request.getAgreedAmount();
-
-        requester.refundSafePayment(amount);
-        transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.SAFE_PAYMENT_REFUND,
-                request.getEditor().getNickname() + "님과의 매칭 취소 환불",
-                matchRequestId
+                requester, -amount, PointTransactionType.SAFE_PAYMENT_HOLD,
+                project.getEditor().getNickname() + "님 프로젝트 안전결제 보관",
+                null
         ));
     }
 
@@ -189,10 +132,5 @@ public class PointService {
     private User getUser(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-    }
-
-    private MatchRequest getMatchRequest(String matchRequestId) {
-        return matchRequestRepository.findById(matchRequestId)
-                .orElseThrow(() -> new IllegalArgumentException("매칭 요청을 찾을 수 없습니다."));
     }
 }
