@@ -171,8 +171,9 @@ public class User {
     public void releaseSafePayment(int amount, User recipient) {
         if (amount <= 0) throw new IllegalArgumentException("정산 금액은 0보다 커야 합니다.");
         if (this.safePaymentPoint < amount) throw new IllegalStateException("안전결제 잔액이 부족합니다.");
-        this.safePaymentPoint -= amount;
+        // 수신자에게 먼저 지급 후 차감: 예외 발생 시 차감이 일어나지 않아 안전
         recipient.chargePoint(amount);
+        this.safePaymentPoint -= amount;
     }
 
     public void refundSafePayment(int amount) {
