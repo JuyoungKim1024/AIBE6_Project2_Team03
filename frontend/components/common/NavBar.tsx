@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ProfileDropdown } from '@/components/common/ProfileDropdown';
 import { NotificationDropdown } from '@/components/common/NotificationDropdown';
 import { SearchBar } from '@/components/common/SearchBar';
+import { AdminNavBar } from '@/components/admin/AdminNavBar';
 
 type NavLink = { name: string; path: string; requireAuth?: boolean; hideForEditor?: boolean };
 
@@ -23,6 +24,10 @@ export function NavBar() {
   const router = useRouter();
   const { user, setUser, isAuthChecked } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  if (user?.admin) {
+    return <AdminNavBar user={user} onLogout={() => setUser(null)} />;
+  }
 
   const handleNavClick = (e: React.MouseEvent, link: NavLink, closeMobile?: () => void) => {
     if (link.requireAuth && !user) {

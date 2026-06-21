@@ -21,4 +21,8 @@ SMTP_SSL_ENABLE=false
 # HTTPS production
 COOKIE_SECURE=true
 
+# Admin bootstrap
+ADMIN_EMAIL=keukeukkeu47@gmail.com
+ADMIN_PASSWORD=change-this-password
+
 # 실제 값은 application.properties에 작성 (gitignore됨)
