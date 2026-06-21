@@ -55,7 +55,11 @@ public class DisputeJudgeService {
             String cleaned = raw.replaceAll("```json\\n?|\\n?```", "").trim();
 
             JsonNode node = objectMapper.readTree(cleaned);
-            int finalAmount = node.path("adjustedAmount").asInt(-1);
+            JsonNode amountNode = node.path("adjustedAmount");
+            if (!amountNode.isInt()) {
+                throw new IllegalStateException("AI 응답에 유효한 adjustedAmount가 없습니다: " + amountNode);
+            }
+            int finalAmount = amountNode.asInt();
             int projectPrice = dispute.getProject().getPrice() != null ? dispute.getProject().getPrice() : 0;
 
             if (finalAmount < 0 || finalAmount > projectPrice) {
