@@ -106,7 +106,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { point: number; escrowPoint: number } | null) => {
+      .then((data: { point: number; safePaymentPoint: number } | null) => {
         if (data) setPointBalance(data.point);
       })
       .catch(() => {});
