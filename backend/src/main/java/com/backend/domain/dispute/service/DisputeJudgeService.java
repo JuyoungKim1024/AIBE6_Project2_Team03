@@ -51,14 +51,17 @@ public class DisputeJudgeService {
 
             JsonNode node = objectMapper.readTree(cleaned);
             int finalAmount = node.path("adjustedAmount").asInt(-1);
-            if (finalAmount < 0) {
-                throw new IllegalStateException("AI 응답에 adjustedAmount 필드가 없습니다.");
+            int projectPrice = dispute.getProject().getPrice() != null ? dispute.getProject().getPrice() : 0;
+
+            if (finalAmount < 0 || finalAmount > projectPrice) {
+                log.warn("AI 응답 금액 범위 초과: disputeId={}, finalAmount={}, projectPrice={}", disputeId, finalAmount, projectPrice);
+                throw new IllegalStateException("AI 응답 금액이 유효 범위를 벗어났습니다: " + finalAmount);
             }
 
             dispute.applyJudgment(cleaned, finalAmount);
         } catch (Exception e) {
             log.error("AI 분쟁 판정 실패 disputeId={}", disputeId, e);
-            dispute.markFailed();
+            dispute.markAiFailed();
         }
     }
 
