@@ -1651,10 +1651,10 @@ function ChatsSection() {
                     type="button"
                     onClick={() => setShowDisputeModal(true)}
                     className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
-                    aria-label="분쟁 신고"
+                    aria-label="AI 분쟁 조정"
                   >
                     <AlertTriangle size={14} />
-                    분쟁
+                    AI 분쟁 조정
                   </button>
                 )}
                 <button

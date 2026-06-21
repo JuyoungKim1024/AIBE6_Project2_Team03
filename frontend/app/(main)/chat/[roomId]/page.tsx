@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { parseProjectMessage, ProjectMessageCard } from '@/components/common/ProjectMessageCard';
@@ -29,6 +29,7 @@ type CurrentProject = {
 export default function ChatRoomPage() {
   const router = useRouter();
   const params = useParams<{ roomId: string }>();
+  const searchParams = useSearchParams();
   const roomId = params.roomId;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +43,9 @@ export default function ChatRoomPage() {
   const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
   const [currentProject, setCurrentProject] = useState<CurrentProject | null>(null);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
-  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(
+    () => searchParams.get('disputeId')
+  );
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -167,12 +170,27 @@ export default function ChatRoomPage() {
             {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
               <button
                 type="button"
-                onClick={() => setShowDisputeModal(true)}
+                onClick={async () => {
+                  if (!currentProject) return;
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/api/disputes/project/${currentProject.id}/active`, {
+                      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+                    });
+                    if (res.ok) {
+                      const dispute = await res.json();
+                      if (dispute?.id) {
+                        setActiveDisputeId(dispute.id);
+                        return;
+                      }
+                    }
+                  } catch { /* 무시 */ }
+                  setShowDisputeModal(true);
+                }}
                 className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
-                aria-label="분쟁 신고"
+                aria-label="AI 분쟁 조정"
               >
                 <AlertTriangle size={14} />
-                분쟁
+                AI 분쟁 조정
               </button>
             )}
             <button
