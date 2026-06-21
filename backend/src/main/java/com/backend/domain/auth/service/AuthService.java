@@ -362,6 +362,9 @@ public class AuthService {
         if (user.isAdmin()) {
             return false;
         }
+        if (!user.hasAgreedToTerms()) {
+            return true;
+        }
         if (user.getRole() == null) {
             return true;
         }

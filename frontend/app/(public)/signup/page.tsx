@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, Circle, MailCheck } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { saveAuthSession } from '@/lib/auth-session';
 import { TermsAgreement } from '@/components/auth/TermsAgreement';
 
 type AuthResponse = {
   accessToken: string;
+  refreshToken: string;
 };
 
 export default function SignupPage() {
@@ -115,7 +117,7 @@ export default function SignupPage() {
       if (!response.ok) throw new Error(data?.message ?? '회원가입에 실패했습니다.');
 
       const auth = data as AuthResponse;
-      localStorage.setItem('accessToken', auth.accessToken);
+      saveAuthSession(auth.accessToken, auth.refreshToken, true);
       router.replace('/onboarding/role');
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : '회원가입에 실패했습니다.');
