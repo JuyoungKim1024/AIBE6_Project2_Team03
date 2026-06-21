@@ -10,6 +10,7 @@ export type AuthUser = {
   role: 'YOUTUBER' | 'EDITOR' | null;
   onboardingRequired: boolean;
   termsAgreed: boolean;
+  admin: boolean;
 };
 
 export function clearTokens() {

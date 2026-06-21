@@ -11,7 +11,7 @@ type AuthResponse = {
   accessToken: string;
   refreshToken: string;
   onboardingRequired: boolean;
-  user: { role: 'YOUTUBER' | 'EDITOR' | null };
+  user: { role: 'YOUTUBER' | 'EDITOR' | null; admin: boolean };
 };
 
 export default function LoginPage() {
@@ -45,7 +45,11 @@ export default function LoginPage() {
 
       const auth = data as AuthResponse;
       localStorage.setItem('accessToken', auth.accessToken);
-      router.replace(auth.onboardingRequired ? (auth.user.role ? '/onboarding/profile' : '/onboarding/role') : '/');
+      router.replace(auth.user.admin
+        ? '/admin'
+        : auth.onboardingRequired
+          ? (auth.user.role ? '/onboarding/profile' : '/onboarding/role')
+          : '/');
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : '로그인에 실패했습니다.');
     } finally {

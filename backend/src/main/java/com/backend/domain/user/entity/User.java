@@ -83,6 +83,9 @@ public class User {
     @Column(name = "terms_agreed_at")
     private LocalDateTime termsAgreedAt;
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean admin = false;
+
     public User(SocialProvider provider, String socialId, String providerEmail, String nickname, String profileImage) {
         this.provider = provider;
         this.socialId = socialId;
@@ -159,6 +162,20 @@ public class User {
 
     public boolean hasAgreedToTerms() {
         return termsAgreedAt != null;
+    }
+
+    public void promoteToAdmin(String email, String passwordHash) {
+        this.provider = SocialProvider.LOCAL;
+        this.socialId = email;
+        this.providerEmail = email;
+        this.passwordHash = passwordHash;
+        this.emailVerified = true;
+        this.nickname = "Admin";
+        this.profileImage = null;
+        this.role = null;
+        this.matchEnabled = false;
+        this.termsAgreedAt = LocalDateTime.now();
+        this.admin = true;
     }
 
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {

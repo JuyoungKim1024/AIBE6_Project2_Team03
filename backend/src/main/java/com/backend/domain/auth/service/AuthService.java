@@ -299,6 +299,9 @@ public class AuthService {
             throw new IllegalArgumentException("탈퇴 문구를 정확히 입력해주세요");
         }
         User user = getUser(userId);
+        if (user.isAdmin()) {
+            throw new IllegalArgumentException("관리자 계정은 탈퇴할 수 없습니다.");
+        }
         profileRepository.findByUser_Id(userId).ifPresent(Profile::withdraw);
         user.withdraw();
     }
@@ -337,6 +340,9 @@ public class AuthService {
     }
 
     private boolean isOnboardingRequired(User user) {
+        if (user.isAdmin()) {
+            return false;
+        }
         if (user.getRole() == null) {
             return true;
         }

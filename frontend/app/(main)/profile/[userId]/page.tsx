@@ -213,6 +213,10 @@ export default function PublicProfilePage() {
 
     fetch(`${API_BASE_URL}/api/profiles/${userId}`)
       .then((response) => {
+        if (response.status === 403) {
+          setProfileError('관리자 계정은 프로필을 제공하지 않습니다');
+          return null;
+        }
         if (response.status === 410) {
           setProfileError('탈퇴한 계정입니다');
           return null;
