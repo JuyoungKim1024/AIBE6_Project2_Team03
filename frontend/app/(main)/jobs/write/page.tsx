@@ -322,7 +322,7 @@ function JobsWriteContent() {
             <textarea
               value={aiDescription}
               onChange={(e) => setAiDescription(e.target.value)}
-              placeholder="예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."
+              placeholder={type === "looking" ? "예) 영상편집 3년차 에디터입니다. 롱폼 위주로 작업하며 Premiere Pro 사용 가능합니다." : "예) 롱폼 유튜브 채널 운영 중인 유튜버입니다. Premiere Pro 가능한 에디터를 구합니다."}
               rows={3}
               className="w-full bg-surface-elevated border border-border rounded-xl px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary resize-none transition-colors"
             />
