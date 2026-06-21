@@ -2,7 +2,8 @@ export type NotificationType =
   | 'MATCHING_REQUEST'
   | 'MATCHING_ACCEPTED'
   | 'MATCHING_REJECTED'
-  | 'CHAT_REQUEST';
+  | 'CHAT_REQUEST'
+  | 'DISPUTE_FILED';
 
 export type NotificationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'READ';
 

@@ -48,11 +48,12 @@ export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Pro
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || '분쟁 신고에 실패했습니다.');
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || '분쟁 신고에 실패했습니다.');
       }
 
       const data = await res.json();
+      if (!data?.id) throw new Error('서버 응답이 올바르지 않습니다.');
       onCreated(data.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : '분쟁 신고에 실패했습니다.');

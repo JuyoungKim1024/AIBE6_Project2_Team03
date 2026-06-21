@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, XCircle, Scale, Loader2 } from 'lucide-react';
+import { X, CheckCircle, Scale, Loader2, MessageCircle } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 interface AiJudgment {
@@ -16,7 +16,7 @@ interface AiJudgment {
 
 interface DisputeData {
   id: string;
-  status: 'AI_PENDING' | 'AI_JUDGED' | 'ACCEPTED' | 'ESCALATED';
+  status: 'AI_PENDING' | 'AI_JUDGED' | 'AI_FAILED' | 'ACCEPTED';
   aiJudgment: string | null;
   finalAmount: number | null;
   requesterAccepted: boolean | null;
@@ -41,8 +41,8 @@ function parseJudgment(raw: string | null): AiJudgment | null {
 export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
   const [dispute, setDispute] = useState<DisputeData | null>(null);
   const [judgment, setJudgment] = useState<AiJudgment | null>(null);
-  const [isResponding, setIsResponding] = useState(false);
-  const [responseError, setResponseError] = useState('');
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const accessTokenRef = useRef(accessToken);
   accessTokenRef.current = accessToken;
@@ -68,7 +68,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       setDispute(data);
       setJudgment(parseJudgment(data.aiJudgment));
 
-      if (data.status !== 'AI_PENDING') stopPolling();
+      if (data.status === 'ACCEPTED' || data.status === 'AI_FAILED') stopPolling();
     } catch (err) {
       console.error('분쟁 상태 조회 실패:', err);
     }
@@ -80,19 +80,15 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
     return stopPolling;
   }, [fetchDispute, stopPolling]);
 
-  const respond = async (accepted: boolean) => {
-    if (isResponding) return;
-    setIsResponding(true);
-    setResponseError('');
+  const acceptJudgment = async () => {
+    if (isAccepting) return;
+    setIsAccepting(true);
+    setAcceptError('');
     try {
       const token = accessTokenRef.current;
       const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/respond`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ accepted }),
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         const text = await res.text();
@@ -101,21 +97,20 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       const data: DisputeData = await res.json();
       setDispute(data);
       setJudgment(parseJudgment(data.aiJudgment));
-      // 상대방이 아직 응답하지 않았으면 폴링 유지
-      if (data.status !== 'AI_JUDGED') {
-        stopPolling();
-      }
+      if (data.status === 'ACCEPTED') stopPolling();
     } catch (err) {
-      setResponseError(err instanceof Error ? err.message : '응답 처리에 실패했습니다.');
+      setAcceptError(err instanceof Error ? err.message : '응답 처리에 실패했습니다.');
     } finally {
-      setIsResponding(false);
+      setIsAccepting(false);
     }
   };
 
   const isPending = !dispute || dispute.status === 'AI_PENDING';
   const isJudged = dispute?.status === 'AI_JUDGED';
+  const isFailed = dispute?.status === 'AI_FAILED';
   const isAccepted = dispute?.status === 'ACCEPTED';
-  const isEscalated = dispute?.status === 'ESCALATED';
+
+  const acceptedCount = [dispute?.requesterAccepted, dispute?.editorAccepted].filter(Boolean).length;
 
   return (
     <AnimatePresence>
@@ -154,10 +149,20 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
               </div>
             )}
 
-            {(isJudged || isAccepted || isEscalated) && judgment && (
+            {isFailed && (
+              <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                <Scale size={32} className="text-text-muted opacity-40" />
+                <p className="font-bold text-text-primary">AI 판정에 실패했습니다</p>
+                <p className="text-sm text-text-muted leading-relaxed">
+                  채팅에서 상대방과 직접 협의하여 해결해 주세요.
+                </p>
+              </div>
+            )}
+
+            {(isJudged || isAccepted) && judgment && (
               <>
-                <div className="rounded-xl border border-border bg-surface-elevated p-4">
-                  <p className="text-xs font-bold text-primary mb-1">분쟁 요약</p>
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <p className="text-xs font-bold text-primary mb-1">AI 의견 (참고용)</p>
                   <p className="text-sm text-text-primary leading-relaxed">{judgment.summary}</p>
                 </div>
 
@@ -192,9 +197,9 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="rounded-xl border border-border bg-surface-elevated p-4">
                   <div className="flex items-baseline justify-between mb-1">
-                    <p className="text-xs font-bold text-primary">AI 조정 금액</p>
+                    <p className="text-xs font-bold text-text-secondary">AI 권장 정산 금액</p>
                     <p className="text-lg font-bold text-text-primary">
                       ₩{judgment.adjustedAmount.toLocaleString('ko-KR')}
                     </p>
@@ -209,11 +214,21 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
               </>
             )}
 
-            {isEscalated && !judgment && (
-              <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-                <Scale size={32} className="text-text-muted opacity-40" />
-                <p className="font-bold text-text-primary">운영자 검토 이관</p>
-                <p className="text-sm text-text-muted">AI 판정에 실패하거나 양측이 합의하지 않아 운영자가 검토합니다.</p>
+            {isJudged && (
+              <div className="flex items-start gap-2 rounded-xl border border-border bg-surface-elevated p-3">
+                <MessageCircle size={15} className="text-text-muted flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-text-muted leading-relaxed">
+                  동의하지 않으시면 이 창을 닫고 채팅에서 상대방과 직접 협의하세요. 합의가 되면 채팅방 상단 <span className="font-medium text-amber-600">AI 분쟁 조정</span> 버튼을 눌러 다시 동의할 수 있습니다.
+                </p>
+              </div>
+            )}
+
+            {isJudged && acceptedCount > 0 && (
+              <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                <CheckCircle size={15} className="text-primary flex-shrink-0" />
+                <p className="text-xs text-primary font-medium">
+                  {acceptedCount}명이 동의했습니다. 상대방도 동의하면 정산이 자동으로 진행됩니다.
+                </p>
               </div>
             )}
 
@@ -221,50 +236,28 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
               <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 p-3">
                 <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                  양측이 조정안에 동의했습니다. 포인트 정산이 완료됩니다.
+                  양측이 동의했습니다. AI 권장 금액으로 정산이 완료됩니다.
                 </p>
               </div>
             )}
 
-            {isEscalated && (dispute?.requesterAccepted === false || dispute?.editorAccepted === false) && (
-              <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-                <XCircle size={16} className="text-amber-500 flex-shrink-0" />
-                <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
-                  한쪽이 조정안에 불복하여 운영자 검토로 이관되었습니다.
-                </p>
-              </div>
-            )}
-
-            {responseError && (
-              <p className="text-xs text-red-500 bg-red-500/10 rounded-lg p-3">{responseError}</p>
+            {acceptError && (
+              <p className="text-xs text-red-500 bg-red-500/10 rounded-lg p-3">{acceptError}</p>
             )}
           </div>
 
           <div className="p-4 border-t border-border">
             {isJudged && (
-              <div className="space-y-2">
-                <p className="text-xs text-text-muted text-center mb-3">AI 조정안에 동의하시겠습니까?</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => respond(false)}
-                    disabled={isResponding}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm font-medium text-text-secondary hover:bg-surface-elevated transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <XCircle size={16} />
-                    불복 (운영자 이관)
-                  </button>
-                  <button
-                    onClick={() => respond(true)}
-                    disabled={isResponding}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle size={16} />
-                    {isResponding ? '처리 중...' : '동의 (정산 진행)'}
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={acceptJudgment}
+                disabled={isAccepting}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckCircle size={16} />
+                {isAccepting ? '처리 중...' : 'AI 조정안에 동의 (정산 진행)'}
+              </button>
             )}
-            {(isAccepted || isEscalated) && (
+            {(isAccepted || isFailed) && (
               <button
                 onClick={onClose}
                 className="w-full py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:bg-surface-elevated transition-colors"
