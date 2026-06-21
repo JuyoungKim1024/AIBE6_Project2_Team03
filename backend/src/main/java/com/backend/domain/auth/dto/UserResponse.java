@@ -15,7 +15,8 @@ public record UserResponse(
         UserRole role,
         boolean onboardingRequired,
         boolean termsAgreed,
-        boolean admin
+        boolean admin,
+        boolean testAccount
 ) {
     public static UserResponse from(User user) {
         return from(user, null, null);
@@ -33,7 +34,8 @@ public record UserResponse(
                 user.getRole(),
                 !user.isAdmin() && (user.getRole() == null || name == null || name.isBlank() || phone == null || phone.isBlank()),
                 user.hasAgreedToTerms(),
-                user.isAdmin()
+                user.isAdmin(),
+                user.isTestAccount()
         );
     }
 }

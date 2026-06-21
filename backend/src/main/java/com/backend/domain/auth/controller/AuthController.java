@@ -15,6 +15,7 @@ import com.backend.domain.auth.dto.RoleUpdateRequest;
 import com.backend.domain.auth.dto.UserResponse;
 import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.user.entity.SocialProvider;
+import com.backend.domain.user.entity.UserRole;
 import java.net.URI;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
@@ -101,6 +102,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> localLogin(@RequestBody LocalLoginRequest request) {
         AuthResponse response = authService.localLogin(request);
         return withRefreshCookie(response);
+    }
+
+    @PostMapping("/auth/test-login/{role}")
+    public ResponseEntity<AuthResponse> testLogin(@PathVariable UserRole role) {
+        return withRefreshCookie(authService.testLogin(role));
     }
 
     @PostMapping("/auth/refresh")
