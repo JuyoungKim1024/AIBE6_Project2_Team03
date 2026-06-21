@@ -4,6 +4,7 @@ import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
+import com.backend.domain.point.service.PointService;
 import com.backend.domain.project.dto.ProjectCreateRequestDTO;
 import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.dto.ProjectUpdateRequestDTO;
@@ -27,6 +28,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PointService pointService;
 
     private ProjectResponseDTO publishProject(Project project) {
         ProjectResponseDTO response = ProjectResponseDTO.from(project);
@@ -134,6 +136,7 @@ public class ProjectService {
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         project.start();
+        pointService.holdEscrowForProject(project);
         return publishProject(project);
     }
 
@@ -151,6 +154,9 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
         project.requestComplete(userId);
+        if (project.getStatus() == ProjectStatus.COMPLETED) {
+            pointService.releaseEscrowForProject(project);
+        }
         return publishProject(project);
     }
 
@@ -158,12 +164,17 @@ public class ProjectService {
     public ProjectResponseDTO cancelProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
-        if (project.getStatus() != ProjectStatus.WAITING
-                && project.getStatus() != ProjectStatus.WORKING
-                && project.getStatus() != ProjectStatus.COMPLETION_PENDING) {
+        ProjectStatus statusBeforeCancel = project.getStatus();
+        if (statusBeforeCancel != ProjectStatus.WAITING
+                && statusBeforeCancel != ProjectStatus.WORKING
+                && statusBeforeCancel != ProjectStatus.COMPLETION_PENDING) {
             throw new IllegalArgumentException("취소할 수 없는 프로젝트 상태입니다.");
         }
         project.cancel();
+        if (statusBeforeCancel == ProjectStatus.WORKING
+                || statusBeforeCancel == ProjectStatus.COMPLETION_PENDING) {
+            pointService.refundEscrowForProject(project);
+        }
         return publishProject(project);
     }
 
