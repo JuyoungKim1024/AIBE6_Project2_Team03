@@ -10,7 +10,6 @@ import com.backend.domain.point.service.PointService;
 import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.project.repository.ProjectRepository;
-import com.backend.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,7 +52,7 @@ public class DisputeService {
             throw new IllegalStateException("이미 진행 중인 분쟁이 있습니다.");
         }
 
-        User reportedBy = userId.equals(requesterId) ? project.getRequester() : project.getEditor();
+        var reportedBy = userId.equals(requesterId) ? project.getRequester() : project.getEditor();
 
         Dispute dispute = new Dispute(project, reportedBy, request.type(), request.description());
         disputeRepository.save(dispute);
