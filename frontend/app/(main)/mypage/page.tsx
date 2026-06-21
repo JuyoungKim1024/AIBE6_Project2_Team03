@@ -1115,10 +1115,23 @@ function ChatsSection() {
     }
   };
 
+  const MONEY_STATUSES = ['WORKING', 'COMPLETED', 'CANCELED'];
+
+  const refreshPointBalance = () => {
+    fetchMyPageData<{ point: number; safePaymentPoint: number }>('/api/point')
+      .then((balance) => window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: balance })))
+      .catch(() => {});
+  };
+
   const fetchProject = async (roomId: string) => {
     try {
       const project = await fetchMyPageData<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`);
-      setCurrentProject(project);
+      setCurrentProject((prev) => {
+        if (prev?.status !== project.status && MONEY_STATUSES.includes(project.status)) {
+          refreshPointBalance();
+        }
+        return project;
+      });
       return project;
     } catch {
       try {
