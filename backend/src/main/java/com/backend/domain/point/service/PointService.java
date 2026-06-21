@@ -117,6 +117,54 @@ public class PointService {
         ));
     }
 
+    // 프로젝트 시작 시 크리에이터 포인트 → 에스크로
+    @Transactional
+    public void holdEscrowForProject(Project project) {
+        if (project.getPrice() == null || project.getPrice() <= 0) return;
+        User requester = project.getRequester();
+        int amount = project.getPrice();
+        requester.holdEscrow(amount);
+        transactionRepository.save(new PointTransaction(
+                requester, amount, PointTransactionType.ESCROW_HOLD,
+                project.getEditor().getNickname() + "님과의 프로젝트 거래 보증금 차감",
+                null
+        ));
+    }
+
+    // 프로젝트 완료 시 에스크로 → 에디터
+    @Transactional
+    public void releaseEscrowForProject(Project project) {
+        if (project.getPrice() == null || project.getPrice() <= 0) return;
+        User requester = project.getRequester();
+        User editor = project.getEditor();
+        int amount = project.getPrice();
+        requester.releaseEscrow(amount, editor);
+        transactionRepository.save(new PointTransaction(
+                editor, amount, PointTransactionType.ESCROW_RELEASE,
+                requester.getNickname() + "님 프로젝트 완료 수령",
+                null
+        ));
+        transactionRepository.save(new PointTransaction(
+                requester, amount, PointTransactionType.ESCROW_RELEASE,
+                editor.getNickname() + "님께 프로젝트 완료 정산",
+                null
+        ));
+    }
+
+    // 프로젝트 취소 시 에스크로 → 크리에이터 환불
+    @Transactional
+    public void refundEscrowForProject(Project project) {
+        if (project.getPrice() == null || project.getPrice() <= 0) return;
+        User requester = project.getRequester();
+        int amount = project.getPrice();
+        requester.refundEscrow(amount);
+        transactionRepository.save(new PointTransaction(
+                requester, amount, PointTransactionType.ESCROW_REFUND,
+                project.getEditor().getNickname() + "님과의 프로젝트 취소 환불",
+                null
+        ));
+    }
+
     // AI 분쟁 조정 정산 - finalAmount를 에디터에게, 나머지는 크리에이터에게 환불
     @Transactional
     public void settleDispute(Project project, int finalAmount) {
@@ -124,6 +172,9 @@ public class PointService {
             throw new IllegalStateException("프로젝트 금액이 설정되지 않아 정산할 수 없습니다.");
         }
         int originalAmount = project.getPrice();
+        if (finalAmount < 0 || finalAmount > originalAmount) {
+            throw new IllegalArgumentException("조정 금액이 원래 금액 범위를 벗어납니다.");
+        }
         int refundAmount = originalAmount - finalAmount;
 
         User requester = project.getRequester();
