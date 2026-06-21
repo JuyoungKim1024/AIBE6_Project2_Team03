@@ -15,7 +15,7 @@ import org.springframework.web.client.RestClient;
 public class GeminiClient {
 
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
     @Value("${gemini.api-key}")
     private String apiKey;
