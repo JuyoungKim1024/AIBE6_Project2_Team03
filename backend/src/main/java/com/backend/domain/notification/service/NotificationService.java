@@ -6,7 +6,6 @@ import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.domain.mypage.entity.MatchRequestStatus;
 import com.backend.domain.mypage.repository.MyPageMatchRequestRepository;
 import com.backend.domain.notification.dto.NotificationResponse;
-import com.backend.domain.point.service.PointService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ public class NotificationService {
 
     private final MyPageMatchRequestRepository matchRequestRepository;
     private final DirectChatRoomService directChatRoomService;
-    private final PointService pointService;
 
     // 로그인한 에디터에게 온 WAITING 상태 매칭 요청 목록 반환
     public List<NotificationResponse> getNotifications(String userId) {
@@ -34,23 +32,18 @@ public class NotificationService {
     @Transactional
     public NotificationResponse accept(String notificationId, String userId) {
         MatchRequest request = findAndValidate(notificationId, userId);
-        if (request.getStatus() != MatchRequestStatus.WAITING) {
-            throw new IllegalStateException("이미 처리된 요청입니다.");
-        }
-        request.accept();
-        pointService.holdSafePayment(request.getId());
+        request.accept(); // MatchRequest.accept() 내부에서 WAITING 상태 검사
 
-        // 채팅방 생성 및 양측 유저 추가
+        // 채팅방 생성 및 양측 유저 추가 (안전결제는 프로젝트 카드 수락 시 처리)
         ChatRoom room = directChatRoomService.getOrCreate(request.getRequester(), request.getEditor());
 
         return NotificationResponse.from(request, room.getId());
-
     }
 
     @Transactional
     public NotificationResponse reject(String notificationId, String userId) {
         MatchRequest request = findAndValidate(notificationId, userId);
-        request.reject();
+        request.reject(); // MatchRequest.reject() 내부에서 WAITING 상태 검사
         return NotificationResponse.from(request);
     }
 

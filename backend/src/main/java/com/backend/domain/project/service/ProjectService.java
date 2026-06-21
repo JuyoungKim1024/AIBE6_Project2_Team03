@@ -138,6 +138,8 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
+        // 안전결제 보관 먼저: 포인트 부족이면 여기서 실패해야 status가 오염되지 않음
+        pointService.holdSafePaymentForProject(project);
         project.start();
         return publishProject(project);
     }
