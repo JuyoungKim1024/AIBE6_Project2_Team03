@@ -2,7 +2,6 @@ package com.backend.global.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,18 +24,20 @@ public class GeminiClient {
     /**
      * Gemini에 텍스트 프롬프트를 보내고 응답 텍스트를 반환합니다.
      */
-    public String generate(String prompt) {
+    public String generate(String prompt) throws Exception {
         ObjectNode body = objectMapper.createObjectNode();
-        ArrayNode contents = body.putArray("contents");
-        ArrayNode parts = contents.addObject().putArray("parts");
+        var contents = body.putArray("contents");
+        var parts = contents.addObject().putArray("parts");
         parts.addObject().put("text", prompt);
+
+        String bodyJson = objectMapper.writeValueAsString(body);
 
         String response = RestClient.create()
                 .post()
                 .uri(GEMINI_URL)
                 .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
+                .body(bodyJson)
                 .retrieve()
                 .body(String.class);
 
