@@ -24,7 +24,7 @@ const quickAccessCards = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, isAuthChecked } = useAuth();
+  const { user } = useAuth();
   const { openModal } = useModal();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('jobs');
@@ -53,46 +53,13 @@ export default function HomePage() {
     fetchRandomEditors();
   }, [fetchRandomEditors]);
 
-  const handleMatchingClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!isAuthChecked) {
-      e.preventDefault();
-      return;
-    }
-
-    if (!user) {
-      e.preventDefault();
-      openModal({
-        title: '로그인이 필요합니다',
-        message: '맞춤매칭을 이용하려면 먼저 로그인해주세요.',
-        confirmLabel: '로그인하기',
-        onConfirm: () => router.push('/login'),
-      });
-      return;
-    }
-
-    if (user.role === 'EDITOR') {
+  const handleQuickCardClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (path === '/matching' && user?.role === 'EDITOR') {
       e.preventDefault();
       openModal({
         title: '크리에이터 전용 서비스',
         message: '맞춤매칭은 크리에이터 계정에서만 이용할 수 있습니다.\n에디터로 로그인된 상태에서는 접근할 수 없어요.',
       });
-      return;
-    }
-
-    if (!user.role) {
-      e.preventDefault();
-      openModal({
-        title: '계정 유형을 선택해주세요',
-        message: '맞춤매칭을 이용하려면 크리에이터 계정 설정을 완료해주세요.',
-        confirmLabel: '계정 설정하기',
-        onConfirm: () => router.push('/onboarding/role'),
-      });
-    }
-  };
-
-  const handleQuickCardClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    if (path === '/matching') {
-      handleMatchingClick(e);
     }
   };
 
@@ -323,7 +290,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-      <HomeFooter onMatchingClick={handleMatchingClick} />
+      <HomeFooter onQuickAccessClick={handleQuickCardClick} />
     </div>
   );
 }

@@ -9,9 +9,17 @@ const serviceLinks = [
 ];
 
 const pendingSupportLinks = ['공지사항', '자주 묻는 질문', '문의하기', '신고센터'];
-const pendingPolicyLinks = ['이용약관', '개인정보처리방침', '운영정책'];
+const policyLinks = [
+  { label: '이용약관', href: '/terms' },
+  { label: '개인정보처리방침', href: '/privacy' },
+  { label: '운영정책', href: '/policy' },
+];
 
-export function HomeFooter({ onMatchingClick }: { onMatchingClick: (event: React.MouseEvent<HTMLAnchorElement>) => void }) {
+export function HomeFooter({
+  onQuickAccessClick,
+}: {
+  onQuickAccessClick: (event: React.MouseEvent<HTMLAnchorElement>, path: string) => void;
+}) {
   return (
     <footer className="border-t border-border bg-surface/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -35,7 +43,7 @@ export function HomeFooter({ onMatchingClick }: { onMatchingClick: (event: React
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={item.href === '/matching' ? onMatchingClick : undefined}
+                onClick={item.href === '/matching' ? (event) => onQuickAccessClick(event, item.href) : undefined}
                 className="text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 {item.label}
@@ -65,8 +73,10 @@ export function HomeFooter({ onMatchingClick }: { onMatchingClick: (event: React
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-10 pt-6 border-t border-border">
           <p className="text-xs text-text-muted">© 2026 크크킄. All rights reserved.</p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {pendingPolicyLinks.map((label) => (
-              <PendingItem key={label} label={label} compact />
+            {policyLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+                {item.label}
+              </Link>
             ))}
           </div>
         </div>
