@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { TestAccountLoginButtons } from '@/components/auth/TestAccountLoginButtons';
 
 type AuthResponse = {
   accessToken: string;
@@ -114,6 +115,24 @@ export default function LoginPage() {
               카카오로 계속하기
             </button>
           </div>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-text-muted">테스트 계정</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <TestAccountLoginButtons
+            disabled={isSubmitting}
+            onStart={() => {
+              setError('');
+              setIsSubmitting(true);
+            }}
+            onError={(message) => {
+              setError(message);
+              setIsSubmitting(false);
+            }}
+          />
         </motion.div>
       </div>
     </div>

@@ -25,4 +25,8 @@ COOKIE_SECURE=true
 ADMIN_EMAIL=keukeukkeu47@gmail.com
 ADMIN_PASSWORD=change-this-password
 
+# Temporary test accounts. Set false before production deployment.
+TEST_ACCOUNTS_ENABLED=true
+TEST_ACCOUNT_PASSWORD=Test1234!
+
 # 실제 값은 application.properties에 작성 (gitignore됨)

@@ -11,6 +11,7 @@ export type AuthUser = {
   onboardingRequired: boolean;
   termsAgreed: boolean;
   admin: boolean;
+  testAccount: boolean;
 };
 
 export function clearTokens() {
