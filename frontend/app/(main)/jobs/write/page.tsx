@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X, Play } from "lucide-react";
+import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X, Play, Video, Wrench, DollarSign, RotateCcw } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { fetchJobPost } from "@/lib/api/post";
@@ -51,6 +51,7 @@ function JobsWriteContent() {
   const [previewItem, setPreviewItem] = useState<{ url: string; title: string; type: string } | null>(null);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const priceRangeError = !priceHidden && minPrice > maxPrice;
@@ -287,6 +288,7 @@ function JobsWriteContent() {
     <>
     <div className="min-h-screen pb-32">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <div className="flex items-center justify-between mb-8">
           <Link
             href={editId ? `/jobs/${editId}` : "/jobs"}
@@ -298,13 +300,22 @@ function JobsWriteContent() {
           <h1 className="text-xl font-bold text-text-primary">
             {editId ? "글 수정" : "글 작성"}
           </h1>
-          <button
-            onClick={() => setAiPanelOpen((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
-          >
-            <Sparkles size={14} />
-            AI 초안
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPreviewOpen((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${previewOpen ? "bg-surface-elevated text-text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+            >
+              {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+              미리보기
+            </button>
+            <button
+              onClick={() => setAiPanelOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
+            >
+              <Sparkles size={14} />
+              AI 초안
+            </button>
+          </div>
         </div>
 
         {/* AI 초안 패널 */}
@@ -675,6 +686,92 @@ function JobsWriteContent() {
           </button>
         </div>
       </div>
+
+      {/* 미리보기 드로어 */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-2xl h-full bg-surface border-l border-border flex flex-col shadow-2xl">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2 text-xs font-bold text-text-muted uppercase tracking-wider">
+                <Eye size={12} />
+                미리보기
+              </div>
+              <button onClick={() => setPreviewOpen(false)} className="p-1 text-text-muted hover:text-text-primary transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+              {/* 뱃지 + 태그 */}
+              <div className="flex flex-wrap items-center gap-2">
+                {type && (
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${type === "hiring" ? "bg-accent/10 text-accent" : "bg-primary/10 text-primary"}`}>
+                    {type === "hiring" ? "구인" : "구직"}
+                  </span>
+                )}
+                {[...selectedCategory, ...selectedSubCategory].map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 rounded bg-surface-elevated text-xs text-text-secondary border border-border/50">{tag}</span>
+                ))}
+                {[...selectedVideoTools, ...selectedDesignTools].map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 rounded bg-surface-elevated text-xs text-text-secondary border border-border/50">{tag}</span>
+                ))}
+              </div>
+              {/* 제목 */}
+              <h2 className="text-xl font-bold text-text-primary leading-tight">
+                {title || <span className="text-text-muted font-normal">제목을 입력해주세요</span>}
+              </h2>
+              {/* 내용 */}
+              {content ? (
+                <div
+                  className="text-sm text-text-secondary leading-relaxed [&_h1]:text-xl [&_h1]:font-bold [&_h1]:text-text-primary [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-text-primary [&_h2]:mb-1 [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_strong]:text-text-primary [&_img]:max-w-full [&_img]:rounded-lg"
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              ) : (
+                <p className="text-sm text-text-muted">내용을 입력하면 여기에 표시됩니다.</p>
+              )}
+              {/* 포트폴리오 */}
+              {type === "looking" && selectedGroupIds.length > 0 && (
+                <div className="bg-surface-elevated border border-border rounded-xl p-4">
+                  <p className="text-xs font-bold text-text-muted mb-3 uppercase tracking-wider">포트폴리오</p>
+                  <div className="space-y-2">
+                    {portfolioGroups
+                      .filter((g) => selectedGroupIds.includes(g.id))
+                      .map((g) => (
+                        <div key={g.id} className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-text-primary">{g.name}</span>
+                          <span className="text-xs text-text-muted bg-surface px-2 py-0.5 rounded-md">{g.items.length}개</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              {/* 작업 조건 요약 */}
+              <div className="bg-surface-elevated border border-border rounded-xl p-4">
+                <p className="text-xs font-bold text-text-muted mb-3 uppercase tracking-wider">작업 조건 요약</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { icon: Video, label: "콘텐츠 타입", value: [...selectedCategory, ...selectedSubCategory].join(", ") || "-" },
+                    { icon: Wrench, label: "사용 툴", value: [...selectedVideoTools, ...selectedDesignTools].join(", ") || "-" },
+                    { icon: DollarSign, label: "단가", value: priceHidden ? "비공개" : (minPrice || maxPrice) ? `₩${minPrice.toLocaleString("ko-KR")} ~ ₩${maxPrice.toLocaleString("ko-KR")}` : "-" },
+                    { icon: RotateCcw, label: "수정 횟수", value: unlimitedRevision ? "무제한" : revisionCount !== null ? `${revisionCount}회` : "-" },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div key={label} className="flex items-start gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center flex-shrink-0">
+                        <Icon size={13} className="text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs text-text-muted">{label}</div>
+                        <div className="text-xs font-bold text-text-primary truncate">{value}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
     </div>
 
     {/* 포트폴리오 미리보기 모달 */}

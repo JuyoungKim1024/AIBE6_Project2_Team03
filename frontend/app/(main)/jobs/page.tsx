@@ -26,11 +26,11 @@ function JobsContent() {
   const [activeTab, setActiveTab] = useState<JobType>(tabParam === "looking" ? "looking" : "hiring");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [sort, setSort] = useState("latest");
   const [jobs, setJobs] = useState<JobPostDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [sort, setSort] = useState("latest");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -88,7 +88,6 @@ function JobsContent() {
       const sameDay = new Date(a.createdAt).toDateString() === new Date(b.createdAt).toDateString();
       if (sort === "popular") return b.likeCount - a.likeCount;
       if (sort === "price") return (b.minPrice ?? 0) - (a.minPrice ?? 0);
-      // latest: 날짜 다르면 최신순, 같은 날이면 단가공개 우선
       if (!sameDay) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       if (a.priceVisible !== b.priceVisible) return a.priceVisible ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
