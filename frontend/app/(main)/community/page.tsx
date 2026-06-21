@@ -18,6 +18,8 @@ const categories = [
   { id: 'free', label: '💬 자유게시판', dot: 'bg-text-secondary' },
 ];
 
+const TAGS = ["꿀팁", "단축키", "오류해결", "템플릿", "협업", "계약", "장비추천", "잡담", "기타"];
+
 function CommunityContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,6 +27,11 @@ function CommunityContent() {
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [posts, setPosts] = useState<CommunityPostDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,7 +89,10 @@ function CommunityContent() {
         query === '' ||
         p.title.includes(query) ||
         p.author.nickname.includes(query);
-      return matchesQuery;
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.some((t) => p.tags.includes(t));
+      return matchesQuery && matchesTags;
     })
     .sort((a, b) => {
       if (sort === 'popular') return b.likeCount - a.likeCount;
@@ -133,6 +143,17 @@ function CommunityContent() {
             );
           })}
         </div>
+        <div className="flex gap-2 flex-wrap py-3 mb-2">
+          {TAGS.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedTags.includes(tag) ? 'bg-primary/10 border-primary/50 text-primary' : 'bg-surface-elevated border-border text-text-secondary hover:border-text-muted'}`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-col lg:flex-row gap-8 mt-6">
           <main className="flex-1 min-w-0 space-y-4">
             {loading ? (
@@ -148,7 +169,7 @@ function CommunityContent() {
                     type={post.category.toLowerCase() as PostType}
                     title={post.title}
                     author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
-                    categoryTags={[]}
+                    categoryTags={post.tags}
                     toolTags={[]}
                     likes={post.likeCount}
                     comments={post.commentCount}

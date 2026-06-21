@@ -63,6 +63,7 @@ export interface CommunityPostDto {
   author: AuthorDto;
   title: string;
   category: CommunityCategory;
+  tags: string[];
   thumbnailUrl: string | null;
   viewCount: number;
   likeCount: number;
