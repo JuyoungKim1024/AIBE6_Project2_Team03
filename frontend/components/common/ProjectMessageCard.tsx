@@ -15,6 +15,7 @@ export type ProjectMessagePayload = {
   /** 이전 채팅 카드 데이터 호환용 */
   videoLength?: number | null;
   revisionCount?: number;
+  revisionUnlimited?: boolean;
   deadline: string | null;
   memo: string | null;
   status: string;
@@ -24,6 +25,11 @@ function formatWorkAmount(project: ProjectMessagePayload) {
   const amount = project.workAmount ?? project.videoLength;
   if (!amount) return '미정';
   return project.workUnit === 'CASE' ? `${amount}건` : `${amount}분`;
+}
+
+function formatRevisionCount(project: ProjectMessagePayload) {
+  if (project.revisionUnlimited) return '무제한';
+  return `${project.revisionCount ?? 0}회`;
 }
 
 export function serializeProjectMessage(project: ProjectMessagePayload) {
@@ -111,7 +117,7 @@ export function ProjectMessageCard({
             )}
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="grid w-full grid-cols-3 gap-2 text-xs lg:w-72">
+            <div className="grid w-full grid-cols-4 gap-2 text-xs lg:w-96">
               <div>
                 <p className="text-text-muted">금액</p>
                 <p className="font-bold text-text-primary">{formatPrice(project.price)}</p>
@@ -123,6 +129,10 @@ export function ProjectMessageCard({
               <div>
                 <p className="text-text-muted">마감</p>
                 <p className="font-bold text-text-primary">{formatDeadline(project.deadline)}</p>
+              </div>
+              <div>
+                <p className="text-text-muted">수정</p>
+                <p className="font-bold text-text-primary">{formatRevisionCount(project)}</p>
               </div>
             </div>
             {actions ? <div className="flex w-full justify-end lg:w-auto">{actions}</div> : null}
@@ -151,6 +161,10 @@ export function ProjectMessageCard({
         <div className="rounded-lg bg-surface-elevated p-2">
           <p className="text-text-muted">작업량</p>
           <p className="mt-0.5 font-bold text-text-primary">{formatWorkAmount(project)}</p>
+        </div>
+        <div className="rounded-lg bg-surface-elevated p-2">
+          <p className="text-text-muted">수정 횟수</p>
+          <p className="mt-0.5 font-bold text-text-primary">{formatRevisionCount(project)}</p>
         </div>
       </div>
       <p className="mt-2 text-xs text-text-secondary">{formatDeadline(project.deadline)}</p>

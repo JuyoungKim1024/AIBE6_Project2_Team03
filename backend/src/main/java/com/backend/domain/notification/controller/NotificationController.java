@@ -46,4 +46,11 @@ public class NotificationController {
         String userId = authService.resolveUserId(authorizationHeader);
         return notificationService.reject(id, userId);
     }
+
+    @PatchMapping("/{id}/read")
+    public NotificationResponse markAsRead(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        return notificationService.markAsRead(id, authService.resolveUserId(authorizationHeader));
+    }
 }

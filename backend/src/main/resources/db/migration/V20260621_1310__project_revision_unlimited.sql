@@ -1,0 +1,2 @@
+ALTER TABLE projects
+    ADD COLUMN revision_unlimited BOOLEAN NOT NULL DEFAULT FALSE;

@@ -11,6 +11,7 @@ import { DirectChatRequestModal } from '@/components/common/DirectChatRequestMod
 import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
 import { useChatSocket } from '@/hooks/useChatSocket';
+import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 
 type AuthUser = {
   id: string;
@@ -69,6 +70,10 @@ export function ChatFAB() {
       ? current
       : [...current, message]);
     loadRooms();
+    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
+  }, (project) => {
+    setCurrentProject(project);
+    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
   });
 
   const accessToken = useMemo(() => {
@@ -90,6 +95,16 @@ export function ChatFAB() {
     }
 
     return response.json();
+  };
+
+  const markActiveRoomAsRead = async () => {
+    if (!activeRoomId || !accessToken) return;
+    try {
+      const state = await fetchJson<ChatUnreadState>(`/api/chat/rooms/${activeRoomId}/read`, { method: 'PATCH' });
+      window.dispatchEvent(new CustomEvent<ChatUnreadState>('chatUnreadChanged', { detail: state }));
+    } catch {
+      // 팝업을 다시 열거나 메시지를 수신할 때 재시도한다.
+    }
   };
 
   const loadRooms = async () => {
@@ -174,6 +189,7 @@ export function ChatFAB() {
     if (!showPopup || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
     loadProject(activeRoomId);
+    markActiveRoomAsRead();
   }, [activeRoomId, isDMActive, showPopup]);
 
   useEffect(() => {

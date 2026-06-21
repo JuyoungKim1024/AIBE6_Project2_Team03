@@ -8,6 +8,7 @@ import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
 import { useChatSocket } from '@/hooks/useChatSocket';
+import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
 
@@ -50,7 +51,11 @@ export default function ChatRoomPage() {
     setMessages((current) => current.some((item) => item.messageId === message.messageId)
       ? current
       : [...current, message]);
-  }, setCurrentProject);
+    if (document.visibilityState === 'visible') markRoomAsRead();
+  }, (project) => {
+    setCurrentProject(project);
+    if (document.visibilityState === 'visible') markRoomAsRead();
+  });
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -73,6 +78,16 @@ export default function ChatRoomPage() {
     setMessages(data);
   };
 
+  const markRoomAsRead = async () => {
+    if (!accessToken) return;
+    try {
+      const state = await fetchJson<ChatUnreadState>(`/api/chat/rooms/${roomId}/read`, { method: 'PATCH' });
+      window.dispatchEvent(new CustomEvent<ChatUnreadState>('chatUnreadChanged', { detail: state }));
+    } catch {
+      // 읽음 처리 실패가 채팅 이용을 막지 않도록 다음 진입 또는 포커스 시 재시도한다.
+    }
+  };
+
   useEffect(() => {
     if (!accessToken) {
       router.replace('/login');
@@ -92,11 +107,24 @@ export default function ChatRoomPage() {
         const currentRoom = rooms.find((item) => item.id === roomId);
         setRoomSummary(currentRoom ?? null);
         setIsPartnerWithdrawn(Boolean(currentRoom?.partnerDeleted || currentRoom?.partnerWithdrawn));
+        if (document.visibilityState === 'visible') markRoomAsRead();
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
 
   }, [accessToken, roomId, router]);
+
+  useEffect(() => {
+    const markWhenVisible = () => {
+      if (document.visibilityState === 'visible') markRoomAsRead();
+    };
+    window.addEventListener('focus', markWhenVisible);
+    document.addEventListener('visibilitychange', markWhenVisible);
+    return () => {
+      window.removeEventListener('focus', markWhenVisible);
+      document.removeEventListener('visibilitychange', markWhenVisible);
+    };
+  }, [accessToken, roomId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -187,8 +215,8 @@ export default function ChatRoomPage() {
             <div className="min-w-0">
               <h1 className="truncate text-base font-bold text-text-primary">{roomSummary?.partnerName ?? '채팅방'}</h1>
               <p className="truncate text-xs text-text-muted">
-                {roomSummary?.type === 'POST' ? '문의채팅' : roomSummary?.type === 'DIRECT' ? 'DM' : room?.roomType ?? '채팅'}
-                <span className={`ml-2 ${isConnected ? 'text-green-500' : 'text-text-muted'}`}>● {isConnected ? '온라인' : '오프라인'}</span>
+                {roomSummary?.type === 'POST' ? '문의채팅' : roomSummary?.type === 'DIRECT' ? 'DM' : roomSummary?.type === 'MATCHING' ? '맞춤매칭' : room?.roomType ?? '채팅'}
+                <span className={`ml-2 ${isConnected ? 'text-green-500' : 'text-text-muted'}`}>● {isConnected ? '연결됨' : '연결 안됨'}</span>
               </p>
             </div>
           </div>
@@ -199,6 +227,7 @@ export default function ChatRoomPage() {
           roomId={roomId}
           userId={user?.id ?? null}
           project={currentProject}
+          post={roomSummary?.post ?? null}
           onProjectChange={setCurrentProject}
           publishMessage={publishMessage}
         />

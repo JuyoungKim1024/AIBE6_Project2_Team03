@@ -2,6 +2,7 @@ package com.backend.domain.chat.entity;
 
 import com.backend.domain.chat.type.ChatRoomType;
 import com.backend.domain.post.entity.Post;
+import com.backend.domain.mypage.entity.MatchRequest;
 import com.backend.global.jpa.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -21,6 +22,10 @@ public class ChatRoom extends BaseEntity {
     @JoinColumn(name = "post_id")
     private Post post;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "match_request_id", unique = true)
+    private MatchRequest matchRequest;
+
     public ChatRoom(ChatRoomType roomType, Post post) {
         this.chatRoomType = roomType;
         this.post = post;
@@ -28,5 +33,10 @@ public class ChatRoom extends BaseEntity {
 
     public ChatRoom(ChatRoomType roomType) {
         this.chatRoomType = roomType;
+    }
+
+    public ChatRoom(MatchRequest matchRequest) {
+        this.chatRoomType = ChatRoomType.MATCHING;
+        this.matchRequest = matchRequest;
     }
 }

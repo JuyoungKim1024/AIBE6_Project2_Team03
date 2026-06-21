@@ -5,12 +5,12 @@ import { API_BASE_URL } from '@/lib/api';
 import type { ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
 
-function createFrame(command: string, headers: Record<string, string>, body = '') {
+export function createStompFrame(command: string, headers: Record<string, string>, body = '') {
   const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`);
   return `${command}\n${headerLines.join('\n')}\n\n${body}\0`;
 }
 
-function getWebSocketUrl() {
+export function getWebSocketUrl() {
   return `${API_BASE_URL.replace(/^http/, 'ws').replace(/\/$/, '')}/ws`;
 }
 
@@ -43,7 +43,7 @@ export function useChatSocket(
       socketRef.current = socket;
 
       socket.onopen = () => {
-        socket.send(createFrame('CONNECT', {
+        socket.send(createStompFrame('CONNECT', {
           'accept-version': '1.2',
           'heart-beat': '0,0',
         }));
@@ -60,12 +60,12 @@ export function useChatSocket(
 
           if (command === 'CONNECTED') {
             setIsConnected(true);
-            socket.send(createFrame('SUBSCRIBE', {
+            socket.send(createStompFrame('SUBSCRIBE', {
               id: `chat-room-${roomId}`,
               destination: `/topic/chat/rooms/${roomId}`,
               ack: 'auto',
             }));
-            socket.send(createFrame('SUBSCRIBE', {
+            socket.send(createStompFrame('SUBSCRIBE', {
               id: `chat-project-${roomId}`,
               destination: `/topic/chat/rooms/${roomId}/project`,
               ack: 'auto',
@@ -107,7 +107,7 @@ export function useChatSocket(
       socketRef.current = null;
       setIsConnected(false);
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(createFrame('DISCONNECT', { receipt: `disconnect-${roomId}` }));
+        socket.send(createStompFrame('DISCONNECT', { receipt: `disconnect-${roomId}` }));
       }
       socket?.close();
     };
@@ -122,7 +122,7 @@ export function useChatSocket(
     if (!roomId || !socket || socket.readyState !== WebSocket.OPEN || !isConnected) return false;
 
     const body = JSON.stringify(message);
-    socket.send(createFrame('SEND', {
+    socket.send(createStompFrame('SEND', {
       destination: `/app/chat/rooms/${roomId}/messages`,
       'content-type': 'application/json',
       'content-length': String(new TextEncoder().encode(body).length),

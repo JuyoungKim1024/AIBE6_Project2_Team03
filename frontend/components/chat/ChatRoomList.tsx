@@ -7,13 +7,15 @@ import { ChevronDown, MessageCircle, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { parseProjectMessage } from '@/components/common/ProjectMessageCard';
 import type { MyChatRoom } from '@/types/chat';
+import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 
-type ChatFilter = 'ALL' | 'POST' | 'DIRECT' | 'UNREAD';
+type ChatFilter = 'ALL' | 'POST' | 'DIRECT' | 'MATCHING' | 'UNREAD';
 
 const filters: { id: ChatFilter; label: string }[] = [
   { id: 'ALL', label: '전체' },
   { id: 'POST', label: '문의채팅' },
   { id: 'DIRECT', label: 'DM' },
+  { id: 'MATCHING', label: '맞춤매칭' },
   { id: 'UNREAD', label: '안읽은 메시지' },
 ];
 
@@ -40,6 +42,7 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
   const filteredRooms = useMemo(() => rooms.filter((room) => {
     if (activeFilter === 'POST') return room.type === 'POST';
     if (activeFilter === 'DIRECT') return room.type === 'DIRECT';
+    if (activeFilter === 'MATCHING') return room.type === 'MATCHING';
     if (activeFilter === 'UNREAD') return room.unreadCount > 0;
     return true;
   }), [activeFilter, rooms]);
@@ -62,6 +65,18 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
       .catch(() => setErrorMessage('채팅 목록을 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
   }, [router]);
+
+  useEffect(() => {
+    const handleUnreadChanged = (event: Event) => {
+      const state = (event as CustomEvent<ChatUnreadState>).detail;
+      if (!state?.roomId) return;
+      setRooms((current) => current.map((room) => room.id === state.roomId
+        ? { ...room, unreadCount: state.roomUnreadCount }
+        : room));
+    };
+    window.addEventListener('chatUnreadChanged', handleUnreadChanged);
+    return () => window.removeEventListener('chatUnreadChanged', handleUnreadChanged);
+  }, []);
 
   const deleteRoom = async (roomId: string) => {
     if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
@@ -132,7 +147,7 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-bold text-text-primary">{room.partnerName}</span>
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                      {room.type === 'POST' ? '문의채팅' : room.type === 'DIRECT' ? 'DM' : '프로젝트'}
+                      {room.type === 'POST' ? '문의채팅' : room.type === 'DIRECT' ? 'DM' : room.type === 'MATCHING' ? '맞춤매칭' : '프로젝트'}
                     </span>
                   </div>
                   <p className="mt-1 truncate text-xs text-text-secondary">{getLastMessageText(room)}</p>

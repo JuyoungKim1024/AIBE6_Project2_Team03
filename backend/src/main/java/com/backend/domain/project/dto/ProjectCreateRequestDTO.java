@@ -9,6 +9,8 @@ public record ProjectCreateRequestDTO (
         Integer price,
         Integer workAmount,
         ProjectWorkUnit workUnit,
+        Integer revisionCount,
+        boolean revisionUnlimited,
         LocalDateTime deadline,
         String memo
 ) {}

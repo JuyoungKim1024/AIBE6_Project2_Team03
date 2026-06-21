@@ -1,0 +1,11 @@
+package com.backend.domain.notification.entity;
+
+public enum ProjectNotificationType {
+    PROJECT_REQUESTED,
+    PROJECT_UPDATED,
+    PROJECT_ACCEPTED,
+    PROJECT_REJECTED,
+    PROJECT_COMPLETION_REQUESTED,
+    PROJECT_COMPLETED,
+    PROJECT_CANCELED
+}

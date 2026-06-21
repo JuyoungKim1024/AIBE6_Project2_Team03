@@ -8,6 +8,7 @@ import {
   serializeProjectMessage,
   type ProjectMessagePayload,
 } from '@/components/common/ProjectMessageCard';
+import type { ChatPostSummary } from '@/types/chat';
 
 type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
 
@@ -16,7 +17,10 @@ type ProjectForm = {
   price: string;
   workAmount: string;
   workUnit: 'MINUTE' | 'CASE';
-  deadline: string;
+  revisionCount: string;
+  revisionUnlimited: boolean;
+  deadlineDate: string;
+  deadlineTime: string;
   memo: string;
 };
 
@@ -27,12 +31,26 @@ type Props = {
   roomId: string;
   userId: string | null;
   project: ProjectMessagePayload | null;
+  post: ChatPostSummary | null;
   onProjectChange: (project: ProjectMessagePayload | null) => void;
   publishMessage: (message: { senderId: string; content: string; messageType: 'TEXT' }) => boolean;
 };
 
-const emptyForm: ProjectForm = { field: '', price: '', workAmount: '', workUnit: 'MINUTE', deadline: '', memo: '' };
+const emptyForm: ProjectForm = {
+  field: '',
+  price: '',
+  workAmount: '',
+  workUnit: 'MINUTE',
+  revisionCount: '',
+  revisionUnlimited: false,
+  deadlineDate: '',
+  deadlineTime: '',
+  memo: '',
+};
 const visibleStatuses = ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'];
+const deadlineTimes = Array.from({ length: 24 }, (_, hour) =>
+  `${String(hour).padStart(2, '0')}:00`,
+);
 
 function getTomorrowMin() {
   const tomorrow = new Date();
@@ -41,7 +59,7 @@ function getTomorrowMin() {
   return new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-export function ChatProjectPanel({ roomId, userId, project, onProjectChange, publishMessage }: Props) {
+export function ChatProjectPanel({ roomId, userId, project, post, onProjectChange, publishMessage }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -88,7 +106,12 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
 
   const openCreateForm = () => {
     setIsEditing(false);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      field: post?.fieldTags.join(', ') ?? '',
+      revisionCount: post?.revisionCount == null ? '' : String(post.revisionCount),
+      revisionUnlimited: Boolean(post && post.revisionCount == null),
+    });
     setErrorMessage('');
     setIsFormOpen(true);
   };
@@ -101,7 +124,10 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
       price: project.price ? String(project.price) : '',
       workAmount: project.workAmount || project.videoLength ? String(project.workAmount ?? project.videoLength) : '',
       workUnit: project.workUnit ?? 'MINUTE',
-      deadline: project.deadline?.slice(0, 16) ?? '',
+      revisionCount: String(project.revisionCount ?? 0),
+      revisionUnlimited: project.revisionUnlimited ?? false,
+      deadlineDate: project.deadline?.slice(0, 10) ?? '',
+      deadlineTime: project.deadline?.slice(11, 16) ?? '',
       memo: project.memo ?? '',
     });
     setErrorMessage('');
@@ -111,11 +137,12 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
   const saveProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!userId || isSaving) return;
-    if (!form.field.trim() || !form.price || !form.workAmount || !form.deadline) {
+    if (!form.field.trim() || !form.price || !form.workAmount || (!form.revisionUnlimited && !form.revisionCount) || !form.deadlineDate || !form.deadlineTime) {
       setErrorMessage('메모를 제외한 모든 항목을 입력해주세요.');
       return;
     }
-    if (form.deadline && form.deadline < minDeadline) {
+    const deadline = `${form.deadlineDate}T${form.deadlineTime}`;
+    if (deadline < minDeadline) {
       setErrorMessage('마감일은 내일 이후로 설정해주세요.');
       return;
     }
@@ -132,7 +159,9 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
           price: form.price ? Number(form.price) : null,
           workAmount: form.workAmount ? Number(form.workAmount) : null,
           workUnit: form.workUnit,
-          deadline: form.deadline || null,
+          revisionCount: form.revisionUnlimited ? 0 : Number(form.revisionCount),
+          revisionUnlimited: form.revisionUnlimited,
+          deadline,
           memo: form.memo.trim(),
         }),
       });
@@ -231,7 +260,7 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
       {isFormOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <button type="button" onClick={() => !isSaving && setIsFormOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-label="프로젝트 입력 닫기" />
-          <form onSubmit={saveProject} className="relative w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl">
+          <form onSubmit={saveProject} className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface p-6 shadow-2xl">
             <h2 className="text-lg font-bold text-text-primary">{isEditing ? '프로젝트 수정' : '프로젝트 시작'}</h2>
             <p className="mt-1 text-sm text-text-secondary">작업 조건을 입력해주세요.</p>
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -245,7 +274,24 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
                 </div>
               </div>
               <ProjectInput label={form.workUnit === 'CASE' ? '작업 건수(건)' : '영상 길이(분)'} type="number" min="1" value={form.workAmount} onChange={(value) => setForm((current) => ({ ...current, workAmount: value }))} placeholder={form.workUnit === 'CASE' ? '예: 5' : '예: 10'} />
-              <ProjectInput label="마감일" type="datetime-local" min={minDeadline} value={form.deadline} onChange={(value) => setForm((current) => ({ ...current, deadline: value }))} />
+              <label className="text-sm font-bold text-text-secondary">
+                수정 횟수
+                <div className="mt-2 flex gap-2">
+                  <input required={!form.revisionUnlimited} disabled={form.revisionUnlimited} type="number" min="0" value={form.revisionCount} onChange={(event) => setForm((current) => ({ ...current, revisionCount: event.target.value }))} className="form-input min-w-0 flex-1 disabled:opacity-50" placeholder="예: 2" />
+                  <button type="button" onClick={() => setForm((current) => ({ ...current, revisionUnlimited: !current.revisionUnlimited }))} className={`rounded-lg border px-3 text-xs font-bold ${form.revisionUnlimited ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface-elevated text-text-secondary'}`}>무제한</button>
+                </div>
+              </label>
+              <label className="text-sm font-bold text-text-secondary">
+                마감 날짜
+                <input required type="date" min={minDeadline.slice(0, 10)} value={form.deadlineDate} onChange={(event) => setForm((current) => ({ ...current, deadlineDate: event.target.value }))} className="form-input mt-2" />
+              </label>
+              <label className="text-sm font-bold text-text-secondary">
+                마감 시간
+                <select required value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2">
+                  <option value="">시간 선택</option>
+                  {deadlineTimes.map((time) => <option key={time} value={time}>{time}</option>)}
+                </select>
+              </label>
             </div>
             <label className="mt-4 block text-sm font-bold text-text-secondary">
               메모
@@ -254,7 +300,7 @@ export function ChatProjectPanel({ roomId, userId, project, onProjectChange, pub
             {errorMessage && <p className="mt-3 text-xs font-bold text-accent">{errorMessage}</p>}
             <div className="mt-5 flex gap-3">
               <button type="button" disabled={isSaving} onClick={() => setIsFormOpen(false)} className="flex-1 rounded-xl bg-surface-elevated py-2.5 text-sm font-bold text-text-primary disabled:opacity-50">취소</button>
-              <button type="submit" disabled={isSaving || !form.field.trim() || !form.price || !form.workAmount || !form.deadline} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white disabled:opacity-50">{isSaving ? '저장 중...' : isEditing ? '수정하기' : '프로젝트 시작'}</button>
+              <button type="submit" disabled={isSaving || !form.field.trim() || !form.price || !form.workAmount || (!form.revisionUnlimited && !form.revisionCount) || !form.deadlineDate || !form.deadlineTime} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white disabled:opacity-50">{isSaving ? '저장 중...' : isEditing ? '수정하기' : '프로젝트 시작'}</button>
             </div>
           </form>
         </div>

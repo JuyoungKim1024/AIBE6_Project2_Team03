@@ -11,6 +11,8 @@ import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.project.entity.ProjectWorkUnit;
 import com.backend.domain.project.repository.ProjectRepository;
+import com.backend.domain.notification.entity.ProjectNotificationType;
+import com.backend.domain.notification.service.ProjectNotificationService;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ProjectNotificationService projectNotificationService;
 
     private ProjectResponseDTO publishProject(Project project) {
         ProjectResponseDTO response = ProjectResponseDTO.from(project);
@@ -35,6 +38,16 @@ public class ProjectService {
                 "/topic/chat/rooms/" + project.getRoom().getId() + "/project",
                 response
         );
+        return response;
+    }
+
+    private ProjectResponseDTO publishProjectChange(
+            Project project,
+            String changedByUserId,
+            ProjectNotificationType notificationType
+    ) {
+        ProjectResponseDTO response = publishProject(project);
+        projectNotificationService.notify(project, changedByUserId, notificationType);
         return response;
     }
 
@@ -54,7 +67,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponseDTO createProject(String userId, ProjectCreateRequestDTO request) {
-        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.deadline());
+        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.revisionCount(), request.revisionUnlimited(), request.deadline());
 
         ChatRoom room = chatRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
@@ -91,11 +104,14 @@ public class ProjectService {
                 request.price(),
                 request.workAmount(),
                 request.workUnit(),
+                request.revisionCount() == null ? 0 : request.revisionCount(),
+                request.revisionUnlimited(),
                 request.deadline(),
                 request.memo()
         );
 
-        return publishProject(projectRepository.save(project));
+        Project saved = projectRepository.save(project);
+        return publishProjectChange(saved, userId, ProjectNotificationType.PROJECT_REQUESTED);
     }
 
     @Transactional(readOnly = true)
@@ -116,7 +132,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponseDTO updateProject(String userId, String projectId, ProjectUpdateRequestDTO request) {
-        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.deadline());
+        validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.revisionCount(), request.revisionUnlimited(), request.deadline());
 
         Project project = getProject(projectId);
         validateRequester(project, userId);
@@ -129,10 +145,12 @@ public class ProjectService {
                 request.price(),
                 request.workAmount(),
                 request.workUnit(),
+                request.revisionCount() == null ? 0 : request.revisionCount(),
+                request.revisionUnlimited(),
                 request.deadline(),
                 request.memo()
         );
-        return publishProject(project);
+        return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_UPDATED);
     }
 
     @Transactional
@@ -141,7 +159,7 @@ public class ProjectService {
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         project.start();
-        return publishProject(project);
+        return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_ACCEPTED);
     }
 
     @Transactional
@@ -150,7 +168,7 @@ public class ProjectService {
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         project.reject();
-        return publishProject(project);
+        return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_REJECTED);
     }
 
     @Transactional
@@ -158,7 +176,10 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
         project.requestComplete(userId);
-        return publishProject(project);
+        ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.COMPLETION_PENDING
+                ? ProjectNotificationType.PROJECT_COMPLETION_REQUESTED
+                : ProjectNotificationType.PROJECT_COMPLETED;
+        return publishProjectChange(project, userId, notificationType);
     }
 
     @Transactional
@@ -171,7 +192,7 @@ public class ProjectService {
             throw new IllegalArgumentException("취소할 수 없는 프로젝트 상태입니다.");
         }
         project.cancel();
-        return publishProject(project);
+        return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_CANCELED);
     }
 
     private Project getProject(String projectId) {
@@ -184,6 +205,8 @@ public class ProjectService {
             Integer price,
             Integer workAmount,
             ProjectWorkUnit workUnit,
+            Integer revisionCount,
+            boolean revisionUnlimited,
             java.time.LocalDateTime deadline
     ) {
         if (field == null || field.isBlank()) {
@@ -197,6 +220,12 @@ public class ProjectService {
         }
         if (workUnit == null) {
             throw new IllegalArgumentException("작업량 단위를 선택해주세요.");
+        }
+        if (!revisionUnlimited && revisionCount == null) {
+            throw new IllegalArgumentException("수정 횟수를 입력해주세요.");
+        }
+        if (revisionCount != null && revisionCount < 0) {
+            throw new IllegalArgumentException("수정 횟수는 0 이상이어야 합니다.");
         }
         if (deadline == null) {
             throw new IllegalArgumentException("마감일을 입력해주세요.");

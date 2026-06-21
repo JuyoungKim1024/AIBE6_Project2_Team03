@@ -44,6 +44,9 @@ public class Project extends BaseEntity {
     @Column(name = "revision_count", nullable=false)
     private int revisionCount = 0;
 
+    @Column(name = "revision_unlimited", nullable = false)
+    private boolean revisionUnlimited = false;
+
     @Column(nullable=false)
     private LocalDateTime deadline;
 
@@ -59,7 +62,7 @@ public class Project extends BaseEntity {
 
 
 
-    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, LocalDateTime deadline, String memo) {
+    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
         this.room = room;
         this.requester = requester;
         this.editor = editor;
@@ -67,15 +70,19 @@ public class Project extends BaseEntity {
         this.price = price;
         this.workAmount = workAmount;
         this.workUnit = workUnit == null ? ProjectWorkUnit.MINUTE : workUnit;
+        this.revisionCount = revisionCount;
+        this.revisionUnlimited = revisionUnlimited;
         this.deadline = deadline;
         this.memo = memo;
     }
 
-    public void update(String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, LocalDateTime deadline, String memo) {
+    public void update(String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
         this.field = field;
         this.price = price;
         this.workAmount = workAmount;
         this.workUnit = workUnit == null ? ProjectWorkUnit.MINUTE : workUnit;
+        this.revisionCount = revisionCount;
+        this.revisionUnlimited = revisionUnlimited;
         this.deadline = deadline;
         this.memo = memo;
     }
