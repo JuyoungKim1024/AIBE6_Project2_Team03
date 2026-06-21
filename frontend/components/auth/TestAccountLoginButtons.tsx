@@ -2,6 +2,8 @@
 
 import { Scissors, Youtube } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { formatSuspensionMessage, isSuspensionResponse } from '@/lib/suspension';
+import { useModal } from '@/store/modalStore';
 
 const TEST_ACCOUNT_LOGIN_ENABLED = true;
 
@@ -17,6 +19,7 @@ export function TestAccountLoginButtons({
   onStart: () => void;
   onError: (message: string) => void;
 }) {
+  const { openModal } = useModal();
   if (!TEST_ACCOUNT_LOGIN_ENABLED) return null;
 
   const login = async (role: TestRole) => {
@@ -28,7 +31,21 @@ export function TestAccountLoginButtons({
         credentials: 'include',
       });
       const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(data?.message ?? '테스트 계정 로그인에 실패했습니다.');
+      if (!response.ok) {
+        if (response.status === 423 && isSuspensionResponse(data)) {
+          openModal({
+            title: '임시 제한 계정입니다',
+            message: formatSuspensionMessage(
+              data.reason,
+              data.suspendedUntil,
+              data.remainingMinutes,
+            ),
+          });
+          onError('');
+          return;
+        }
+        throw new Error(data?.message ?? '테스트 계정 로그인에 실패했습니다.');
+      }
       const auth = data as AuthResponse;
       localStorage.setItem('accessToken', auth.accessToken);
       localStorage.setItem('refreshToken', auth.refreshToken);

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface CommentRepository extends JpaRepository<Comment, String> {
+    List<Comment> findAllByOrderByCreatedAtDesc();
 
     @Query("SELECT c FROM Comment c JOIN FETCH c.writer WHERE c.post.id = :postId ORDER BY c.createdAt ASC")
     List<Comment> findAllByPostId(@Param("postId") String postId);

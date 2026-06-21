@@ -14,6 +14,7 @@ import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.RoleUpdateRequest;
 import com.backend.domain.auth.dto.UserResponse;
 import com.backend.domain.auth.service.AuthService;
+import com.backend.global.exception.SuspendedAccountException;
 import com.backend.domain.user.entity.SocialProvider;
 import com.backend.domain.user.entity.UserRole;
 import java.net.URI;
@@ -67,7 +68,29 @@ public class AuthController {
     @GetMapping("/auth/{provider}/callback")
     public ResponseEntity<Void> callback(@PathVariable String provider, @RequestParam String code) {
         SocialProvider socialProvider = SocialProvider.valueOf(provider.toUpperCase());
-        AuthResponse response = authService.login(socialProvider, code);
+        AuthResponse response;
+        try {
+            response = authService.login(socialProvider, code);
+        } catch (SuspendedAccountException exception) {
+            URI errorRedirectUri = UriComponentsBuilder.fromUriString(frontendUrl)
+                    .path("/login")
+                    .queryParam("errorCode", "ACCOUNT_SUSPENDED")
+                    .queryParam("reason", exception.getReason())
+                    .queryParam("suspendedUntil", exception.getSuspendedUntil())
+                    .queryParam("remainingMinutes", exception.getRemainingMinutes())
+                    .build()
+                    .encode()
+                    .toUri();
+            return ResponseEntity.status(302).location(errorRedirectUri).build();
+        } catch (IllegalArgumentException exception) {
+            URI errorRedirectUri = UriComponentsBuilder.fromUriString(frontendUrl)
+                    .path("/login")
+                    .queryParam("error", exception.getMessage())
+                    .build()
+                    .encode()
+                    .toUri();
+            return ResponseEntity.status(302).location(errorRedirectUri).build();
+        }
         URI redirectUri = UriComponentsBuilder.fromUriString(frontendUrl)
                 .path("/login/callback")
                 .queryParam("accessToken", response.accessToken())
