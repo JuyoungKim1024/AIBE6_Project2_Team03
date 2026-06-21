@@ -1,3 +1,5 @@
 package com.backend.domain.dispute.dto;
 
-public record DisputeRespondRequest(boolean accepted) {}
+import jakarta.validation.constraints.NotNull;
+
+public record DisputeRespondRequest(@NotNull Boolean accepted) {}

@@ -41,7 +41,7 @@ public class DisputeController {
     public DisputeResponse respond(
             @RequestHeader("Authorization") String authorization,
             @PathVariable String disputeId,
-            @RequestBody DisputeRespondRequest request
+            @Valid @RequestBody DisputeRespondRequest request
     ) {
         String userId = authService.resolveUserId(authorization);
         return disputeService.respond(userId, disputeId, request);

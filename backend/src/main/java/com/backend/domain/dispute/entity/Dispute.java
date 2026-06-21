@@ -63,7 +63,7 @@ public class Dispute extends BaseEntity {
         this.status = DisputeStatus.ESCALATED;
     }
 
-    public void respond(String userId, boolean accepted) {
+    public void respond(String userId, Boolean accepted) {
         String requesterId = project.getRequester().getId();
         String editorId = project.getEditor().getId();
 

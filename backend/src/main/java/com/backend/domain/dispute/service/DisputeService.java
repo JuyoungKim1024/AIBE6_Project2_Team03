@@ -46,7 +46,7 @@ public class DisputeService {
 
         boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
                 request.projectId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED)
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.ESCALATED)
         );
         if (hasActiveDispute) {
             throw new IllegalStateException("이미 진행 중인 분쟁이 있습니다.");
