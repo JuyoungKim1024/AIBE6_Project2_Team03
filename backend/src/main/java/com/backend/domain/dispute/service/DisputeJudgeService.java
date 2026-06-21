@@ -16,7 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.joining;
 
 @Slf4j
 @Service
@@ -34,7 +35,7 @@ public class DisputeJudgeService {
     @Async("disputeJudgeExecutor")
     @Transactional
     public void judgeAsync(String disputeId) {
-        Dispute dispute = disputeRepository.findById(disputeId).orElse(null);
+        Dispute dispute = disputeRepository.findByIdWithDetails(disputeId).orElse(null);
         if (dispute == null) {
             log.error("judgeAsync: dispute를 찾을 수 없습니다. disputeId={}", disputeId);
             return;
@@ -71,7 +72,7 @@ public class DisputeJudgeService {
                         m.getCreatedAt().format(FORMATTER),
                         m.getSender().getNickname(),
                         m.getContent()))
-                .collect(Collectors.joining("\n"));
+                .collect(joining("\n"));
     }
 
     private String buildPrompt(Dispute dispute, Project project, String chatHistory) {
