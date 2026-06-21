@@ -34,17 +34,8 @@ import {
   togglePostLike,
   getPostLikedStatus,
 } from "@/lib/api/post";
-import {
-  createPostChatRequest,
-  getInitialChatRequestMessage,
-  markInitialChatRequestMessageUsed,
-} from "@/lib/api/chat";
-import {
-  JobPostDetailDto,
-  CommentDto,
-  AttachedPortfolioGroup,
-  AttachedPortfolioItem,
-} from "@/types/post";
+import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
+import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {

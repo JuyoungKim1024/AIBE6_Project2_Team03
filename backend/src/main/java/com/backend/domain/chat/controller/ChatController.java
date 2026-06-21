@@ -5,6 +5,7 @@ import com.backend.domain.chat.dto.ChatMessageResponseDTO;
 import com.backend.domain.chat.dto.ChatMessageSendRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomResponseDTO;
+import com.backend.domain.chat.dto.ChatUnreadResponseDTO;
 import com.backend.domain.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -51,6 +52,21 @@ public class ChatController {
     @GetMapping("/{roomId}/messages")
     public List<ChatMessageResponseDTO> findByChatRoomMessage(@PathVariable String roomId) {
         return chatService.getMessageList(roomId);
+    }
+
+    @GetMapping("/unread-count")
+    public ChatUnreadResponseDTO getUnreadCount(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        return chatService.getUnreadCount(authService.resolveUserId(authorizationHeader));
+    }
+
+    @PatchMapping("/{roomId}/read")
+    public ChatUnreadResponseDTO markRoomAsRead(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String roomId
+    ) {
+        return chatService.markRoomAsRead(roomId, authService.resolveUserId(authorizationHeader));
     }
 
     @PostMapping("/{roomId}/messages")

@@ -3,13 +3,15 @@
 import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, MessageSquare, RefreshCw, Send, Trash2, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage } from '@/types/chat';
+import { useChatSocket } from '@/hooks/useChatSocket';
+import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 
 type AuthUser = {
   id: string;
@@ -43,6 +45,7 @@ type MyProjects = {
 
 export function ChatFAB() {
   const router = useRouter();
+  const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -53,7 +56,6 @@ export function ChatFAB() {
   const [draft, setDraft] = useState('');
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [isRequestingDm, setIsRequestingDm] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { activeDMUser, closeDM } = useDM();
@@ -63,6 +65,16 @@ export function ChatFAB() {
   const activeRoom = chatRooms.find((chat) => chat.id === activeRoomId);
   const activePartnerName = activeRoom?.partnerName ?? '채팅방';
   const isPartnerWithdrawn = Boolean(activeRoom?.partnerDeleted || activeRoom?.partnerWithdrawn);
+  const { isConnected, publishMessage } = useChatSocket(activeRoomId, (message) => {
+    setMessages((current) => current.some((item) => item.messageId === message.messageId)
+      ? current
+      : [...current, message]);
+    loadRooms();
+    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
+  }, (project) => {
+    setCurrentProject(project);
+    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
+  });
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
@@ -83,6 +95,16 @@ export function ChatFAB() {
     }
 
     return response.json();
+  };
+
+  const markActiveRoomAsRead = async () => {
+    if (!activeRoomId || !accessToken) return;
+    try {
+      const state = await fetchJson<ChatUnreadState>(`/api/chat/rooms/${activeRoomId}/read`, { method: 'PATCH' });
+      window.dispatchEvent(new CustomEvent<ChatUnreadState>('chatUnreadChanged', { detail: state }));
+    } catch {
+      // 팝업을 다시 열거나 메시지를 수신할 때 재시도한다.
+    }
   };
 
   const loadRooms = async () => {
@@ -131,7 +153,8 @@ export function ChatFAB() {
             completionRequestedBy: project.completionRequestedBy,
             field: project.field,
             price: null,
-            videoLength: null,
+            workAmount: null,
+            workUnit: 'MINUTE',
             deadline: null,
             memo: null,
             status: project.status,
@@ -166,6 +189,7 @@ export function ChatFAB() {
     if (!showPopup || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
     loadProject(activeRoomId);
+    markActiveRoomAsRead();
   }, [activeRoomId, isDMActive, showPopup]);
 
   useEffect(() => {
@@ -281,31 +305,23 @@ export function ChatFAB() {
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !activeRoomId || !user || isSending || isPartnerWithdrawn) return;
+    if (!content || !activeRoomId || !user || isPartnerWithdrawn) return;
 
-    setIsSending(true);
     setErrorMessage('');
 
-    try {
-      const saved = await fetchJson<ChatMessage>(`/api/chat/rooms/${activeRoomId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: user.id,
-          content,
-          messageType: 'TEXT',
-        }),
-      });
-      const savedMessage = saved.messageId ? saved : { ...saved, messageId: `requested-${Date.now()}` };
-      setMessages((current) => [...current, savedMessage]);
-      setDraft('');
-      loadRooms();
-    } catch {
-      setErrorMessage('메시지를 보내지 못했습니다.');
-    } finally {
-      setIsSending(false);
+    const published = publishMessage({
+      senderId: user.id,
+      content,
+      messageType: 'TEXT',
+    });
+    if (!published) {
+      setErrorMessage('실시간 채팅 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
     }
+    setDraft('');
   };
+
+  if (pathname.startsWith('/chat')) return null;
 
   return (
     <>
@@ -494,7 +510,7 @@ export function ChatFAB() {
                       />
                       <button
                         type="submit"
-                        disabled={!draft.trim() || !activeRoomId || isSending || isPartnerWithdrawn}
+                        disabled={!draft.trim() || !activeRoomId || isPartnerWithdrawn || !isConnected}
                         className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="메시지 보내기"
                       >

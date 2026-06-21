@@ -7,6 +7,7 @@ import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.chat.type.ChatRoomType;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.user.entity.User;
+import com.backend.domain.mypage.entity.MatchRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,14 @@ public class DirectChatRoomService {
                     chatParticipantRepository.save(new ChatParticipant(room, user2));
                     return room;
                 });
+    }
+
+    @Transactional
+    public ChatRoom createMatchingRoom(MatchRequest matchRequest, User requester, User editor) {
+        ChatRoom room = chatRoomRepository.save(new ChatRoom(matchRequest));
+        chatParticipantRepository.save(new ChatParticipant(room, requester));
+        chatParticipantRepository.save(new ChatParticipant(room, editor));
+        return room;
     }
 
     public void restoreParticipant(ChatRoom room, User user) {

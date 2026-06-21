@@ -2,6 +2,7 @@ package com.backend.domain.project.dto;
 
 import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
+import com.backend.domain.project.entity.ProjectWorkUnit;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +13,10 @@ public record ProjectResponseDTO(
         String editorId,
         String field,
         Integer price,
-        Integer videoLength,
+        Integer workAmount,
+        ProjectWorkUnit workUnit,
         int revisionCount,
+        boolean revisionUnlimited,
         LocalDateTime deadline,
         String memo,
         ProjectStatus status,
@@ -28,8 +31,10 @@ public record ProjectResponseDTO(
                 project.getEditor().getId(),
                 project.getField(),
                 project.getPrice(),
-                project.getVideoLength(),
+                project.getWorkAmount(),
+                project.getWorkUnit(),
                 project.getRevisionCount(),
+                project.isRevisionUnlimited(),
                 project.getDeadline(),
                 project.getMemo(),
                 project.getStatus(),

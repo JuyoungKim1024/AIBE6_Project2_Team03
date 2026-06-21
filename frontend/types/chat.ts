@@ -11,7 +11,7 @@ export interface ChatRoom {
 }
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'FILE';
-export type ChatRoomType = 'DIRECT' | 'POST' | 'PROJECT';
+export type ChatRoomType = 'DIRECT' | 'POST' | 'PROJECT' | 'MATCHING';
 
 export interface ChatPostSummary {
   id: string;
@@ -19,6 +19,8 @@ export interface ChatPostSummary {
   priceMin: number | null;
   priceMax: number | null;
   deadline: string | null;
+  fieldTags: string[];
+  revisionCount: number | null;
 }
 
 export interface MyChatRoom {

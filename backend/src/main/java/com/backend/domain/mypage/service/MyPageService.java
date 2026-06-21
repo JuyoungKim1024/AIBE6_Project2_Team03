@@ -15,6 +15,7 @@ import com.backend.domain.mypage.repository.MyPageProjectRepository;
 import com.backend.domain.post.entity.CommunityPost;
 import com.backend.domain.post.entity.JobPost;
 import com.backend.domain.post.entity.Post;
+import com.backend.domain.post.entity.PostTag;
 import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.profile.entity.Portfolio;
 import com.backend.domain.project.entity.Project;
@@ -418,7 +419,12 @@ public class MyPageService {
                     post.getId(),
                     post.getTitle(),
                     priceMin,
-                    priceMax
+                    priceMax,
+                    post.getTags().stream()
+                            .filter(tag -> tag.getTagType() == PostTag.TagType.FIELD)
+                            .map(PostTag::getTagName)
+                            .toList(),
+                    post.getRevisionCount()
             );
         }
 
