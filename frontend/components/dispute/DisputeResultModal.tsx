@@ -91,8 +91,8 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || '응답 처리에 실패했습니다.');
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || '응답 처리에 실패했습니다.');
       }
       const data: DisputeData = await res.json();
       setDispute(data);
