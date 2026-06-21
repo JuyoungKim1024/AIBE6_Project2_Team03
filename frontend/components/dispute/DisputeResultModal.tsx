@@ -177,7 +177,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-border bg-surface-elevated p-3">
                     <p className="text-xs font-bold text-amber-500 mb-2">에디터 귀책 사유</p>
-                    {judgment.editorFaultReasons.length === 0 ? (
+                    {(judgment.editorFaultReasons?.length ?? 0) === 0 ? (
                       <p className="text-xs text-text-muted">없음</p>
                     ) : (
                       <ul className="space-y-1">
@@ -191,7 +191,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
                   </div>
                   <div className="rounded-xl border border-border bg-surface-elevated p-3">
                     <p className="text-xs font-bold text-blue-500 mb-2">크리에이터 귀책 사유</p>
-                    {judgment.requesterFaultReasons.length === 0 ? (
+                    {(judgment.requesterFaultReasons?.length ?? 0) === 0 ? (
                       <p className="text-xs text-text-muted">없음</p>
                     ) : (
                       <ul className="space-y-1">
