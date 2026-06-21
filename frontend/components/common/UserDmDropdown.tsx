@@ -20,6 +20,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const isWithdrawnUser = targetName === '탈퇴한 사용자';
 
   useEffect(() => {
     function handleClick(event: MouseEvent | globalThis.MouseEvent) {
@@ -95,6 +96,10 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
       setIsCreating(false);
     }
   };
+
+  if (isWithdrawnUser) {
+    return <span className="inline-flex">{children}</span>;
+  }
 
   return (
     <span ref={ref} className="relative inline-flex">

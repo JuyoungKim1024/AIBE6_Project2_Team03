@@ -27,13 +27,38 @@ function formatPhoneNumber(value: string) {
   return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
 }
 
+function readImageAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function OnboardingProfilePage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [nickname, setNickname] = useState('');
+  const [profileImage, setProfileImage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const changeProfileImage = async (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('이미지 파일만 등록할 수 있습니다.');
+      return;
+    }
+
+    try {
+      setProfileImage(await readImageAsDataUrl(file));
+      setError('');
+    } catch {
+      setError('이미지를 불러오지 못했습니다.');
+    }
+  };
 
   const submitProfile = async () => {
     if (isSubmitting) {
@@ -54,7 +79,7 @@ export default function OnboardingProfilePage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ name, phone, nickname }),
+      body: JSON.stringify({ name, phone, nickname, profileImage }),
     });
     setIsSubmitting(false);
 
@@ -88,14 +113,24 @@ export default function OnboardingProfilePage() {
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">프로필을 설정해주세요</h1>
           <p className="text-sm text-text-secondary text-center mb-8">닉네임은 비워두면 자동으로 생성됩니다.</p>
           <div className="flex flex-col items-center mb-6">
-            <button className="relative group" type="button">
+            <label className="relative group cursor-pointer">
               <div className="w-24 h-24 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
-                <User size={36} className="text-text-muted" />
+                {profileImage ? (
+                  <img src={profileImage} alt="프로필 이미지 미리보기" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={36} className="text-text-muted" />
+                )}
               </div>
               <div className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center border-2 border-surface">
                 <Camera size={15} className="text-white" />
               </div>
-            </button>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => changeProfileImage(event.target.files?.[0])}
+              />
+            </label>
           </div>
           <div className="space-y-5 mb-8">
             <div>
