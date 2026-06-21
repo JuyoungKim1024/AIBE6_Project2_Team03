@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, Trash2, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
+import { useModal } from '@/store/modalStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
+  const { openModal, confirmModal } = useModal();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -111,7 +113,13 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   };
 
   const handleDelete = async (notification: Notification) => {
-    if (deletingId || !window.confirm('이 알림을 삭제하시겠습니까?')) return;
+    if (deletingId) return;
+    const confirmed = await confirmModal({
+      title: '알림 삭제',
+      message: '이 알림을 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) return;
 
@@ -127,7 +135,10 @@ export function NotificationDropdown({ userId }: { userId: string }) {
       if (!response.ok) throw new Error('알림을 삭제하지 못했습니다.');
       setNotifications((current) => current.filter((item) => item.id !== notification.id));
     } catch {
-      window.alert('알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.');
+      openModal({
+        title: '알림 삭제 실패',
+        message: '알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      });
     } finally {
       setDeletingId(null);
     }

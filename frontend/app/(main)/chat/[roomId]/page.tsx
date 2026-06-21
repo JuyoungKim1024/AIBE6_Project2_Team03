@@ -15,6 +15,7 @@ import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } f
 import { DisputeModal } from '@/components/dispute/DisputeModal';
 import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
+import { useModal } from '@/store/modalStore';
 
 type AuthUser = {
   id: string;
@@ -31,6 +32,7 @@ type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
 
 export default function ChatRoomPage() {
   const router = useRouter();
+  const { confirmModal } = useModal();
   const params = useParams<{ roomId: string }>();
   const searchParams = useSearchParams();
   const roomId = params.roomId;
@@ -210,7 +212,12 @@ export default function ChatRoomPage() {
         ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
         : '프로젝트 취소를 요청하시겠습니까?',
     };
-    if (!window.confirm(labels[action])) return;
+    const confirmed = await confirmModal({
+      title: '프로젝트 상태 변경',
+      message: labels[action],
+      confirmLabel: '확인',
+    });
+    if (!confirmed) return;
 
     setActiveProjectAction(action);
     setErrorMessage('');

@@ -6,6 +6,7 @@ import { MessageCircle, User } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
+import { useModal } from "@/store/modalStore";
 
 type UserActionMenuProps = {
   userId?: string | null;
@@ -16,6 +17,7 @@ type UserActionMenuProps = {
 
 export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: UserActionMenuProps) {
   const router = useRouter();
+  const { openModal } = useModal();
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -56,7 +58,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
       if (!response.ok) throw new Error("로그인이 필요합니다.");
       const me = await response.json() as { id: string };
       if (me.id === userId) {
-        alert("본인에게는 DM을 보낼 수 없습니다.");
+        openModal({ title: "DM 전송 불가", message: "본인에게는 DM을 보낼 수 없습니다." });
         setOpen(false);
         return;
       }
@@ -78,7 +80,10 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
       setShowRequestModal(false);
       setOpen(false);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "DM 요청을 보내지 못했습니다.");
+      openModal({
+        title: "DM 요청 실패",
+        message: error instanceof Error ? error.message : "DM 요청을 보내지 못했습니다.",
+      });
     } finally {
       setIsStartingDm(false);
     }

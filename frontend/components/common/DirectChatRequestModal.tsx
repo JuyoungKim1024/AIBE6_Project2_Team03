@@ -1,6 +1,7 @@
 'use client';
 
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type DirectChatRequestModalProps = {
   targetName: string;
@@ -20,25 +21,39 @@ export function DirectChatRequestModal({
   initialMessage = '안녕하세요. DM 문의드립니다.',
 }: DirectChatRequestModalProps) {
   const [message, setMessage] = useState(initialMessage);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSubmitting) return;
     await onSubmit(trimmedMessage);
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
-        onClick={onClose}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClose();
+        }}
         disabled={isSubmitting}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm disabled:cursor-not-allowed"
         aria-label="DM 요청 닫기"
       />
       <form
         onSubmit={submit}
+        onClick={(event) => event.stopPropagation()}
         className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl"
       >
         <h3 className="text-lg font-bold text-text-primary">{title}</h3>
@@ -55,7 +70,10 @@ export function DirectChatRequestModal({
         <div className="mt-4 flex gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
             disabled={isSubmitting}
             className="flex-1 rounded-xl bg-surface-elevated py-2.5 text-sm font-bold text-text-primary transition-colors hover:bg-border disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -70,6 +88,7 @@ export function DirectChatRequestModal({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
