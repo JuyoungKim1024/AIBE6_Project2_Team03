@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { saveAuthSession } from '@/lib/auth-session';
 import { TestAccountLoginButtons } from '@/components/auth/TestAccountLoginButtons';
 
 type AuthResponse = {
@@ -45,7 +46,7 @@ export default function LoginPage() {
       }
 
       const auth = data as AuthResponse;
-      localStorage.setItem('accessToken', auth.accessToken);
+      saveAuthSession(auth.accessToken, auth.refreshToken, auth.onboardingRequired);
       router.replace(auth.user.admin
         ? '/admin'
         : auth.onboardingRequired

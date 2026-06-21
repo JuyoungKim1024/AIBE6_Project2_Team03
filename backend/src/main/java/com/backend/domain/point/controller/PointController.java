@@ -2,7 +2,9 @@ package com.backend.domain.point.controller;
 
 import com.backend.domain.auth.service.AuthService;
 import com.backend.domain.point.dto.PointBalanceResponse;
-import com.backend.domain.point.dto.PointChargeRequest;
+import com.backend.domain.point.dto.PointPaymentConfirmRequest;
+import com.backend.domain.point.dto.PointPaymentOrderRequest;
+import com.backend.domain.point.dto.PointPaymentOrderResponse;
 import com.backend.domain.point.dto.PointTransactionResponse;
 import com.backend.domain.point.service.PointService;
 import java.util.List;
@@ -22,24 +24,37 @@ public class PointController {
     private final AuthService authService;
     private final PointService pointService;
 
-    // POST /api/point/charge — 포인트 충전
-    @PostMapping("/charge")
-    public PointBalanceResponse charge(
+    @PostMapping("/payments/orders")
+    public PointPaymentOrderResponse createPaymentOrder(
             @RequestHeader("Authorization") String authorizationHeader,
-            @RequestBody PointChargeRequest request
+            @RequestBody PointPaymentOrderRequest request
     ) {
-        return pointService.charge(authService.resolveUserId(authorizationHeader), request.amount());
+        return pointService.createPaymentOrder(
+                authService.resolveUserId(authorizationHeader),
+                request.amount()
+        );
     }
 
-    // GET /api/point — 내 포인트 잔액 조회
+    @PostMapping("/payments/confirm")
+    public PointBalanceResponse confirmPayment(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody PointPaymentConfirmRequest request
+    ) {
+        return pointService.confirmPayment(
+                authService.resolveUserId(authorizationHeader),
+                request
+        );
+    }
+
     @GetMapping
     public PointBalanceResponse getBalance(@RequestHeader("Authorization") String authorizationHeader) {
         return pointService.getBalance(authService.resolveUserId(authorizationHeader));
     }
 
-    // GET /api/point/transactions — 포인트 사용 내역
     @GetMapping("/transactions")
-    public List<PointTransactionResponse> getTransactions(@RequestHeader("Authorization") String authorizationHeader) {
+    public List<PointTransactionResponse> getTransactions(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
         return pointService.getTransactions(authService.resolveUserId(authorizationHeader));
     }
 }

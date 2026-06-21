@@ -18,6 +18,8 @@ const categories = [
   { id: 'free', label: '💬 자유게시판', dot: 'bg-text-secondary' },
 ];
 
+const TAGS = ["꿀팁", "단축키", "오류해결", "템플릿", "협업", "계약", "장비추천", "잡담", "기타"];
+
 function CommunityContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,11 +27,22 @@ function CommunityContent() {
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [posts, setPosts] = useState<CommunityPostDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [trendingPosts, setTrendingPosts] = useState<CommunityPostDto[]>([]);
+
+  const calcTrendingScore = (post: CommunityPostDto) => {
+    const hoursSince = (Date.now() - new Date(post.createdAt).getTime()) / 3600000;
+    return post.viewCount / Math.pow(hoursSince + 1, 1.5);
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -43,6 +56,12 @@ function CommunityContent() {
         .then((user) => user && setCurrentUserId(user.id))
         .catch(() => {});
     }
+    Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')])
+      .then(([info, free]) => {
+        const all = [...info, ...free];
+        setTrendingPosts(all.sort((a, b) => calcTrendingScore(b) - calcTrendingScore(a)).slice(0, 5));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -70,7 +89,10 @@ function CommunityContent() {
         query === '' ||
         p.title.includes(query) ||
         p.author.nickname.includes(query);
-      return matchesQuery;
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.some((t) => p.tags.includes(t));
+      return matchesQuery && matchesTags;
     })
     .sort((a, b) => {
       if (sort === 'popular') return b.likeCount - a.likeCount;
@@ -121,6 +143,17 @@ function CommunityContent() {
             );
           })}
         </div>
+        <div className="flex gap-2 flex-wrap py-3 mb-2">
+          {TAGS.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selectedTags.includes(tag) ? 'bg-primary/10 border-primary/50 text-primary' : 'bg-surface-elevated border-border text-text-secondary hover:border-text-muted'}`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-col lg:flex-row gap-8 mt-6">
           <main className="flex-1 min-w-0 space-y-4">
             {loading ? (
@@ -136,7 +169,7 @@ function CommunityContent() {
                     type={post.category.toLowerCase() as PostType}
                     title={post.title}
                     author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
-                    categoryTags={[]}
+                    categoryTags={post.tags}
                     toolTags={[]}
                     likes={post.likeCount}
                     comments={post.commentCount}
@@ -154,7 +187,7 @@ function CommunityContent() {
             <div className="bg-surface border border-border rounded-xl p-5">
               <h3 className="text-base font-bold text-text-primary mb-4">지금 뜨는 글 🔥</h3>
               <div className="space-y-3">
-                {filteredPosts.slice(0, 5).map((post, i) => (
+                {trendingPosts.map((post, i) => (
                   <a key={post.id} href={`/community/${post.id}`} className="flex items-start gap-3 group">
                     <span className={`text-sm font-bold mt-0.5 ${i < 3 ? 'text-primary' : 'text-text-muted'}`}>{i + 1}</span>
                     <p className="flex-1 min-w-0 text-sm text-text-secondary group-hover:text-text-primary truncate transition-colors">{post.title}</p>
