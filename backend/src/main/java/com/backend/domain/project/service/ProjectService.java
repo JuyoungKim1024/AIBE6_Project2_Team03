@@ -136,7 +136,6 @@ public class ProjectService {
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         project.start();
-        pointService.holdEscrowForProject(project);
         return publishProject(project);
     }
 
