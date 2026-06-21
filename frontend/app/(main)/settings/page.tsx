@@ -46,6 +46,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [provider, setProvider] = useState('');
+  const [isTestAccount, setIsTestAccount] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [nickname, setNickname] = useState('');
@@ -64,7 +65,7 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isLocalAccount = provider === 'LOCAL';
-  const canDelete = confirmation === DELETE_CONFIRMATION && !isDeleting;
+  const canDelete = !isTestAccount && confirmation === DELETE_CONFIRMATION && !isDeleting;
   const canSaveProfile = nickname.trim().length > 0 && !isProfileSubmitting;
   const passwordChecks = [
     { label: '8자 이상 입력', valid: newPassword.length >= 8 },
@@ -93,6 +94,7 @@ export default function SettingsPage() {
       .then((data) => {
         if (!data) return;
         setProvider(data.provider ?? '');
+        setIsTestAccount(Boolean(data.testAccount));
         setName(data.name ?? '');
         setPhone(data.phone ?? '');
         setNickname(data.nickname ?? '');
@@ -336,14 +338,24 @@ export default function SettingsPage() {
                     <p className="text-sm text-text-secondary mt-1">탈퇴하면 계정과 연결된 데이터가 삭제됩니다.</p>
                   </div>
                 </div>
-                <label className="block text-sm font-bold text-text-primary mb-2">확인 문구</label>
-                <input type="text" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={DELETE_CONFIRMATION} className="form-input" />
-                <p className="text-xs text-text-muted mt-2">회원탈퇴를 진행하려면 &apos;{DELETE_CONFIRMATION}&apos;를 입력해주세요.</p>
+                {isTestAccount ? (
+                  <div className="rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm font-bold text-accent">
+                    테스트 계정은 탈퇴할 수 없습니다.
+                  </div>
+                ) : (
+                  <>
+                    <label className="block text-sm font-bold text-text-primary mb-2">확인 문구</label>
+                    <input type="text" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={DELETE_CONFIRMATION} className="form-input" />
+                    <p className="text-xs text-text-muted mt-2">회원탈퇴를 진행하려면 &apos;{DELETE_CONFIRMATION}&apos;를 입력해주세요.</p>
+                  </>
+                )}
                 {deleteError && <p className="text-sm font-bold text-accent mt-4">{deleteError}</p>}
-                <button type="button" onClick={deleteAccount} disabled={!canDelete} className="mt-6 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-accent text-white disabled:opacity-50">
-                  <Trash2 size={16} />
-                  {isDeleting ? '탈퇴 중...' : '회원 탈퇴'}
-                </button>
+                {!isTestAccount && (
+                  <button type="button" onClick={deleteAccount} disabled={!canDelete} className="mt-6 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-accent text-white disabled:opacity-50">
+                    <Trash2 size={16} />
+                    {isDeleting ? '탈퇴 중...' : '회원 탈퇴'}
+                  </button>
+                )}
               </section>
             )}
           </main>

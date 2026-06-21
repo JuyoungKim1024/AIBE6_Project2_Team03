@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { Briefcase, Check, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserCircle } from 'lucide-react';
 
 const creatorGuides = [
@@ -99,11 +98,6 @@ export default function GuidePage() {
           </div>
         </section>
 
-        <div className="flex justify-end">
-          <Link href="/mypage" className="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors">
-            마이페이지로 이동
-          </Link>
-        </div>
       </div>
     </div>
   );

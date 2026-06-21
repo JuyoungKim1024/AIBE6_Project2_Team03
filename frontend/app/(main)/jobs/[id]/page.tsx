@@ -36,6 +36,17 @@ import {
 } from "@/lib/api/post";
 import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
+import {
+  createPostChatRequest,
+  getInitialChatRequestMessage,
+  markInitialChatRequestMessageUsed,
+} from "@/lib/api/chat";
+import {
+  JobPostDetailDto,
+  CommentDto,
+  AttachedPortfolioGroup,
+  AttachedPortfolioItem,
+} from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 
 export default function JobDetailPage() {
@@ -64,8 +75,12 @@ export default function JobDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
+  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<{ group: AttachedPortfolioGroup; itemIndex: number } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{
+    group: AttachedPortfolioGroup;
+    itemIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -82,7 +97,9 @@ export default function JobDetailPage() {
       .finally(() => setLoading(false));
     fetchComments(id).then(setComments).catch(console.error);
     incrementPostView(id).catch(() => {});
-    getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
+    getPostLikedStatus(id)
+      .then((r) => setLiked(r.liked))
+      .catch(() => {});
     setUserRole(localStorage.getItem("userRole"));
     const token = localStorage.getItem("accessToken");
     if (token) {
@@ -124,7 +141,7 @@ export default function JobDetailPage() {
     } catch {
       // 비로그인 시 로컬 토글
       setLiked((prev) => !prev);
-      setLikeCount((prev) => liked ? prev - 1 : prev + 1);
+      setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
     }
   };
 
@@ -140,7 +157,8 @@ export default function JobDetailPage() {
   };
 
   const submitChatRequest = async (message: string) => {
-    if (!post || isStartingChat || currentUserId === post.author.id || !id) return;
+    if (!post || isStartingChat || currentUserId === post.author.id || !id)
+      return;
 
     setIsStartingChat(true);
 
@@ -150,7 +168,10 @@ export default function JobDetailPage() {
       setShowChatRequestModal(false);
       alert("채팅 요청을 보냈습니다.");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "채팅 요청을 보내지 못했습니다.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "채팅 요청을 보내지 못했습니다.";
       if (errorMessage.includes("로그인")) {
         router.push("/login");
         return;
@@ -396,12 +417,18 @@ export default function JobDetailPage() {
         {/* Attached Portfolio Groups */}
         {post.portfolioGroups && post.portfolioGroups.length > 0 && (
           <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
-            <h2 className="text-lg font-bold text-text-primary mb-5">포트폴리오</h2>
+            <h2 className="text-lg font-bold text-text-primary mb-5">
+              포트폴리오
+            </h2>
             {post.portfolioGroups.map((group) => (
               <div key={group.id} className="mb-6 last:mb-0">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-bold text-text-primary">{group.name}</span>
-                  <span className="text-xs text-text-muted bg-surface-elevated px-2 py-0.5 rounded-md">{group.items.length}개</span>
+                  <span className="text-sm font-bold text-text-primary">
+                    {group.name}
+                  </span>
+                  <span className="text-xs text-text-muted bg-surface-elevated px-2 py-0.5 rounded-md">
+                    {group.items.length}개
+                  </span>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {group.items.map((item, idx) => (
@@ -420,12 +447,18 @@ export default function JobDetailPage() {
                       {item.type === "video" && (
                         <div className="absolute inset-0 bg-black/20 group-hover/item:bg-black/40 transition-colors flex items-center justify-center">
                           <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white group-hover/item:scale-110 transition-transform">
-                            <Play size={16} className="ml-0.5" fill="currentColor" />
+                            <Play
+                              size={16}
+                              className="ml-0.5"
+                              fill="currentColor"
+                            />
                           </div>
                         </div>
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 translate-y-full group-hover/item:translate-y-0 transition-transform duration-300">
-                        <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                        <p className="text-white text-xs font-medium truncate">
+                          {item.title}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -434,6 +467,7 @@ export default function JobDetailPage() {
             ))}
           </div>
         )}
+
 
         {/* Work Condition Summary */}
         <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
@@ -460,17 +494,49 @@ export default function JobDetailPage() {
         </div>
 
         {/* Transaction History */}
-        <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-bold text-text-primary">
-              작성자의 이전 거래 내역
-            </h2>
-            <span className="text-xs text-text-muted">투명한 단가 공개</span>
-          </div>
-          <div className="flex items-center justify-center py-10 text-text-muted text-sm">
-            거래 내역이 없습니다.
-          </div>
-        </div>
+        {(() => {
+          const txList = post.completedDeals ?? [];
+          const preview = txList.slice(0, 3);
+          const hasMore = txList.length > 3;
+          return (
+            <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-text-primary">작성자의 이전 거래 내역</h2>
+                <span className="text-xs text-text-muted">투명한 단가 공개</span>
+              </div>
+              {txList.length === 0 ? (
+                <div className="flex items-center justify-center py-10 text-text-muted text-sm">
+                  거래 내역이 없습니다.
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-border">
+                    {preview.map((tx: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between py-3.5">
+                        <div className="flex items-center gap-6 text-sm">
+                          <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                          <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                          <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                        </div>
+                        <span className="font-mono font-bold text-text-primary">
+                          {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {hasMore && (
+                    <button
+                      onClick={() => setShowTransactionPanel(true)}
+                      className="w-full mt-4 pt-4 border-t border-border text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      거래 내역 더보기 →
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Comments Section */}
         <div>
@@ -502,8 +568,13 @@ export default function JobDetailPage() {
             </div>
           ) : (
             <div className="bg-surface border border-border rounded-2xl p-5 mb-6 flex items-center justify-between gap-4">
-              <span className="text-sm text-text-muted">로그인 후 댓글을 작성할 수 있습니다.</span>
-              <Link href="/login" className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors whitespace-nowrap">
+              <span className="text-sm text-text-muted">
+                로그인 후 댓글을 작성할 수 있습니다.
+              </span>
+              <Link
+                href="/login"
+                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors whitespace-nowrap"
+              >
                 로그인
               </Link>
             </div>
@@ -588,8 +659,13 @@ export default function JobDetailPage() {
 
                   <button
                     onClick={() => {
-                      if (!currentUserId) { router.push("/login"); return; }
-                      setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                      if (!currentUserId) {
+                        router.push("/login");
+                        return;
+                      }
+                      setReplyingTo(
+                        replyingTo === comment.id ? null : comment.id,
+                      );
                     }}
                     className="flex items-center gap-1 text-xs font-bold text-text-muted hover:text-text-primary transition-colors"
                   >
@@ -727,7 +803,10 @@ export default function JobDetailPage() {
               </button>
               <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-text-secondary">
                 <MessageCircle size={18} />
-                <span className="text-sm font-bold">{comments.length + comments.reduce((acc, c) => acc + c.replies.length, 0)}</span>
+                <span className="text-sm font-bold">
+                  {comments.length +
+                    comments.reduce((acc, c) => acc + c.replies.length, 0)}
+                </span>
               </div>
             </div>
             <button
@@ -746,70 +825,150 @@ export default function JobDetailPage() {
         <DirectChatRequestModal
           targetName={post.author.nickname}
           title="채팅 문의하기"
-          initialMessage={getInitialChatRequestMessage(post.author.id, "안녕하세요. 게시글 보고 문의드립니다.")}
+          initialMessage={getInitialChatRequestMessage(
+            post.author.id,
+            "안녕하세요. 게시글 보고 문의드립니다.",
+          )}
           isSubmitting={isStartingChat}
           onClose={() => setShowChatRequestModal(false)}
           onSubmit={submitChatRequest}
         />
       )}
 
+      {/* Transaction History Panel */}
+      <AnimatePresence>
+        {showTransactionPanel && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTransactionPanel(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full max-w-md bg-surface border-l border-border shadow-2xl z-[101] flex flex-col"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-border">
+                <div>
+                  <h3 className="font-bold text-text-primary">전체 거래 내역</h3>
+                  <p className="text-xs text-text-muted mt-0.5">{post.author.nickname}님의 거래 내역</p>
+                </div>
+                <button onClick={() => setShowTransactionPanel(false)} className="p-2 text-text-muted hover:text-text-primary rounded-lg hover:bg-surface-elevated transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-border px-5">
+                {(post.completedDeals ?? []).map((tx, i) => (
+                  <div key={i} className="flex items-center justify-between py-3.5">
+                    <div className="flex items-center gap-6 text-sm">
+                      <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                      <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                      <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                    </div>
+                    <span className="font-mono font-bold text-text-primary">
+                      {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Portfolio Lightbox */}
       <AnimatePresence>
-        {selectedItem && (() => {
-          const { group, itemIndex } = selectedItem;
-          const item = group.items[itemIndex];
-          return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setSelectedItem(null)}
-                className="absolute inset-0 bg-black/90 backdrop-blur-sm"
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-4xl"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-white/60 text-sm font-medium">{group.name}</span>
-                  <button onClick={() => setSelectedItem(null)} className="p-2 text-white/70 hover:text-white transition-colors">
-                    <X size={24} />
-                  </button>
-                </div>
-                <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
-                  {item.type === "video" ? (
-                    <video src={item.url} className="w-full h-full object-contain" controls autoPlay />
-                  ) : (
-                    <img src={item.url} alt={item.title} className="w-full h-full object-contain" />
-                  )}
-                  {group.items.length > 1 && (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ group, itemIndex: (itemIndex - 1 + group.items.length) % group.items.length }); }}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-                      >
-                        <ChevronLeft size={20} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedItem({ group, itemIndex: (itemIndex + 1) % group.items.length }); }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-                      >
-                        <ChevronRight size={20} />
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="text-white font-bold">{item.title}</p>
-                  <span className="text-white/50 text-sm">{itemIndex + 1} / {group.items.length}</span>
-                </div>
-              </motion.div>
-            </div>
-          );
-        })()}
+        {selectedItem &&
+          (() => {
+            const { group, itemIndex } = selectedItem;
+            const item = group.items[itemIndex];
+            return (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSelectedItem(null)}
+                  className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-4xl"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white/60 text-sm font-medium">
+                      {group.name}
+                    </span>
+                    <button
+                      onClick={() => setSelectedItem(null)}
+                      className="p-2 text-white/70 hover:text-white transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  <div className="relative bg-black rounded-2xl overflow-hidden aspect-video">
+                    {item.type === "video" ? (
+                      <video
+                        src={item.url}
+                        className="w-full h-full object-contain"
+                        controls
+                        autoPlay
+                      />
+                    ) : (
+                      <img
+                        src={item.url}
+                        alt={item.title}
+                        className="w-full h-full object-contain"
+                      />
+                    )}
+                    {group.items.length > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItem({
+                              group,
+                              itemIndex:
+                                (itemIndex - 1 + group.items.length) %
+                                group.items.length,
+                            });
+                          }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                        >
+                          <ChevronLeft size={20} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItem({
+                              group,
+                              itemIndex: (itemIndex + 1) % group.items.length,
+                            });
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                        >
+                          <ChevronRight size={20} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <p className="text-white font-bold">{item.title}</p>
+                    <span className="text-white/50 text-sm">
+                      {itemIndex + 1} / {group.items.length}
+                    </span>
+                  </div>
+                </motion.div>
+              </div>
+            );
+          })()}
       </AnimatePresence>
 
       {/* Post Delete Confirmation Modal */}
@@ -829,8 +988,12 @@ export default function JobDetailPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative w-full max-w-sm bg-surface border border-border rounded-2xl p-6 text-center shadow-2xl"
             >
-              <h3 className="text-lg font-bold text-text-primary mb-2">게시글을 삭제하시겠습니까?</h3>
-              <p className="text-sm text-text-secondary mb-6">삭제된 게시글은 복구할 수 없습니다.</p>
+              <h3 className="text-lg font-bold text-text-primary mb-2">
+                게시글을 삭제하시겠습니까?
+              </h3>
+              <p className="text-sm text-text-secondary mb-6">
+                삭제된 게시글은 복구할 수 없습니다.
+              </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setPostDeleteConfirm(false)}

@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { TestAccountLoginButtons } from '@/components/auth/TestAccountLoginButtons';
 
 type AuthResponse = {
   accessToken: string;
   refreshToken: string;
   onboardingRequired: boolean;
-  user: { role: 'YOUTUBER' | 'EDITOR' | null };
+  user: { role: 'YOUTUBER' | 'EDITOR' | null; admin: boolean };
 };
 
 export default function LoginPage() {
@@ -45,7 +46,11 @@ export default function LoginPage() {
 
       const auth = data as AuthResponse;
       localStorage.setItem('accessToken', auth.accessToken);
-      router.replace(auth.onboardingRequired ? (auth.user.role ? '/onboarding/profile' : '/onboarding/role') : '/');
+      router.replace(auth.user.admin
+        ? '/admin'
+        : auth.onboardingRequired
+          ? (auth.user.role ? '/onboarding/profile' : '/onboarding/role')
+          : '/');
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : '로그인에 실패했습니다.');
     } finally {
@@ -56,12 +61,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
+        <Link href="/" className="flex flex-col items-center mb-8 hover:opacity-80 transition-opacity" aria-label="홈으로 이동">
           <div className="bg-primary/10 p-3 rounded-2xl mb-3">
             <Video size={32} className="text-primary" />
           </div>
           <span className="font-bold text-2xl text-text-primary">크크<span className="text-primary">킄</span></span>
-        </div>
+        </Link>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-surface border border-border rounded-2xl p-8">
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">로그인</h1>
@@ -110,6 +115,24 @@ export default function LoginPage() {
               카카오로 계속하기
             </button>
           </div>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-text-muted">테스트 계정</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <TestAccountLoginButtons
+            disabled={isSubmitting}
+            onStart={() => {
+              setError('');
+              setIsSubmitting(true);
+            }}
+            onError={(message) => {
+              setError(message);
+              setIsSubmitting(false);
+            }}
+          />
         </motion.div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import com.backend.domain.post.repository.JobPostRepository;
 import com.backend.domain.post.repository.PostLikeRepository;
 import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.profile.repository.PortfolioGroupRepository;
+import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -39,6 +40,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PortfolioGroupRepository portfolioGroupRepository;
+    private final ProjectRepository projectRepository;
     private final EntityManager entityManager;
 
     @Transactional
@@ -77,7 +79,8 @@ public class PostService {
     public JobPostDetailResponse getJobPost(String id) {
         JobPost post = jobPostRepository.findByIdWithAuthor(id)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다. id: " + id));
-        return JobPostDetailResponse.from(post);
+        var completedDeals = projectRepository.findCompletedByUser(post.getAuthor().getId());
+        return JobPostDetailResponse.from(post, completedDeals);
     }
 
     @Transactional

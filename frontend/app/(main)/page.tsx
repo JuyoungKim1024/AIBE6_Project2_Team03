@@ -11,6 +11,7 @@ import type { BlindEditor } from '@/types/matching';
 import { useModal } from '@/store/modalStore';
 import { type SearchCategory, searchCategoryOptions } from '@/lib/searchCategories';
 import { API_BASE_URL } from '@/lib/api';
+import { HomeFooter } from '@/components/home/HomeFooter';
 
 const popularTags = ['롱폼', '숏폼', '게임', '프리미어프로', '파이널컷', '썸네일'];
 
@@ -52,13 +53,20 @@ export default function HomePage() {
     fetchRandomEditors();
   }, [fetchRandomEditors]);
 
-  const handleQuickCardClick = (e: React.MouseEvent, path: string) => {
+  const handleQuickCardClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     if (path === '/matching' && user?.role === 'EDITOR') {
       e.preventDefault();
       openModal({
         title: '크리에이터 전용 서비스',
         message: '맞춤매칭은 크리에이터 계정에서만 이용할 수 있습니다.\n에디터로 로그인된 상태에서는 접근할 수 없어요.',
       });
+    }
+  };
+
+  const handleSupportClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!user) {
+      event.preventDefault();
+      router.push('/login');
     }
   };
 
@@ -289,6 +297,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
+      <HomeFooter onQuickAccessClick={handleQuickCardClick} onSupportClick={handleSupportClick} />
     </div>
   );
 }

@@ -13,7 +13,10 @@ public record UserResponse(
         String name,
         String phone,
         UserRole role,
-        boolean onboardingRequired
+        boolean onboardingRequired,
+        boolean termsAgreed,
+        boolean admin,
+        boolean testAccount
 ) {
     public static UserResponse from(User user) {
         return from(user, null, null);
@@ -29,7 +32,10 @@ public record UserResponse(
                 name,
                 phone,
                 user.getRole(),
-                user.getRole() == null || name == null || name.isBlank() || phone == null || phone.isBlank()
+                !user.isAdmin() && (user.getRole() == null || name == null || name.isBlank() || phone == null || phone.isBlank()),
+                user.hasAgreedToTerms(),
+                user.isAdmin(),
+                user.isTestAccount()
         );
     }
 }

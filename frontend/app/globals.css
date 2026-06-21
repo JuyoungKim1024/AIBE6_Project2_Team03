@@ -74,3 +74,28 @@ img[data-align="right"]  { display: block; margin-left: auto; }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-border;
 }
+
+.terms-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: #9ca3af #14161d;
+}
+
+.terms-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.terms-scrollbar::-webkit-scrollbar-track {
+  background: #14161d;
+  border-left: 1px solid #2a2e39;
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+
+.terms-scrollbar::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border: 3px solid #14161d;
+  border-radius: 9999px;
+}
+
+.terms-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #f4f5f7;
+}
