@@ -61,3 +61,7 @@ cloudflare:
 
 gemini:
   api-key: ${GEMINI_API_KEY:}
+
+toss:
+  payments:
+    secret-key: ${TOSS_SECRET_KEY:}
