@@ -30,6 +30,12 @@ function CommunityContent() {
   const [loading, setLoading] = useState(false);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [trendingPosts, setTrendingPosts] = useState<CommunityPostDto[]>([]);
+
+  const calcTrendingScore = (post: CommunityPostDto) => {
+    const hoursSince = (Date.now() - new Date(post.createdAt).getTime()) / 3600000;
+    return post.viewCount / Math.pow(hoursSince + 1, 1.5);
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -43,6 +49,12 @@ function CommunityContent() {
         .then((user) => user && setCurrentUserId(user.id))
         .catch(() => {});
     }
+    Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')])
+      .then(([info, free]) => {
+        const all = [...info, ...free];
+        setTrendingPosts(all.sort((a, b) => calcTrendingScore(b) - calcTrendingScore(a)).slice(0, 5));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -154,7 +166,7 @@ function CommunityContent() {
             <div className="bg-surface border border-border rounded-xl p-5">
               <h3 className="text-base font-bold text-text-primary mb-4">지금 뜨는 글 🔥</h3>
               <div className="space-y-3">
-                {filteredPosts.slice(0, 5).map((post, i) => (
+                {trendingPosts.map((post, i) => (
                   <a key={post.id} href={`/community/${post.id}`} className="flex items-start gap-3 group">
                     <span className={`text-sm font-bold mt-0.5 ${i < 3 ? 'text-primary' : 'text-text-muted'}`}>{i + 1}</span>
                     <p className="flex-1 min-w-0 text-sm text-text-secondary group-hover:text-text-primary truncate transition-colors">{post.title}</p>
