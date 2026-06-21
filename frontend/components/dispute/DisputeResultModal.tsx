@@ -44,49 +44,53 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
   const [isResponding, setIsResponding] = useState(false);
   const [responseError, setResponseError] = useState('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const accessTokenRef = useRef(accessToken);
+  accessTokenRef.current = accessToken;
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
 
   const fetchDispute = useCallback(async () => {
     try {
+      const token = accessTokenRef.current;
       const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        if (res.status === 401 && pollingRef.current) {
-          clearInterval(pollingRef.current);
-        }
+        if (res.status === 401) stopPolling();
         return;
       }
       const data: DisputeData = await res.json();
       setDispute(data);
-
-      if (data.status !== 'AI_PENDING') {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-      }
-
       setJudgment(parseJudgment(data.aiJudgment));
+
+      if (data.status !== 'AI_PENDING') stopPolling();
     } catch (err) {
       console.error('분쟁 상태 조회 실패:', err);
     }
-  }, [disputeId, accessToken]);
+  }, [disputeId, stopPolling]);
 
   useEffect(() => {
     fetchDispute();
     pollingRef.current = setInterval(fetchDispute, 2000);
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, [fetchDispute]);
+    return stopPolling;
+  }, [fetchDispute, stopPolling]);
 
   const respond = async (accepted: boolean) => {
     if (isResponding) return;
     setIsResponding(true);
     setResponseError('');
     try {
+      const token = accessTokenRef.current;
       const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/respond`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ accepted }),
       });
@@ -97,6 +101,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       const data: DisputeData = await res.json();
       setDispute(data);
       setJudgment(parseJudgment(data.aiJudgment));
+      stopPolling();
     } catch (err) {
       setResponseError(err instanceof Error ? err.message : '응답 처리에 실패했습니다.');
     } finally {
