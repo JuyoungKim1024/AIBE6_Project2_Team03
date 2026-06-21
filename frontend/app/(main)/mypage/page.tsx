@@ -2944,13 +2944,16 @@ function MypageContent() {
   }, [router]);
 
   useEffect(() => {
+    if (isAuthChecking) {
+      return;
+    }
     if (sectionParam && !sectionIds.includes(sectionParam)) {
       router.replace(`/mypage?tab=${defaultSection}`);
     }
     if (userRole !== 'EDITOR' && ['editor-profile', 'portfolio', 'pricing'].includes(activeSection)) {
       router.replace('/mypage?tab=posts');
     }
-  }, [activeSection, defaultSection, router, sectionParam, userRole]);
+  }, [activeSection, defaultSection, isAuthChecking, router, sectionParam, userRole]);
 
   useEffect(() => {
     if (!userId || userRole !== 'EDITOR') {
