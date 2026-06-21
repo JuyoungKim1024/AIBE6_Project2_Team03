@@ -68,8 +68,8 @@ public class User {
     @Column(nullable = false)
     private int point = 0;
 
-    @Column(name = "escrow_point", nullable = false)
-    private int escrowPoint = 0;
+    @Column(name = "safe_payment_point", nullable = false)
+    private int safePaymentPoint = 0;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -161,24 +161,24 @@ public class User {
         this.point += amount;
     }
 
-    public void holdEscrow(int amount) {
-        if (amount <= 0) throw new IllegalArgumentException("에스크로 금액은 0보다 커야 합니다.");
+    public void holdSafePayment(int amount) {
+        if (amount <= 0) throw new IllegalArgumentException("안전결제 금액은 0보다 커야 합니다.");
         if (this.point < amount) throw new IllegalStateException("포인트가 부족합니다.");
         this.point -= amount;
-        this.escrowPoint += amount;
+        this.safePaymentPoint += amount;
     }
 
-    public void releaseEscrow(int amount, User recipient) {
+    public void releaseSafePayment(int amount, User recipient) {
         if (amount <= 0) throw new IllegalArgumentException("정산 금액은 0보다 커야 합니다.");
-        if (this.escrowPoint < amount) throw new IllegalStateException("에스크로 잔액이 부족합니다.");
-        this.escrowPoint -= amount;
+        if (this.safePaymentPoint < amount) throw new IllegalStateException("안전결제 잔액이 부족합니다.");
+        this.safePaymentPoint -= amount;
         recipient.chargePoint(amount);
     }
 
-    public void refundEscrow(int amount) {
+    public void refundSafePayment(int amount) {
         if (amount <= 0) throw new IllegalArgumentException("환불 금액은 0보다 커야 합니다.");
-        if (this.escrowPoint < amount) throw new IllegalStateException("에스크로 잔액이 부족합니다.");
-        this.escrowPoint -= amount;
+        if (this.safePaymentPoint < amount) throw new IllegalStateException("안전결제 잔액이 부족합니다.");
+        this.safePaymentPoint -= amount;
         this.point += amount;
     }
 }

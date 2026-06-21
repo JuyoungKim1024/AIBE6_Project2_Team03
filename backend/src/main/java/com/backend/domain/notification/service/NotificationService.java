@@ -38,7 +38,7 @@ public class NotificationService {
             throw new IllegalStateException("이미 처리된 요청입니다.");
         }
         request.accept();
-        pointService.holdEscrow(request.getId());
+        pointService.holdSafePayment(request.getId());
 
         // 채팅방 생성 및 양측 유저 추가
         ChatRoom room = directChatRoomService.getOrCreate(request.getRequester(), request.getEditor());

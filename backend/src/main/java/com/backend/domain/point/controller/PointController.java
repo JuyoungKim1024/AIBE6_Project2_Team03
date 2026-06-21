@@ -45,23 +45,23 @@ public class PointController {
         return pointService.getTransactions(authService.resolveUserId(authorizationHeader));
     }
 
-    // POST /api/point/release/{matchRequestId} — 작업 완료 확인 (에스크로 → 에디터 정산)
+    // POST /api/point/release/{matchRequestId} — 작업 완료 확인 (안전결제 → 에디터 정산)
     @PostMapping("/release/{matchRequestId}")
-    public ResponseEntity<Void> releaseEscrow(
+    public ResponseEntity<Void> releaseSafePayment(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable String matchRequestId
     ) {
-        pointService.releaseEscrow(matchRequestId, authService.resolveUserId(authorizationHeader));
+        pointService.releaseSafePayment(matchRequestId, authService.resolveUserId(authorizationHeader));
         return ResponseEntity.ok().build();
     }
 
-    // POST /api/point/refund/{matchRequestId} — 매칭 취소 시 에스크로 환불
+    // POST /api/point/refund/{matchRequestId} — 매칭 취소 시 안전결제 환불
     @PostMapping("/refund/{matchRequestId}")
-    public ResponseEntity<Void> refundEscrow(
+    public ResponseEntity<Void> refundSafePayment(
             @RequestHeader("Authorization") String authorizationHeader,
             @PathVariable String matchRequestId
     ) {
-        pointService.refundEscrow(matchRequestId, authService.resolveUserId(authorizationHeader));
+        pointService.refundSafePayment(matchRequestId, authService.resolveUserId(authorizationHeader));
         return ResponseEntity.ok().build();
     }
 }

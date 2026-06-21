@@ -158,7 +158,7 @@ public class ProjectService {
         validateNoActiveDispute(project);
         project.requestComplete(userId);
         if (project.getStatus() == ProjectStatus.COMPLETED) {
-            pointService.releaseEscrowForProject(project);
+            pointService.releaseSafePaymentForProject(project);
         }
         return publishProject(project);
     }
@@ -177,7 +177,7 @@ public class ProjectService {
         project.cancel();
         if (statusBeforeCancel == ProjectStatus.WORKING
                 || statusBeforeCancel == ProjectStatus.COMPLETION_PENDING) {
-            pointService.refundEscrowForProject(project);
+            pointService.refundSafePaymentForProject(project);
         }
         return publishProject(project);
     }

@@ -34,12 +34,12 @@ public class PointService {
                 amount + "P 충전",
                 null
         ));
-        return new PointBalanceResponse(user.getPoint(), user.getEscrowPoint());
+        return new PointBalanceResponse(user.getPoint(), user.getSafePaymentPoint());
     }
 
     public PointBalanceResponse getBalance(String userId) {
         User user = getUser(userId);
-        return new PointBalanceResponse(user.getPoint(), user.getEscrowPoint());
+        return new PointBalanceResponse(user.getPoint(), user.getSafePaymentPoint());
     }
 
     public List<PointTransactionResponse> getTransactions(String userId) {
@@ -49,26 +49,26 @@ public class PointService {
                 .toList();
     }
 
-    // 매칭 수락 시 크리에이터 포인트 → 에스크로
+    // 매칭 수락 시 크리에이터 포인트 → 안전결제 보관
     @Transactional
-    public void holdEscrow(String matchRequestId) {
+    public void holdSafePayment(String matchRequestId) {
         MatchRequest request = getMatchRequest(matchRequestId);
         if (request.getAgreedAmount() == null) return;
 
         User requester = request.getRequester();
         int amount = request.getAgreedAmount();
 
-        requester.holdEscrow(amount);
+        requester.holdSafePayment(amount);
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_HOLD,
-                request.getEditor().getNickname() + "님과의 매칭 거래 보증금 차감",
+                requester, amount, PointTransactionType.SAFE_PAYMENT_HOLD,
+                request.getEditor().getNickname() + "님과의 매칭 안전결제 차감",
                 matchRequestId
         ));
     }
 
-    // 작업 완료 확인 시 에스크로 → 에디터
+    // 작업 완료 확인 시 안전결제 → 에디터
     @Transactional
-    public void releaseEscrow(String matchRequestId, String requesterId) {
+    public void releaseSafePayment(String matchRequestId, String requesterId) {
         MatchRequest request = getMatchRequest(matchRequestId);
         if (!request.getRequester().getId().equals(requesterId)) {
             throw new IllegalArgumentException("권한이 없습니다.");
@@ -81,23 +81,23 @@ public class PointService {
         User editor = request.getEditor();
         int amount = request.getAgreedAmount();
 
-        requester.releaseEscrow(amount, editor);
+        requester.releaseSafePayment(amount, editor);
 
         transactionRepository.save(new PointTransaction(
-                requester, -amount, PointTransactionType.ESCROW_RELEASE,
+                requester, -amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
                 editor.getNickname() + "님께 작업 완료 정산",
                 matchRequestId
         ));
         transactionRepository.save(new PointTransaction(
-                editor, amount, PointTransactionType.ESCROW_RELEASE,
+                editor, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
                 requester.getNickname() + "님 작업 완료 수령",
                 matchRequestId
         ));
     }
 
-    // 취소 시 에스크로 → 크리에이터 환불
+    // 취소 시 안전결제 → 크리에이터 환불
     @Transactional
-    public void refundEscrow(String matchRequestId, String userId) {
+    public void refundSafePayment(String matchRequestId, String userId) {
         MatchRequest request = getMatchRequest(matchRequestId);
         boolean isRequester = request.getRequester().getId().equals(userId);
         boolean isEditor = request.getEditor().getId().equals(userId);
@@ -109,57 +109,43 @@ public class PointService {
         User requester = request.getRequester();
         int amount = request.getAgreedAmount();
 
-        requester.refundEscrow(amount);
+        requester.refundSafePayment(amount);
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_REFUND,
+                requester, amount, PointTransactionType.SAFE_PAYMENT_REFUND,
                 request.getEditor().getNickname() + "님과의 매칭 취소 환불",
                 matchRequestId
         ));
     }
 
-    // 프로젝트 시작 시 크리에이터 포인트 → 에스크로
+    // 프로젝트 완료 시 안전결제 → 에디터
     @Transactional
-    public void holdEscrowForProject(Project project) {
-        if (project.getPrice() == null || project.getPrice() <= 0) return;
-        User requester = project.getRequester();
-        int amount = project.getPrice();
-        requester.holdEscrow(amount);
-        transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_HOLD,
-                project.getEditor().getNickname() + "님과의 프로젝트 거래 보증금 차감",
-                null
-        ));
-    }
-
-    // 프로젝트 완료 시 에스크로 → 에디터
-    @Transactional
-    public void releaseEscrowForProject(Project project) {
+    public void releaseSafePaymentForProject(Project project) {
         if (project.getPrice() == null || project.getPrice() <= 0) return;
         User requester = project.getRequester();
         User editor = project.getEditor();
         int amount = project.getPrice();
-        requester.releaseEscrow(amount, editor);
+        requester.releaseSafePayment(amount, editor);
         transactionRepository.save(new PointTransaction(
-                editor, amount, PointTransactionType.ESCROW_RELEASE,
+                editor, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
                 requester.getNickname() + "님 프로젝트 완료 수령",
                 null
         ));
         transactionRepository.save(new PointTransaction(
-                requester, -amount, PointTransactionType.ESCROW_RELEASE,
+                requester, -amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
                 editor.getNickname() + "님께 프로젝트 완료 정산",
                 null
         ));
     }
 
-    // 프로젝트 취소 시 에스크로 → 크리에이터 환불
+    // 프로젝트 취소 시 안전결제 → 크리에이터 환불
     @Transactional
-    public void refundEscrowForProject(Project project) {
+    public void refundSafePaymentForProject(Project project) {
         if (project.getPrice() == null || project.getPrice() <= 0) return;
         User requester = project.getRequester();
         int amount = project.getPrice();
-        requester.refundEscrow(amount);
+        requester.refundSafePayment(amount);
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.ESCROW_REFUND,
+                requester, amount, PointTransactionType.SAFE_PAYMENT_REFUND,
                 project.getEditor().getNickname() + "님과의 프로젝트 취소 환불",
                 null
         ));
@@ -181,7 +167,7 @@ public class PointService {
         User editor = project.getEditor();
 
         if (finalAmount > 0) {
-            requester.releaseEscrow(finalAmount, editor);
+            requester.releaseSafePayment(finalAmount, editor);
             transactionRepository.save(new PointTransaction(
                     editor, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
                     "분쟁 조정 수령 (" + requester.getNickname() + "님)", null
@@ -192,7 +178,7 @@ public class PointService {
             ));
         }
         if (refundAmount > 0) {
-            requester.refundEscrow(refundAmount);
+            requester.refundSafePayment(refundAmount);
             transactionRepository.save(new PointTransaction(
                     requester, refundAmount, PointTransactionType.DISPUTE_SETTLEMENT,
                     "분쟁 조정 환불 (" + editor.getNickname() + "님)", null
