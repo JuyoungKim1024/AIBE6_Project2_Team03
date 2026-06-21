@@ -4,6 +4,8 @@ import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
+import com.backend.domain.dispute.entity.DisputeStatus;
+import com.backend.domain.dispute.repository.DisputeRepository;
 import com.backend.domain.point.service.PointService;
 import com.backend.domain.project.dto.ProjectCreateRequestDTO;
 import com.backend.domain.project.dto.ProjectResponseDTO;
@@ -29,6 +31,7 @@ public class ProjectService {
     private final ChatParticipantRepository chatParticipantRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final PointService pointService;
+    private final DisputeRepository disputeRepository;
 
     private ProjectResponseDTO publishProject(Project project) {
         ProjectResponseDTO response = ProjectResponseDTO.from(project);
@@ -152,6 +155,7 @@ public class ProjectService {
     public ProjectResponseDTO completeProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
+        validateNoActiveDispute(project);
         project.requestComplete(userId);
         if (project.getStatus() == ProjectStatus.COMPLETED) {
             pointService.releaseEscrowForProject(project);
@@ -163,6 +167,7 @@ public class ProjectService {
     public ProjectResponseDTO cancelProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
+        validateNoActiveDispute(project);
         ProjectStatus statusBeforeCancel = project.getStatus();
         if (statusBeforeCancel != ProjectStatus.WAITING
                 && statusBeforeCancel != ProjectStatus.WORKING
@@ -215,5 +220,15 @@ public class ProjectService {
         return project.getStatus() == ProjectStatus.COMPLETED
                 || project.getStatus() == ProjectStatus.CANCELED
                 || project.getStatus() == ProjectStatus.REJECTED;
+    }
+
+    private void validateNoActiveDispute(Project project) {
+        boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
+                project.getId(),
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.ESCALATED)
+        );
+        if (hasActiveDispute) {
+            throw new IllegalStateException("진행 중인 분쟁이 있어 프로젝트를 변경할 수 없습니다.");
+        }
     }
 }
