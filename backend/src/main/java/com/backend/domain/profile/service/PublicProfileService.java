@@ -84,6 +84,9 @@ public class PublicProfileService {
         if (user.isDeleted()) {
             throw new ResponseStatusException(HttpStatus.GONE, "탈퇴한 계정입니다");
         }
+        if (user.isSuspended()) {
+            throw new ResponseStatusException(HttpStatus.LOCKED, "정지된 계정입니다");
+        }
 
         Profile profile = profileRepository.findByUser_Id(userId).orElse(null);
 

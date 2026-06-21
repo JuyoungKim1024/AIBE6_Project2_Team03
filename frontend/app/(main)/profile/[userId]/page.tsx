@@ -221,6 +221,10 @@ export default function PublicProfilePage() {
           setProfileError('탈퇴한 계정입니다');
           return null;
         }
+        if (response.status === 423) {
+          setProfileError('정지된 계정입니다');
+          return null;
+        }
         if (response.status === 404) {
           setProfileError('존재하지 않는 사용자입니다');
           return null;
