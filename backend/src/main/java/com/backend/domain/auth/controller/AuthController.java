@@ -135,6 +135,13 @@ public class AuthController {
         return authService.updateRole(authService.resolveUserId(authorizationHeader), request.role());
     }
 
+    @PatchMapping("/users/me/terms")
+    public UserResponse agreeToTerms(
+            @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        return authService.agreeToTerms(authService.resolveUserId(authorizationHeader));
+    }
+
     @PatchMapping("/users/me/profile")
     public UserResponse updateProfile(
             @RequestHeader("Authorization") String authorizationHeader,

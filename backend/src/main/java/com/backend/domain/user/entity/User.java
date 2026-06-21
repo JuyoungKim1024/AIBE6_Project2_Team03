@@ -80,6 +80,9 @@ public class User {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "terms_agreed_at")
+    private LocalDateTime termsAgreedAt;
+
     public User(SocialProvider provider, String socialId, String providerEmail, String nickname, String profileImage) {
         this.provider = provider;
         this.socialId = socialId;
@@ -96,6 +99,7 @@ public class User {
         this.passwordHash = passwordHash;
         this.nickname = nickname;
         this.emailVerified = true;
+        this.termsAgreedAt = LocalDateTime.now();
     }
 
     @PrePersist
@@ -147,6 +151,14 @@ public class User {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    public void agreeToTerms() {
+        this.termsAgreedAt = LocalDateTime.now();
+    }
+
+    public boolean hasAgreedToTerms() {
+        return termsAgreedAt != null;
     }
 
     public void updateMatchingPrice(boolean matchEnabled, Integer matchPriceMin, Integer matchPriceMax, MatchPriceUnit matchPriceUnit) {

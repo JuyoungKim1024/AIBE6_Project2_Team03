@@ -229,6 +229,13 @@ public class AuthService {
     }
 
     @Transactional
+    public UserResponse agreeToTerms(String userId) {
+        User user = getUser(userId);
+        user.agreeToTerms();
+        return toUserResponse(user);
+    }
+
+    @Transactional
     public UserResponse updateProfile(String userId, ProfileUpdateRequest request) {
         User user = getUser(userId);
         String name = request.name() == null ? "" : request.name().trim();
