@@ -41,11 +41,19 @@ export interface AttachedPortfolioGroup {
   items: AttachedPortfolioItem[];
 }
 
+export interface CompletedDeal {
+  createdAt: string | null;
+  field: string | null;
+  videoLength: number | null;
+  price: number | null;
+}
+
 export interface JobPostDetailDto extends JobPostDto {
   content: string;
   portfolioGroups: AttachedPortfolioGroup[];
   revisionCount: number | null;
   updatedAt: string;
+  completedDeals: CompletedDeal[];
 }
 
 

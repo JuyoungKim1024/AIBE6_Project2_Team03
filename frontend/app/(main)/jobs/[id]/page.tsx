@@ -73,6 +73,7 @@ export default function JobDetailPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [postDeleteConfirm, setPostDeleteConfirm] = useState(false);
+  const [showTransactionPanel, setShowTransactionPanel] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<{
     group: AttachedPortfolioGroup;
@@ -465,6 +466,7 @@ export default function JobDetailPage() {
           </div>
         )}
 
+
         {/* Work Condition Summary */}
         <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
           <h2 className="text-lg font-bold text-text-primary mb-5">
@@ -490,17 +492,49 @@ export default function JobDetailPage() {
         </div>
 
         {/* Transaction History */}
-        <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-bold text-text-primary">
-              작성자의 이전 거래 내역
-            </h2>
-            <span className="text-xs text-text-muted">투명한 단가 공개</span>
-          </div>
-          <div className="flex items-center justify-center py-10 text-text-muted text-sm">
-            거래 내역이 없습니다.
-          </div>
-        </div>
+        {(() => {
+          const txList = post.completedDeals ?? [];
+          const preview = txList.slice(0, 3);
+          const hasMore = txList.length > 3;
+          return (
+            <div className="bg-surface border border-border rounded-2xl p-6 mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-text-primary">작성자의 이전 거래 내역</h2>
+                <span className="text-xs text-text-muted">투명한 단가 공개</span>
+              </div>
+              {txList.length === 0 ? (
+                <div className="flex items-center justify-center py-10 text-text-muted text-sm">
+                  거래 내역이 없습니다.
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-border">
+                    {preview.map((tx: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between py-3.5">
+                        <div className="flex items-center gap-6 text-sm">
+                          <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                          <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                          <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                        </div>
+                        <span className="font-mono font-bold text-text-primary">
+                          {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {hasMore && (
+                    <button
+                      onClick={() => setShowTransactionPanel(true)}
+                      className="w-full mt-4 pt-4 border-t border-border text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      거래 내역 더보기 →
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Comments Section */}
         <div>
@@ -798,6 +832,52 @@ export default function JobDetailPage() {
           onSubmit={submitChatRequest}
         />
       )}
+
+      {/* Transaction History Panel */}
+      <AnimatePresence>
+        {showTransactionPanel && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTransactionPanel(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full max-w-md bg-surface border-l border-border shadow-2xl z-[101] flex flex-col"
+            >
+              <div className="flex items-center justify-between p-5 border-b border-border">
+                <div>
+                  <h3 className="font-bold text-text-primary">전체 거래 내역</h3>
+                  <p className="text-xs text-text-muted mt-0.5">{post.author.nickname}님의 거래 내역</p>
+                </div>
+                <button onClick={() => setShowTransactionPanel(false)} className="p-2 text-text-muted hover:text-text-primary rounded-lg hover:bg-surface-elevated transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-border px-5">
+                {(post.completedDeals ?? []).map((tx, i) => (
+                  <div key={i} className="flex items-center justify-between py-3.5">
+                    <div className="flex items-center gap-6 text-sm">
+                      <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                      <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                      <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                    </div>
+                    <span className="font-mono font-bold text-text-primary">
+                      {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Portfolio Lightbox */}
       <AnimatePresence>

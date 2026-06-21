@@ -28,4 +28,7 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
         ORDER BY p.updatedAt DESC
     """)
     List<Project> findVisibleProjectsByUserId(@Param("userId") String userId);
+
+    @Query("SELECT p FROM Project p WHERE (p.editor.id = :userId OR p.requester.id = :userId) AND p.status = 'COMPLETED' ORDER BY p.createdAt DESC")
+    List<Project> findCompletedByUser(@Param("userId") String userId);
 }
