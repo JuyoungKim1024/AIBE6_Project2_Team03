@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Scissors, Video, Youtube } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { useModal } from '@/store/modalStore';
 
 type Role = 'YOUTUBER' | 'EDITOR';
 
@@ -45,6 +46,7 @@ const roles: RoleGuide[] = [
 
 export default function OnboardingRolePage() {
   const router = useRouter();
+  const { openModal } = useModal();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,7 +56,7 @@ export default function OnboardingRolePage() {
     }
 
     if (!selectedRole) {
-      alert('크리에이터 또는 에디터 중 하나를 선택해야 로그인할 수 있습니다.');
+      openModal({ title: '역할 선택', message: '크리에이터 또는 에디터 중 하나를 선택해주세요.' });
       return;
     }
 
@@ -76,7 +78,7 @@ export default function OnboardingRolePage() {
 
     setIsSubmitting(false);
     if (!response.ok) {
-      alert('역할 저장에 실패했습니다. 다시 로그인해주세요.');
+      openModal({ title: '저장 실패', message: '역할 저장에 실패했습니다. 다시 로그인해주세요.' });
       router.push('/login');
       return;
     }

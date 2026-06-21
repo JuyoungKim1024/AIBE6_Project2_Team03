@@ -9,7 +9,7 @@ export function GlobalModal() {
 
   const handleConfirm = () => {
     options?.onConfirm?.();
-    closeModal();
+    closeModal(true);
   };
 
   return (
@@ -21,7 +21,7 @@ export function GlobalModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => closeModal()} />
           <motion.div
             className="relative bg-surface border border-border rounded-2xl p-8 w-full max-w-sm shadow-2xl"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -30,7 +30,7 @@ export function GlobalModal() {
             transition={{ duration: 0.2 }}
           >
             <button
-              onClick={closeModal}
+              onClick={() => closeModal()}
               className="absolute top-4 right-4 p-1 text-text-muted hover:text-text-primary transition-colors"
             >
               <X size={18} />
@@ -40,7 +40,7 @@ export function GlobalModal() {
             <div className="flex gap-3 justify-end">
               {options.onConfirm && (
                 <button
-                  onClick={closeModal}
+                  onClick={() => closeModal()}
                   className="px-4 py-2 rounded-lg border border-border text-sm text-text-secondary hover:bg-surface-elevated transition-colors"
                 >
                   취소

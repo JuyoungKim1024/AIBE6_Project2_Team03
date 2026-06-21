@@ -8,6 +8,7 @@ import { API_BASE_URL } from '@/lib/api';
 import { parseProjectMessage } from '@/components/common/ProjectMessageCard';
 import type { MyChatRoom } from '@/types/chat';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
+import { useModal } from '@/store/modalStore';
 
 type ChatFilter = 'ALL' | 'POST' | 'DIRECT' | 'MATCHING' | 'UNREAD';
 
@@ -33,6 +34,7 @@ type ChatRoomListProps = {
 
 export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }: ChatRoomListProps) {
   const router = useRouter();
+  const { confirmModal } = useModal();
   const [rooms, setRooms] = useState<MyChatRoom[]>([]);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +81,12 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
   }, []);
 
   const deleteRoom = async (roomId: string) => {
-    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+    const confirmed = await confirmModal({
+      title: '채팅방 삭제',
+      message: '채팅방을 목록에서 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
 
     const accessToken = localStorage.getItem('accessToken');
     try {
