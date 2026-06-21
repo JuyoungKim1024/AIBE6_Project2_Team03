@@ -14,6 +14,7 @@ import { useChatSocket } from '@/hooks/useChatSocket';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
 import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
+import { useModal } from '@/store/modalStore';
 
 type AuthUser = {
   id: string;
@@ -48,6 +49,7 @@ type MyProjects = {
 
 export function ChatFAB() {
   const router = useRouter();
+  const { openModal, confirmModal } = useModal();
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -218,7 +220,7 @@ export function ChatFAB() {
         if (me.id === activeDMUser.id) {
           closeDM();
           setErrorMessage('본인에게는 DM을 보낼 수 없습니다.');
-          alert('본인에게는 DM을 보낼 수 없습니다.');
+          openModal({ title: 'DM 전송 불가', message: '본인에게는 DM을 보낼 수 없습니다.' });
         }
       })
       .catch(() => {
@@ -243,7 +245,12 @@ export function ChatFAB() {
   };
 
   const deleteRoom = async (roomId: string) => {
-    if (!window.confirm('채팅방을 목록에서 삭제하시겠습니까?')) return;
+    const confirmed = await confirmModal({
+      title: '채팅방 삭제',
+      message: '채팅방을 목록에서 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
 
     setErrorMessage('');
     try {
@@ -285,7 +292,7 @@ export function ChatFAB() {
     if (user?.id === activeDMUser.id) {
       closeDM();
       setErrorMessage('본인에게는 DM을 보낼 수 없습니다.');
-      alert('본인에게는 DM을 보낼 수 없습니다.');
+      openModal({ title: 'DM 전송 불가', message: '본인에게는 DM을 보낼 수 없습니다.' });
       return;
     }
 

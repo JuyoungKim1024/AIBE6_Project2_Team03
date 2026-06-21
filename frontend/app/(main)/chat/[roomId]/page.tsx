@@ -13,6 +13,7 @@ import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-att
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
+import { useModal } from '@/store/modalStore';
 
 type AuthUser = {
   id: string;
@@ -29,6 +30,7 @@ type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
 
 export default function ChatRoomPage() {
   const router = useRouter();
+  const { confirmModal } = useModal();
   const params = useParams<{ roomId: string }>();
   const roomId = params.roomId;
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -185,7 +187,12 @@ export default function ChatRoomPage() {
         ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
         : '프로젝트 취소를 요청하시겠습니까?',
     };
-    if (!window.confirm(labels[action])) return;
+    const confirmed = await confirmModal({
+      title: '프로젝트 상태 변경',
+      message: labels[action],
+      confirmLabel: '확인',
+    });
+    if (!confirmed) return;
 
     setActiveProjectAction(action);
     setErrorMessage('');

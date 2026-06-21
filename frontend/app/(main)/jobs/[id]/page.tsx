@@ -37,9 +37,11 @@ import {
 import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
+import { useModal } from "@/store/modalStore";
 
 export default function JobDetailPage() {
   const router = useRouter();
+  const { openModal } = useModal();
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<JobPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +114,7 @@ export default function JobDetailPage() {
       if (!res.ok) throw new Error("삭제 실패");
       router.push("/jobs");
     } catch {
-      alert("게시글 삭제에 실패했습니다.");
+      openModal({ title: "삭제 실패", message: "게시글 삭제에 실패했습니다." });
     } finally {
       setPostDeleteConfirm(false);
     }
@@ -155,7 +157,7 @@ export default function JobDetailPage() {
       await createPostChatRequest(post.author.id, id, message);
       markInitialChatRequestMessageUsed(post.author.id);
       setShowChatRequestModal(false);
-      alert("채팅 요청을 보냈습니다.");
+      openModal({ title: "채팅 문의", message: "채팅 요청을 보냈습니다." });
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -165,7 +167,7 @@ export default function JobDetailPage() {
         router.push("/login");
         return;
       }
-      alert(errorMessage);
+      openModal({ title: "채팅 문의 실패", message: errorMessage });
     } finally {
       setIsStartingChat(false);
     }
@@ -261,6 +263,10 @@ export default function JobDetailPage() {
 
   const postTypeLabel = post.postType === "RECRUITING" ? "구인" : "구직";
   const isMyPost = currentUserId === post.author.id;
+  const authorRole = post.postType === "RECRUITING" ? "YOUTUBER" : "EDITOR";
+  const isSameRole = Boolean(userRole && userRole === authorRole);
+  const canRequestPostChat =
+    !isMyPost && !post.author.isDeleted && (!userRole || !isSameRole);
   const priceText =
     post.priceVisible && (post.minPrice || post.maxPrice)
       ? post.minPrice && post.maxPrice
@@ -802,14 +808,25 @@ export default function JobDetailPage() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={openChatRequestModal}
-              disabled={isStartingChat || isMyPost}
-              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Send size={16} />
-              {isMyPost ? "내 글입니다" : "채팅 문의하기"}
-            </button>
+            {isMyPost ? (
+              <button
+                type="button"
+                disabled
+                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm opacity-60 cursor-not-allowed"
+              >
+                <Send size={16} />
+                내 글입니다
+              </button>
+            ) : canRequestPostChat ? (
+              <button
+                onClick={openChatRequestModal}
+                disabled={isStartingChat}
+                className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Send size={16} />
+                채팅 문의하기
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

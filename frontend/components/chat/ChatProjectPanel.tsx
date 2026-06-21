@@ -9,6 +9,7 @@ import {
   type ProjectMessagePayload,
 } from '@/components/common/ProjectMessageCard';
 import type { ChatPostSummary } from '@/types/chat';
+import { useModal } from '@/store/modalStore';
 
 type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
 
@@ -60,6 +61,7 @@ function getTomorrowMin() {
 }
 
 export function ChatProjectPanel({ roomId, userId, project, post, onProjectChange, publishMessage }: Props) {
+  const { confirmModal } = useModal();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -194,7 +196,12 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
         ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
         : '프로젝트 취소를 요청하시겠습니까?',
     };
-    if (!window.confirm(labels[action])) return;
+    const confirmed = await confirmModal({
+      title: '프로젝트 상태 변경',
+      message: labels[action],
+      confirmLabel: '확인',
+    });
+    if (!confirmed) return;
 
     setActiveAction(action);
     setErrorMessage('');

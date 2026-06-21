@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ShieldOff, ShieldCheck, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { useModal } from '@/store/modalStore';
 
 type AdminUser = {
   id: string;
@@ -196,6 +197,7 @@ export function AdminUsersPanel() {
 }
 
 export function AdminPostsPanel() {
+  const { confirmModal } = useModal();
   const [items, setItems] = useState<AdminPost[]>([]);
   const [message, setMessage] = useState('');
   const load = () => fetch(`${API_BASE_URL}/api/admin/posts`, { headers: authHeaders() })
@@ -205,7 +207,12 @@ export function AdminPostsPanel() {
   useEffect(() => { load(); }, []);
 
   const remove = async (id: string) => {
-    if (!window.confirm('이 게시글을 삭제하시겠습니까?')) return;
+    const confirmed = await confirmModal({
+      title: '게시글 삭제',
+      message: '이 게시글을 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
     const response = await fetch(`${API_BASE_URL}/api/admin/posts/${id}`, {
       method: 'DELETE',
       headers: authHeaders(),
@@ -231,6 +238,7 @@ export function AdminPostsPanel() {
 }
 
 export function AdminCommentsPanel() {
+  const { confirmModal } = useModal();
   const [items, setItems] = useState<AdminComment[]>([]);
   const [message, setMessage] = useState('');
   const load = () => fetch(`${API_BASE_URL}/api/admin/comments`, { headers: authHeaders() })
@@ -240,7 +248,12 @@ export function AdminCommentsPanel() {
   useEffect(() => { load(); }, []);
 
   const remove = async (id: string) => {
-    if (!window.confirm('이 댓글을 삭제하시겠습니까?')) return;
+    const confirmed = await confirmModal({
+      title: '댓글 삭제',
+      message: '이 댓글을 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
     const response = await fetch(`${API_BASE_URL}/api/admin/comments/${id}`, {
       method: 'DELETE',
       headers: authHeaders(),

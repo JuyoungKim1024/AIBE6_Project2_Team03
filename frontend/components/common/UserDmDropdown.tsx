@@ -6,6 +6,7 @@ import { MessageCircle } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
+import { useModal } from '@/store/modalStore';
 
 type UserDmDropdownProps = {
   targetUserId: string;
@@ -15,6 +16,7 @@ type UserDmDropdownProps = {
 
 export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDropdownProps) {
   const router = useRouter();
+  const { openModal } = useModal();
   const ref = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -61,7 +63,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
       if (!response.ok) throw new Error('로그인이 필요합니다.');
       const me = await response.json() as { id: string };
       if (me.id === targetUserId) {
-        alert('본인에게는 DM을 보낼 수 없습니다.');
+        openModal({ title: 'DM 전송 불가', message: '본인에게는 DM을 보낼 수 없습니다.' });
         setOpen(false);
         return;
       }
