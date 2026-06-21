@@ -19,7 +19,9 @@ public interface ChatRequestRepository extends JpaRepository<ChatRequest, String
                                                                      String receiverId,
                                                                      ChatRequestStatus status);
 
-    List<ChatRequest> findByReceiver_IdAndStatusOrderByCreatedAtDesc(String receiverId,
-                                                                     ChatRequestStatus status);
+    List<ChatRequest> findByReceiver_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+            String receiverId,
+            ChatRequestStatus status
+    );
 
 }

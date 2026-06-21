@@ -47,7 +47,7 @@ const emptyForm: ProjectForm = {
   deadlineTime: '',
   memo: '',
 };
-const visibleStatuses = ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'];
+const visibleStatuses = ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'];
 const deadlineTimes = Array.from({ length: 24 }, (_, hour) =>
   `${String(hour).padStart(2, '0')}:00`,
 );
@@ -69,7 +69,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
   const [errorMessage, setErrorMessage] = useState('');
   const minDeadline = getTomorrowMin();
   const accessToken = typeof window === 'undefined' ? null : localStorage.getItem('accessToken');
-  const isOpenProject = project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) : false;
+  const isOpenProject = project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING'].includes(project.status) : false;
 
   const request = async <T,>(path: string, init?: RequestInit) => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -190,7 +190,9 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       start: '프로젝트를 수락하시겠습니까?',
       reject: '프로젝트를 거절하시겠습니까?',
       complete: '프로젝트 완료를 처리하시겠습니까?',
-      cancel: '프로젝트를 취소하시겠습니까?',
+      cancel: project.status === 'CANCELLATION_PENDING'
+        ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+        : '프로젝트 취소를 요청하시겠습니까?',
     };
     if (!window.confirm(labels[action])) return;
 
@@ -222,6 +224,9 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       )}
       {project.status === 'COMPLETION_PENDING' && project.completionRequestedBy !== userId && (
         <ActionButton onClick={() => changeStatus('complete')} disabled={Boolean(activeAction)} tone="primary"><Check size={12} />완료 확인</ActionButton>
+      )}
+      {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== userId && (
+        <ActionButton onClick={() => changeStatus('cancel')} disabled={Boolean(activeAction)} tone="danger"><X size={12} />취소 확인</ActionButton>
       )}
       {['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) && project.requesterId === userId && (
         <ActionButton onClick={openEditForm} disabled={Boolean(activeAction)}><Pencil size={12} />수정</ActionButton>

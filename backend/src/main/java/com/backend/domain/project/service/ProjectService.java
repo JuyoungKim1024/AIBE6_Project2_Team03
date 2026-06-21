@@ -81,7 +81,12 @@ public class ProjectService {
 
         boolean exists = projectRepository.existsByRoom_IdAndStatusIn(
                 room.getId(),
-                List.of(ProjectStatus.WAITING, ProjectStatus.WORKING)
+                List.of(
+                        ProjectStatus.WAITING,
+                        ProjectStatus.WORKING,
+                        ProjectStatus.COMPLETION_PENDING,
+                        ProjectStatus.CANCELLATION_PENDING
+                )
         );
 
         if(exists) {
@@ -122,7 +127,12 @@ public class ProjectService {
 
         Project project = projectRepository.findTopByRoom_IdAndStatusInOrderByCreatedAtDesc(
                 roomId,
-                List.of(ProjectStatus.WAITING, ProjectStatus.WORKING)
+                List.of(
+                        ProjectStatus.WAITING,
+                        ProjectStatus.WORKING,
+                        ProjectStatus.COMPLETION_PENDING,
+                        ProjectStatus.CANCELLATION_PENDING
+                )
         );
         if (project == null) {
             throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
@@ -186,13 +196,11 @@ public class ProjectService {
     public ProjectResponseDTO cancelProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
-        if (project.getStatus() != ProjectStatus.WAITING
-                && project.getStatus() != ProjectStatus.WORKING
-                && project.getStatus() != ProjectStatus.COMPLETION_PENDING) {
-            throw new IllegalArgumentException("취소할 수 없는 프로젝트 상태입니다.");
-        }
-        project.cancel();
-        return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_CANCELED);
+        project.requestCancel(userId);
+        ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.CANCELLATION_PENDING
+                ? ProjectNotificationType.PROJECT_CANCELLATION_REQUESTED
+                : ProjectNotificationType.PROJECT_CANCELED;
+        return publishProjectChange(project, userId, notificationType);
     }
 
     private Project getProject(String projectId) {

@@ -9,6 +9,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -38,6 +40,9 @@ public class ChatRequest extends BaseEntity {
     @JoinColumn(name = "room_id")
     private ChatRoom chatRoom;
 
+    @Column(name = "notification_dismissed_at")
+    private LocalDateTime notificationDismissedAt;
+
 
     public ChatRequest(User requester, User receiver, Post post, String message) {
         this.requester = requester;
@@ -54,6 +59,10 @@ public class ChatRequest extends BaseEntity {
 
     public void reject() {
         this.status = ChatRequestStatus.REJECTED;
+    }
+
+    public void dismissNotification() {
+        this.notificationDismissedAt = LocalDateTime.now();
     }
 
 }

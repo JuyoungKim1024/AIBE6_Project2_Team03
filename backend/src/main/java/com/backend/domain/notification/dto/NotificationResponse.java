@@ -50,6 +50,7 @@ public record NotificationResponse(
                     case PROJECT_REJECTED -> "프로젝트가 거절되었습니다.";
                     case PROJECT_COMPLETION_REQUESTED -> "프로젝트 완료 요청이 있습니다.";
                     case PROJECT_COMPLETED -> "프로젝트가 완료되었습니다.";
+                    case PROJECT_CANCELLATION_REQUESTED -> "프로젝트 취소 요청이 있습니다.";
                     case PROJECT_CANCELED -> "프로젝트가 취소되었습니다.";
                 },
                 notification.getCreatedAt() != null ? notification.getCreatedAt().format(FORMATTER) : null
