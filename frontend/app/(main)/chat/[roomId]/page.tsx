@@ -48,7 +48,6 @@ export default function ChatRoomPage() {
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(
     () => searchParams.get('disputeId')
   );
-  const [preloadedDisputeId, setPreloadedDisputeId] = useState<string | null>(null);
   const [isCheckingDispute, setIsCheckingDispute] = useState(false);
 
   const getToken = () => localStorage.getItem('accessToken');
@@ -136,9 +135,9 @@ export default function ChatRoomPage() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.status === 200 ? r.json() : null))
-      .then((d) => { if (d?.id) setPreloadedDisputeId(d.id); })
+      .then((d) => { if (d?.id) setActiveDisputeId(d.id); })
       .catch(() => {});
-  }, [currentProject?.id]);
+  }, [currentProject?.id, accessToken]);
 
   useEffect(() => {
     const markWhenVisible = () => {
@@ -232,11 +231,6 @@ export default function ChatRoomPage() {
           accessToken={accessToken}
           onClose={() => setShowDisputeModal(false)}
           onCreated={(disputeId) => {
-            setShowDisputeModal(false);
-            setActiveDisputeId(disputeId);
-            window.history.replaceState(null, '', `?disputeId=${disputeId}`);
-          }}
-          onExistingDispute={(disputeId) => {
             setShowDisputeModal(false);
             setActiveDisputeId(disputeId);
             window.history.replaceState(null, '', `?disputeId=${disputeId}`);
