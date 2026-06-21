@@ -6,10 +6,7 @@ import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
-import { RankBadge } from "@/components/common/RankBadge";
 import { togglePostLike } from "@/lib/api/post";
-import type { RankTier } from "@/types/user";
-import { UserDmDropdown } from "@/components/common/UserDmDropdown";
 
 export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
@@ -127,17 +124,6 @@ export function PostCard({
               />
             </span>
             <span className="font-medium text-text-primary">{author.name}</span>
-            {author.rank && (
-              <span className={`scale-[0.6] origin-left ${{
-                bronze:   'drop-shadow-[0_0_6px_rgba(205,120,50,1)] drop-shadow-[0_0_12px_rgba(205,120,50,0.7)]',
-                silver:   'drop-shadow-[0_0_6px_rgba(190,200,210,1)] drop-shadow-[0_0_12px_rgba(190,200,210,0.7)]',
-                gold:     'drop-shadow-[0_0_8px_rgba(250,195,0,1)] drop-shadow-[0_0_16px_rgba(250,195,0,0.7)]',
-                platinum: 'drop-shadow-[0_0_8px_rgba(56,210,160,1)] drop-shadow-[0_0_16px_rgba(56,210,160,0.7)]',
-                diamond:  'drop-shadow-[0_0_10px_rgba(6,210,255,1)] drop-shadow-[0_0_20px_rgba(6,210,255,0.8)]',
-              }[author.rank] ?? ''}`}>
-                <RankBadge tier={author.rank as RankTier} size="sm" showLabel={false} />
-              </span>
-            )}
             <span className="text-text-muted text-xs">•</span>
             <span className="text-text-muted text-xs">{timeAgo}</span>
           </div>

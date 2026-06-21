@@ -22,6 +22,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
   const [isStartingDm, setIsStartingDm] = useState(false);
   const avatarSize = size === "sm" ? "w-7 h-7 text-xs" : "w-10 h-10 text-sm";
   const iconSize = size === "sm" ? 13 : 16;
+  const isWithdrawnUser = nickname === "탈퇴한 사용자";
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -122,18 +123,20 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
             <User size={14} />
             공개 프로필
           </button>
-          <button
-            type="button"
-            onClick={openDmRequestModal}
-            disabled={isStartingDm}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-50"
-          >
-            <MessageCircle size={14} />
-            DM 요청하기
-          </button>
+          {!isWithdrawnUser && (
+            <button
+              type="button"
+              onClick={openDmRequestModal}
+              disabled={isStartingDm}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-50"
+            >
+              <MessageCircle size={14} />
+              DM 요청하기
+            </button>
+          )}
         </div>
       )}
-      {showRequestModal && (
+      {!isWithdrawnUser && showRequestModal && (
         <DirectChatRequestModal
           targetName={nickname}
           initialMessage={getInitialChatRequestMessage(userId, "안녕하세요. DM 문의드립니다.")}
