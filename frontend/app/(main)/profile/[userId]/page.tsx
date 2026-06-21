@@ -373,11 +373,6 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
               )}
-              <Link href={`/chat/${data.id}`} className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors">
-                <MessageCircle size={16} />
-                채팅 문의
-              </Link>
-              {isEditor && <TrustTemperature temp={data.battlePower} />}
               <div className="flex flex-col items-stretch sm:items-end gap-2">
                 <button
                   type="button"
