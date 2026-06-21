@@ -46,6 +46,10 @@ public class CommentService {
         User writer = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
+        if (post.getAuthor().isDeleted()) {
+            throw new IllegalArgumentException("탈퇴한 사용자의 게시글에는 댓글을 달 수 없습니다.");
+        }
+
         Comment parent = null;
         if (req.parentId() != null) {
             parent = commentRepository.findById(req.parentId())
