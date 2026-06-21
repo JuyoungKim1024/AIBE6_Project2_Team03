@@ -44,6 +44,7 @@ import {
   getLikedPostIds,
   togglePostLike,
 } from '@/lib/api/post';
+import { requestPointPayment } from '@/lib/toss-payments';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
@@ -2786,23 +2787,24 @@ function PointSection() {
 
   const handleCharge = async () => {
     const amount = Number(chargeAmount);
-    if (!amount || amount <= 0) { setChargeError('충전 금액을 입력해주세요.'); return; }
+    if (!amount || amount < 100) {
+      setChargeError('충전 금액은 100원 이상 입력해주세요.');
+      return;
+    }
     setIsCharging(true);
     setChargeError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/point/charge`, {
+      const res = await fetch(`${API_BASE_URL}/api/point/payments/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
         body: JSON.stringify({ amount }),
       });
-      if (!res.ok) throw new Error('충전에 실패했습니다.');
-      const balance = await res.json();
-      setPoint(balance.point);
-      setEscrowPoint(balance.escrowPoint);
-      setChargeAmount('');
-      loadData();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message ?? '결제 주문 생성에 실패했습니다.');
+
+      await requestPointPayment(data);
     } catch (e) {
-      setChargeError(e instanceof Error ? e.message : '충전에 실패했습니다.');
+      setChargeError(e instanceof Error ? e.message : '결제창을 열지 못했습니다.');
     } finally {
       setIsCharging(false);
     }
@@ -2847,7 +2849,7 @@ function PointSection() {
             <div className="flex gap-2">
               <input
                 type="number"
-                min="1"
+                min="100"
                 value={chargeAmount}
                 onChange={(e) => { setChargeAmount(e.target.value); setChargeError(''); }}
                 onWheel={(e) => e.currentTarget.blur()}

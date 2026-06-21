@@ -1,0 +1,432 @@
+> Task :compileJava UP-TO-DATE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :resolveMainClassName
+
+> Task :bootRun
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.6)
+
+2026-06-22T00:52:48.409+09:00  INFO 25568 --- [  restartedMain] com.backend.BackendApplication           : Starting BackendApplication using Java 21.0.2 with PID 25568 (C:\Users\User\project_ccceck\AIBE6_Project2_Team03\backend\build\classes\java\main started by User in C:\Users\User\project_ccceck\AIBE6_Project2_Team03\backend)
+2026-06-22T00:52:48.411+09:00  INFO 25568 --- [  restartedMain] com.backend.BackendApplication           : The following 2 profiles are active: "dev", "local"
+2026-06-22T00:52:48.467+09:00  INFO 25568 --- [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-06-22T00:52:48.467+09:00  INFO 25568 --- [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-06-22T00:52:49.114+09:00  INFO 25568 --- [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-06-22T00:52:49.227+09:00  INFO 25568 --- [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 105 ms. Found 27 JPA repository interfaces.
+2026-06-22T00:52:49.828+09:00  INFO 25568 --- [  restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-06-22T00:52:49.841+09:00  INFO 25568 --- [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-06-22T00:52:49.842+09:00  INFO 25568 --- [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.21]
+2026-06-22T00:52:49.884+09:00  INFO 25568 --- [  restartedMain] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1416 ms
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning for classpath resources at 'classpath:db/callback' ...
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Determining location urls for classpath:db/callback using ClassLoader org.springframework.boot.devtools.restart.classloader.RestartClassLoader@3b3a995 ...
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Unable to resolve location classpath:db/callback.
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning for classpath resources at 'classpath:db/migration' ...
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Determining location urls for classpath:db/migration using ClassLoader org.springframework.boot.devtools.restart.classloader.RestartClassLoader@3b3a995 ...
+2026-06-22T00:52:50.179+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning URL: file:/C:/Users/User/project_ccceck/AIBE6_Project2_Team03/backend/build/resources/main/db/migration
+2026-06-22T00:52:50.181+09:00 DEBUG 25568 --- [  restartedMain] i.s.c.FileSystemClassPathLocationScanner : Scanning starting at classpath root in filesystem: C:\Users\User\project_ccceck\AIBE6_Project2_Team03\backend\build\resources\main\
+2026-06-22T00:52:50.181+09:00 DEBUG 25568 --- [  restartedMain] i.s.c.FileSystemClassPathLocationScanner : Scanning for resources in path: C:\Users\User\project_ccceck\AIBE6_Project2_Team03\backend\build\resources\main\db\migration (db/migration)
+2026-06-22T00:52:50.185+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V1__init_schema.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0910__auth_refresh_tokens.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0920__auth_logout_tokens.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0930__remove_both_role.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0940__matching_price_settings.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0950__public_profile_content_visibility.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1524__modify_posts_schema.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1525__rename_post_type_enum.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1530__modify_job_post_price.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1010__profile_image_longtext.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1100__matching_price_min_max.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1203__post_base_init_data.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1400__chat_init_data.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1500__update_sample_view_counts.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1000__add_post_revision_count.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1010__post_public_visibility.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1500__create_post_likes.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1600__add_post_comment_count.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1707__created_chat_request.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1010__local_account_email_verification.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql
+2026-06-22T00:52:50.186+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1124__chat_room_users_alter.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1200__point_system.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1300__chat_request_optional_post.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1010__portfolio_groups.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1200__job_post_portfolios.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1300__delete_sample_posts.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1600__soft_delete_users.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1710__project_completion_pending.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1000__terms_agreement.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1100__admin_account.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1200__customer_support.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1205__project_work_amount_unit.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1210__project_required_fields.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1300__test_accounts.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1305__project_notifications.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1310__project_revision_unlimited.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1320__matching_chat_rooms.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260623_0048__point_payment_orders.sql
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning for classpath resources at 'classpath:db/migration' ...
+2026-06-22T00:52:50.187+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Determining location urls for classpath:db/migration using ClassLoader org.springframework.boot.devtools.restart.classloader.RestartClassLoader@3b3a995 ...
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning URL: file:/C:/Users/User/project_ccceck/AIBE6_Project2_Team03/backend/build/resources/main/db/migration
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V1__init_schema.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0910__auth_refresh_tokens.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0920__auth_logout_tokens.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0930__remove_both_role.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0940__matching_price_settings.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_0950__public_profile_content_visibility.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1524__modify_posts_schema.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1525__rename_post_type_enum.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260612_1530__modify_job_post_price.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1010__profile_image_longtext.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1100__matching_price_min_max.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1203__post_base_init_data.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1400__chat_init_data.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1500__update_sample_view_counts.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1000__add_post_revision_count.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1010__post_public_visibility.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1500__create_post_likes.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1600__add_post_comment_count.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260617_1707__created_chat_request.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1010__local_account_email_verification.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1124__chat_room_users_alter.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1200__point_system.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260618_1300__chat_request_optional_post.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1010__portfolio_groups.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1200__job_post_portfolios.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1300__delete_sample_posts.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1600__soft_delete_users.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260619_1710__project_completion_pending.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1000__terms_agreement.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1100__admin_account.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1200__customer_support.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1205__project_work_amount_unit.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1210__project_required_fields.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1300__test_accounts.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1305__project_notifications.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1310__project_revision_unlimited.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260621_1320__matching_chat_rooms.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql
+2026-06-22T00:52:50.188+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Found resource: db/migration/V20260623_0048__point_payment_orders.sql
+2026-06-22T00:52:50.189+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.classpath.ClassPathScanner     : Scanning for classes at classpath:db/migration
+2026-06-22T00:52:50.191+09:00  INFO 25568 --- [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-06-22T00:52:50.317+09:00  INFO 25568 --- [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@d0741df
+2026-06-22T00:52:50.319+09:00  INFO 25568 --- [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1010__post_public_visibility.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1300__delete_sample_posts.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1200__customer_support.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1500__create_post_likes.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1600__soft_delete_users.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_0940__matching_price_settings.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260618_1124__chat_room_users_alter.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1203__post_base_init_data.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1000__add_post_revision_count.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1540__add_more_sample_community_posts.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260618_1300__chat_request_optional_post.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1100__matching_price_min_max.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_0930__remove_both_role.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_0937__fix_chat_timestamp_columns.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1707__created_chat_request.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1710__project_completion_pending.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1400__chat_init_data.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1205__project_work_amount_unit.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1500__update_sample_view_counts.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260623_0023__reset_incomplete_social_terms.sql
+2026-06-22T00:52:50.346+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1300__test_accounts.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1310__project_revision_unlimited.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_1530__modify_job_post_price.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_1524__modify_posts_schema.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1100__admin_account.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260623_0048__point_payment_orders.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1520__add_more_sample_job_posts.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1200__job_post_portfolios.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260615_1010__profile_image_longtext.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1431__alter_post_revision_count_nullable.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_0920__auth_logout_tokens.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1305__project_notifications.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260618_1200__point_system.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_1525__rename_post_type_enum.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V1__init_schema.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260618_1010__local_account_email_verification.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1000__terms_agreement.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1320__matching_chat_rooms.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1010__portfolio_groups.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260619_1700__job_post_portfolio_groups.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_0950__public_profile_content_visibility.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260617_1600__add_post_comment_count.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260618_1110__separate_email_verification_from_signup.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260612_0910__auth_refresh_tokens.sql
+2026-06-22T00:52:50.347+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.resource.ResourceNameValidator   : Validating V20260621_1210__project_required_fields.sql
+2026-06-22T00:52:50.357+09:00  INFO 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/matching_service?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true (MySQL 8.4)
+2026-06-22T00:52:50.358+09:00 DEBUG 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : Database Type: MySQL
+2026-06-22T00:52:50.358+09:00 DEBUG 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : Driver: MySQL Connector/J mysql-connector-j-9.7.0 (Revision: 0aade1f13bcc98faf7dda5c02e782481eb291f62)
+2026-06-22T00:52:50.358+09:00 DEBUG 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : DDL Transactions Supported: false
+2026-06-22T00:52:50.359+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.SchemaHistoryFactory           : Schemas: 
+2026-06-22T00:52:50.359+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.s.SchemaHistoryFactory           : Default schema: null
+2026-06-22T00:52:50.709+09:00 DEBUG 25568 --- [  restartedMain] o.f.database.mysql.MySQLConnection       : Disabled user variable reset as performance_schema.user_variables_by_thread cannot be queried (SQL State: 42000, Error Code: 1142)
+2026-06-22T00:52:50.720+09:00  WARN 25568 --- [  restartedMain] o.f.c.internal.database.base.Database    : Using MySQL 8.4 which is newer than the version Flyway has been verified with. The latest verified version of MySQL is 8.1.
+2026-06-22T00:52:50.722+09:00 DEBUG 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : Scanning for script callbacks ...
+2026-06-22T00:52:50.725+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.i.c.SqlScriptCallbackFactory       : Scanning for SQL callbacks ...
+2026-06-22T00:52:50.732+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.command.DbValidate     : Validating migrations ...
+2026-06-22T00:52:50.736+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.a.c.ClassicConfiguration           : CherryPickConfigurationExtension not found
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1010__post_public_visibility.sql (filename: V20260617_1010__post_public_visibility.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1300__delete_sample_posts.sql (filename: V20260619_1300__delete_sample_posts.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1200__customer_support.sql (filename: V20260621_1200__customer_support.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1500__create_post_likes.sql (filename: V20260617_1500__create_post_likes.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1600__soft_delete_users.sql (filename: V20260619_1600__soft_delete_users.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0940__matching_price_settings.sql (filename: V20260612_0940__matching_price_settings.sql)
+2026-06-22T00:52:50.765+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1124__chat_room_users_alter.sql (filename: V20260618_1124__chat_room_users_alter.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1203__post_base_init_data.sql (filename: V20260615_1203__post_base_init_data.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1000__add_post_revision_count.sql (filename: V20260617_1000__add_post_revision_count.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql (filename: V20260615_1540__add_more_sample_community_posts.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1300__chat_request_optional_post.sql (filename: V20260618_1300__chat_request_optional_post.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1100__matching_price_min_max.sql (filename: V20260615_1100__matching_price_min_max.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0930__remove_both_role.sql (filename: V20260612_0930__remove_both_role.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql (filename: V20260615_0937__fix_chat_timestamp_columns.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1707__created_chat_request.sql (filename: V20260617_1707__created_chat_request.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1710__project_completion_pending.sql (filename: V20260619_1710__project_completion_pending.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1400__chat_init_data.sql (filename: V20260615_1400__chat_init_data.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1205__project_work_amount_unit.sql (filename: V20260621_1205__project_work_amount_unit.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1500__update_sample_view_counts.sql (filename: V20260615_1500__update_sample_view_counts.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql (filename: V20260623_0023__reset_incomplete_social_terms.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1300__test_accounts.sql (filename: V20260621_1300__test_accounts.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1310__project_revision_unlimited.sql (filename: V20260621_1310__project_revision_unlimited.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1530__modify_job_post_price.sql (filename: V20260612_1530__modify_job_post_price.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1524__modify_posts_schema.sql (filename: V20260612_1524__modify_posts_schema.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1100__admin_account.sql (filename: V20260621_1100__admin_account.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0048__point_payment_orders.sql (filename: V20260623_0048__point_payment_orders.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql (filename: V20260615_1520__add_more_sample_job_posts.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1200__job_post_portfolios.sql (filename: V20260619_1200__job_post_portfolios.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1010__profile_image_longtext.sql (filename: V20260615_1010__profile_image_longtext.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql (filename: V20260617_1431__alter_post_revision_count_nullable.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0920__auth_logout_tokens.sql (filename: V20260612_0920__auth_logout_tokens.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1305__project_notifications.sql (filename: V20260621_1305__project_notifications.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1200__point_system.sql (filename: V20260618_1200__point_system.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1525__rename_post_type_enum.sql (filename: V20260612_1525__rename_post_type_enum.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V1__init_schema.sql (filename: V1__init_schema.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1010__local_account_email_verification.sql (filename: V20260618_1010__local_account_email_verification.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1000__terms_agreement.sql (filename: V20260621_1000__terms_agreement.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1320__matching_chat_rooms.sql (filename: V20260621_1320__matching_chat_rooms.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1010__portfolio_groups.sql (filename: V20260619_1010__portfolio_groups.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql (filename: V20260619_1700__job_post_portfolio_groups.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0950__public_profile_content_visibility.sql (filename: V20260612_0950__public_profile_content_visibility.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1600__add_post_comment_count.sql (filename: V20260617_1600__add_post_comment_count.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql (filename: V20260618_1110__separate_email_verification_from_signup.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0910__auth_refresh_tokens.sql (filename: V20260612_0910__auth_refresh_tokens.sql)
+2026-06-22T00:52:50.766+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1210__project_required_fields.sql (filename: V20260621_1210__project_required_fields.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1010__post_public_visibility.sql (filename: V20260617_1010__post_public_visibility.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1300__delete_sample_posts.sql (filename: V20260619_1300__delete_sample_posts.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1200__customer_support.sql (filename: V20260621_1200__customer_support.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1500__create_post_likes.sql (filename: V20260617_1500__create_post_likes.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1600__soft_delete_users.sql (filename: V20260619_1600__soft_delete_users.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0940__matching_price_settings.sql (filename: V20260612_0940__matching_price_settings.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1124__chat_room_users_alter.sql (filename: V20260618_1124__chat_room_users_alter.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1203__post_base_init_data.sql (filename: V20260615_1203__post_base_init_data.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1000__add_post_revision_count.sql (filename: V20260617_1000__add_post_revision_count.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql (filename: V20260615_1540__add_more_sample_community_posts.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1300__chat_request_optional_post.sql (filename: V20260618_1300__chat_request_optional_post.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1100__matching_price_min_max.sql (filename: V20260615_1100__matching_price_min_max.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0930__remove_both_role.sql (filename: V20260612_0930__remove_both_role.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql (filename: V20260615_0937__fix_chat_timestamp_columns.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1707__created_chat_request.sql (filename: V20260617_1707__created_chat_request.sql)
+2026-06-22T00:52:50.767+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1710__project_completion_pending.sql (filename: V20260619_1710__project_completion_pending.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1400__chat_init_data.sql (filename: V20260615_1400__chat_init_data.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1205__project_work_amount_unit.sql (filename: V20260621_1205__project_work_amount_unit.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1500__update_sample_view_counts.sql (filename: V20260615_1500__update_sample_view_counts.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql (filename: V20260623_0023__reset_incomplete_social_terms.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1300__test_accounts.sql (filename: V20260621_1300__test_accounts.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1310__project_revision_unlimited.sql (filename: V20260621_1310__project_revision_unlimited.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1530__modify_job_post_price.sql (filename: V20260612_1530__modify_job_post_price.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1524__modify_posts_schema.sql (filename: V20260612_1524__modify_posts_schema.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1100__admin_account.sql (filename: V20260621_1100__admin_account.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0048__point_payment_orders.sql (filename: V20260623_0048__point_payment_orders.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql (filename: V20260615_1520__add_more_sample_job_posts.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1200__job_post_portfolios.sql (filename: V20260619_1200__job_post_portfolios.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1010__profile_image_longtext.sql (filename: V20260615_1010__profile_image_longtext.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql (filename: V20260617_1431__alter_post_revision_count_nullable.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0920__auth_logout_tokens.sql (filename: V20260612_0920__auth_logout_tokens.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1305__project_notifications.sql (filename: V20260621_1305__project_notifications.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1200__point_system.sql (filename: V20260618_1200__point_system.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1525__rename_post_type_enum.sql (filename: V20260612_1525__rename_post_type_enum.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V1__init_schema.sql (filename: V1__init_schema.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1010__local_account_email_verification.sql (filename: V20260618_1010__local_account_email_verification.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1000__terms_agreement.sql (filename: V20260621_1000__terms_agreement.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1320__matching_chat_rooms.sql (filename: V20260621_1320__matching_chat_rooms.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1010__portfolio_groups.sql (filename: V20260619_1010__portfolio_groups.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql (filename: V20260619_1700__job_post_portfolio_groups.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0950__public_profile_content_visibility.sql (filename: V20260612_0950__public_profile_content_visibility.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1600__add_post_comment_count.sql (filename: V20260617_1600__add_post_comment_count.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql (filename: V20260618_1110__separate_email_verification_from_signup.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0910__auth_refresh_tokens.sql (filename: V20260612_0910__auth_refresh_tokens.sql)
+2026-06-22T00:52:50.768+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1210__project_required_fields.sql (filename: V20260621_1210__project_required_fields.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1010__post_public_visibility.sql (filename: V20260617_1010__post_public_visibility.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1300__delete_sample_posts.sql (filename: V20260619_1300__delete_sample_posts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1200__customer_support.sql (filename: V20260621_1200__customer_support.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1500__create_post_likes.sql (filename: V20260617_1500__create_post_likes.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1600__soft_delete_users.sql (filename: V20260619_1600__soft_delete_users.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0940__matching_price_settings.sql (filename: V20260612_0940__matching_price_settings.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1124__chat_room_users_alter.sql (filename: V20260618_1124__chat_room_users_alter.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1203__post_base_init_data.sql (filename: V20260615_1203__post_base_init_data.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1000__add_post_revision_count.sql (filename: V20260617_1000__add_post_revision_count.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql (filename: V20260615_1540__add_more_sample_community_posts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1300__chat_request_optional_post.sql (filename: V20260618_1300__chat_request_optional_post.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1100__matching_price_min_max.sql (filename: V20260615_1100__matching_price_min_max.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0930__remove_both_role.sql (filename: V20260612_0930__remove_both_role.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql (filename: V20260615_0937__fix_chat_timestamp_columns.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1707__created_chat_request.sql (filename: V20260617_1707__created_chat_request.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1710__project_completion_pending.sql (filename: V20260619_1710__project_completion_pending.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1400__chat_init_data.sql (filename: V20260615_1400__chat_init_data.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1205__project_work_amount_unit.sql (filename: V20260621_1205__project_work_amount_unit.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1500__update_sample_view_counts.sql (filename: V20260615_1500__update_sample_view_counts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql (filename: V20260623_0023__reset_incomplete_social_terms.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1300__test_accounts.sql (filename: V20260621_1300__test_accounts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1310__project_revision_unlimited.sql (filename: V20260621_1310__project_revision_unlimited.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1530__modify_job_post_price.sql (filename: V20260612_1530__modify_job_post_price.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1524__modify_posts_schema.sql (filename: V20260612_1524__modify_posts_schema.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1100__admin_account.sql (filename: V20260621_1100__admin_account.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0048__point_payment_orders.sql (filename: V20260623_0048__point_payment_orders.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql (filename: V20260615_1520__add_more_sample_job_posts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1200__job_post_portfolios.sql (filename: V20260619_1200__job_post_portfolios.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1010__profile_image_longtext.sql (filename: V20260615_1010__profile_image_longtext.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql (filename: V20260617_1431__alter_post_revision_count_nullable.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0920__auth_logout_tokens.sql (filename: V20260612_0920__auth_logout_tokens.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1305__project_notifications.sql (filename: V20260621_1305__project_notifications.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1200__point_system.sql (filename: V20260618_1200__point_system.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1525__rename_post_type_enum.sql (filename: V20260612_1525__rename_post_type_enum.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V1__init_schema.sql (filename: V1__init_schema.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1010__local_account_email_verification.sql (filename: V20260618_1010__local_account_email_verification.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1000__terms_agreement.sql (filename: V20260621_1000__terms_agreement.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1320__matching_chat_rooms.sql (filename: V20260621_1320__matching_chat_rooms.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1010__portfolio_groups.sql (filename: V20260619_1010__portfolio_groups.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql (filename: V20260619_1700__job_post_portfolio_groups.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0950__public_profile_content_visibility.sql (filename: V20260612_0950__public_profile_content_visibility.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1600__add_post_comment_count.sql (filename: V20260617_1600__add_post_comment_count.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql (filename: V20260618_1110__separate_email_verification_from_signup.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0910__auth_refresh_tokens.sql (filename: V20260612_0910__auth_refresh_tokens.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1210__project_required_fields.sql (filename: V20260621_1210__project_required_fields.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1010__post_public_visibility.sql (filename: V20260617_1010__post_public_visibility.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1300__delete_sample_posts.sql (filename: V20260619_1300__delete_sample_posts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1200__customer_support.sql (filename: V20260621_1200__customer_support.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1500__create_post_likes.sql (filename: V20260617_1500__create_post_likes.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1600__soft_delete_users.sql (filename: V20260619_1600__soft_delete_users.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0940__matching_price_settings.sql (filename: V20260612_0940__matching_price_settings.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1124__chat_room_users_alter.sql (filename: V20260618_1124__chat_room_users_alter.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1203__post_base_init_data.sql (filename: V20260615_1203__post_base_init_data.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1000__add_post_revision_count.sql (filename: V20260617_1000__add_post_revision_count.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1540__add_more_sample_community_posts.sql (filename: V20260615_1540__add_more_sample_community_posts.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1300__chat_request_optional_post.sql (filename: V20260618_1300__chat_request_optional_post.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1100__matching_price_min_max.sql (filename: V20260615_1100__matching_price_min_max.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0930__remove_both_role.sql (filename: V20260612_0930__remove_both_role.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_0937__fix_chat_timestamp_columns.sql (filename: V20260615_0937__fix_chat_timestamp_columns.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1707__created_chat_request.sql (filename: V20260617_1707__created_chat_request.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1710__project_completion_pending.sql (filename: V20260619_1710__project_completion_pending.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1400__chat_init_data.sql (filename: V20260615_1400__chat_init_data.sql)
+2026-06-22T00:52:50.771+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1205__project_work_amount_unit.sql (filename: V20260621_1205__project_work_amount_unit.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1500__update_sample_view_counts.sql (filename: V20260615_1500__update_sample_view_counts.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0023__reset_incomplete_social_terms.sql (filename: V20260623_0023__reset_incomplete_social_terms.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1300__test_accounts.sql (filename: V20260621_1300__test_accounts.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1310__project_revision_unlimited.sql (filename: V20260621_1310__project_revision_unlimited.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1530__modify_job_post_price.sql (filename: V20260612_1530__modify_job_post_price.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1524__modify_posts_schema.sql (filename: V20260612_1524__modify_posts_schema.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1100__admin_account.sql (filename: V20260621_1100__admin_account.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260623_0048__point_payment_orders.sql (filename: V20260623_0048__point_payment_orders.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1520__add_more_sample_job_posts.sql (filename: V20260615_1520__add_more_sample_job_posts.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1200__job_post_portfolios.sql (filename: V20260619_1200__job_post_portfolios.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260615_1010__profile_image_longtext.sql (filename: V20260615_1010__profile_image_longtext.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1431__alter_post_revision_count_nullable.sql (filename: V20260617_1431__alter_post_revision_count_nullable.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0920__auth_logout_tokens.sql (filename: V20260612_0920__auth_logout_tokens.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1305__project_notifications.sql (filename: V20260621_1305__project_notifications.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1200__point_system.sql (filename: V20260618_1200__point_system.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_1525__rename_post_type_enum.sql (filename: V20260612_1525__rename_post_type_enum.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V1__init_schema.sql (filename: V1__init_schema.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1010__local_account_email_verification.sql (filename: V20260618_1010__local_account_email_verification.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1000__terms_agreement.sql (filename: V20260621_1000__terms_agreement.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1320__matching_chat_rooms.sql (filename: V20260621_1320__matching_chat_rooms.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1010__portfolio_groups.sql (filename: V20260619_1010__portfolio_groups.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260619_1700__job_post_portfolio_groups.sql (filename: V20260619_1700__job_post_portfolio_groups.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0950__public_profile_content_visibility.sql (filename: V20260612_0950__public_profile_content_visibility.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260617_1600__add_post_comment_count.sql (filename: V20260617_1600__add_post_comment_count.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260618_1110__separate_email_verification_from_signup.sql (filename: V20260618_1110__separate_email_verification_from_signup.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260612_0910__auth_refresh_tokens.sql (filename: V20260612_0910__auth_refresh_tokens.sql)
+2026-06-22T00:52:50.772+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.scanner.Scanner        : Filtering out resource: db/migration/V20260621_1210__project_required_fields.sql (filename: V20260621_1210__project_required_fields.sql)
+2026-06-22T00:52:50.799+09:00  INFO 25568 --- [  restartedMain] o.f.core.internal.command.DbValidate     : Successfully validated 45 migrations (execution time 00:00.066s)
+2026-06-22T00:52:50.804+09:00 DEBUG 25568 --- [  restartedMain] o.f.core.internal.command.DbSchemas      : Skipping creation of existing schema: `matching_service`
+2026-06-22T00:52:50.811+09:00 DEBUG 25568 --- [  restartedMain] o.f.c.a.c.ClassicConfiguration           : CherryPickConfigurationExtension not found
+2026-06-22T00:52:50.816+09:00  INFO 25568 --- [  restartedMain] o.f.core.internal.command.DbMigrate      : Current version of schema `matching_service`: 20260623.0048
+2026-06-22T00:52:50.816+09:00  WARN 25568 --- [  restartedMain] o.f.core.internal.command.DbMigrate      : outOfOrder mode is active. Migration of schema `matching_service` may not be reproducible.
+2026-06-22T00:52:50.820+09:00  INFO 25568 --- [  restartedMain] o.f.core.internal.command.DbMigrate      : Schema `matching_service` is up to date. No migration necessary.
+2026-06-22T00:52:50.826+09:00 DEBUG 25568 --- [  restartedMain] org.flywaydb.core.FlywayExecutor         : Memory usage: 53 of 80M
+2026-06-22T00:52:50.939+09:00  INFO 25568 --- [  restartedMain] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-06-22T00:52:50.991+09:00  INFO 25568 --- [  restartedMain] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.12.Final
+2026-06-22T00:52:51.538+09:00  INFO 25568 --- [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-06-22T00:52:51.620+09:00  INFO 25568 --- [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:mysql://localhost:3306/matching_service?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true]
+	Database driver: MySQL Connector/J
+	Database dialect: MySQLDialect
+	Database version: 8.4.9
+	Default catalog/schema: matching_service/undefined
+	Autocommit mode: undefined/unknown
+	Isolation level: REPEATABLE_READ [default REPEATABLE_READ]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-06-22T00:52:52.746+09:00  INFO 25568 --- [  restartedMain] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-06-22T00:52:52.785+09:00  INFO 25568 --- [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-06-22T00:52:52.845+09:00  INFO 25568 --- [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-06-22T00:52:54.951+09:00  WARN 25568 --- [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-06-22T00:52:54.979+09:00  WARN 25568 --- [  restartedMain] .s.a.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 69e73c07-49b0-417a-b5ac-7b1036bc7e8f
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-06-22T00:52:54.987+09:00  INFO 25568 --- [  restartedMain] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-06-22T00:52:55.512+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-06-22T00:52:55.513+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@6fc071e]]
+2026-06-22T00:52:55.513+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-06-22T00:52:55.516+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2026-06-22T00:52:55.516+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@6fc071e]]
+2026-06-22T00:52:55.516+09:00  INFO 25568 --- [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2026-06-22T00:52:55.516+09:00  WARN 25568 --- [  restartedMain] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-06-22T00:52:55.521+09:00  INFO 25568 --- [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-06-22T00:52:55.523+09:00  INFO 25568 --- [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-06-22T00:52:55.529+09:00  INFO 25568 --- [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2026-06-22T00:52:55.536+09:00  INFO 25568 --- [  restartedMain] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-06-22T00:52:55.549+09:00 ERROR 25568 --- [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+
+
+BUILD SUCCESSFUL in 10s
+4 actionable tasks: 2 executed, 2 up-to-date
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.5.1/userguide/configuration_cache_enabling.html
