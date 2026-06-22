@@ -21,6 +21,7 @@ import { PartnerAvatarDropdown } from '@/components/chat/PartnerAvatarDropdown';
 type AuthUser = {
   id: string;
   nickname: string;
+  role: 'YOUTUBER' | 'EDITOR' | null;
 };
 
 type ChatRoomDetail = {
@@ -55,6 +56,10 @@ export default function ChatRoomPage() {
 
   const getToken = () => getAccessToken();
   const accessToken = getToken();
+  const isSameRoleDirectMessage =
+    roomSummary?.type === 'DIRECT'
+    && Boolean(user?.role)
+    && user?.role === roomSummary.partnerRole;
 
   const { isConnected, publishMessage } = useChatSocket(roomId, (message) => {
     setMessages((current) => current.some((item) => item.messageId === message.messageId)
@@ -246,6 +251,7 @@ export default function ChatRoomPage() {
               partnerId={roomSummary?.partnerId}
               size="lg"
               dropdownPosition="below"
+              allowProfileView={roomSummary?.type !== 'MATCHING'}
             />
             <div className="min-w-0">
               <h1 className="truncate text-base font-bold text-text-primary">{roomSummary?.partnerName ?? '채팅방'}</h1>
@@ -291,14 +297,16 @@ export default function ChatRoomPage() {
           </div>
         </header>
 
-        <ChatProjectPanel
-          roomId={roomId}
-          userId={user?.id ?? null}
-          project={currentProject}
-          post={roomSummary?.post ?? null}
-          onProjectChange={setCurrentProject}
-          publishMessage={publishMessage}
-        />
+        {!isSameRoleDirectMessage && (
+          <ChatProjectPanel
+            roomId={roomId}
+            userId={user?.id ?? null}
+            project={currentProject}
+            post={roomSummary?.post ?? null}
+            onProjectChange={setCurrentProject}
+            publishMessage={publishMessage}
+          />
+        )}
 
         <main className="flex-1 overflow-y-auto bg-background/40 px-4 py-5">
           {isLoading ? (
@@ -334,7 +342,13 @@ export default function ChatRoomPage() {
                   <div key={message.messageId} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                     {!isMine && (
                       isLastInGroup
-                        ? <PartnerAvatarDropdown partnerName={roomSummary?.partnerName ?? '?'} partnerId={roomSummary?.partnerId} />
+                        ? (
+                          <PartnerAvatarDropdown
+                            partnerName={roomSummary?.partnerName ?? '?'}
+                            partnerId={roomSummary?.partnerId}
+                            allowProfileView={roomSummary?.type !== 'MATCHING'}
+                          />
+                        )
                         : <div className="w-8 flex-shrink-0" />
                     )}
                     <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>

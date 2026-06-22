@@ -123,6 +123,9 @@ public class ProjectService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("상대 사용자를 찾을 수 없습니다."));
 
+        if (requester.getRole() != null && requester.getRole() == editor.getRole()) {
+            throw new IllegalArgumentException("같은 역할의 사용자끼리는 프로젝트를 생성할 수 없습니다.");
+        }
 
         Project project = new Project (
                 room,

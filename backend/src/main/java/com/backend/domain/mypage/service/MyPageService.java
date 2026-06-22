@@ -433,6 +433,7 @@ public class MyPageService {
                 roomId,
                 partnerId,
                 partnerName,
+                partner == null ? null : partner.getRole(),
                 lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),
                 formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
                 room.getChatRoomType(),
