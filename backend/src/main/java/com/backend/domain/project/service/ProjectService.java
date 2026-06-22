@@ -226,12 +226,11 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
         validateNoActiveDispute(project);
-        ProjectStatus statusBeforeCancel = project.getStatus();
         project.requestCancel(userId);
         ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.CANCELLATION_PENDING
                 ? ProjectNotificationType.PROJECT_CANCELLATION_REQUESTED
                 : ProjectNotificationType.PROJECT_CANCELED;
-        if (project.getStatus() == ProjectStatus.CANCELED && statusBeforeCancel != ProjectStatus.WAITING) {
+        if (project.getStatus() == ProjectStatus.CANCELED && project.isSafePaymentHeld()) {
             pointService.refundSafePaymentForProject(project);
         }
         return publishProjectChange(project, userId, notificationType);
