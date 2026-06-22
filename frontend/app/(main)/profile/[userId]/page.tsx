@@ -1,6 +1,7 @@
 'use client';
 
 import { getAccessToken } from '@/lib/auth-session';
+import { API_BASE_URL } from '@/lib/api';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -12,7 +13,6 @@ import type { RankTier } from '@/types/user';
 import { createDirectChatRoom } from '@/lib/api/chat';
 import { useModal } from '@/store/modalStore';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 type Portfolio = {
   id: string;

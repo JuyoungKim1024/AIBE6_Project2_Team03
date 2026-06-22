@@ -31,11 +31,11 @@ import {
 } from '@/lib/api/post';
 import { requestPointPayment } from '@/lib/toss-payments';
 import { clearAuthSession, getAccessToken } from '@/lib/auth-session';
+import { API_BASE_URL } from '@/lib/api';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
 type UserRole = 'YOUTUBER' | 'EDITOR' | null;
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
 const sectionIds: Section[] = ['editor-profile', 'posts', 'liked', 'chats', 'portfolio', 'projects', 'pricing', 'point'];
 

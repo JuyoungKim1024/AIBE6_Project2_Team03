@@ -1,6 +1,7 @@
 'use client';
 
 import { getAccessToken } from '@/lib/auth-session';
+import { API_BASE_URL } from '@/lib/api';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,7 +10,6 @@ import type { ChatRequestNotification, Notification } from '@/types/notification
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
 import { useModal } from '@/store/modalStore';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {

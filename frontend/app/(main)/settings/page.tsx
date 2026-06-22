@@ -1,6 +1,7 @@
 'use client';
 
 import { clearAuthSession, getAccessToken } from '@/lib/auth-session';
+import { API_BASE_URL } from '@/lib/api';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,7 +16,6 @@ import {
   User,
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const DELETE_CONFIRMATION = '탈퇴하겠습니다';
 type SettingsSection = 'profile' | 'password' | 'delete';
 
