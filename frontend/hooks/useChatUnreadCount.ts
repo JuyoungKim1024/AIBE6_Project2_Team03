@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
@@ -32,7 +34,7 @@ export function useChatUnreadCount(userId?: string | null) {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (accessToken) {
       fetch(`${API_BASE_URL}/api/chat/rooms/unread-count`, {
         headers: { Authorization: `Bearer ${accessToken}` },

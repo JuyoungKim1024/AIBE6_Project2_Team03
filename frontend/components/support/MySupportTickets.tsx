@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -25,7 +27,7 @@ export function MySupportTickets({ type, refreshKey }: { type: 'INQUIRY' | 'REPO
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token) return;
     setLoading(true);
     fetch(`${API_BASE_URL}/api/support/my-tickets?type=${type}`, {

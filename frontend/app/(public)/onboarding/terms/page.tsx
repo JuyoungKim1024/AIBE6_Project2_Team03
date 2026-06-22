@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MailCheck } from 'lucide-react';
@@ -13,7 +15,7 @@ export default function OnboardingTermsPage() {
 
   const agreeToTerms = async () => {
     if (isSubmitting) return;
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.replace('/login');
       return;

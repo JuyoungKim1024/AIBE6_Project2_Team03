@@ -27,6 +27,7 @@ import {
 import { CommunityPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 import { useModal } from "@/store/modalStore";
+import { getAccessToken } from "@/lib/auth-session";
 
 const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
   INFO: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
@@ -75,7 +76,7 @@ export default function CommunityDetailPage() {
     fetchComments(id).then(setComments).catch(console.error);
     incrementPostView(id).catch(() => {});
     getPostLikedStatus(id).then((r) => setLiked(r.liked)).catch(() => {});
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -87,7 +88,7 @@ export default function CommunityDetailPage() {
   }, [id]);
 
   const handleDeletePost = async () => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/posts/community/${id}`, {
@@ -104,7 +105,7 @@ export default function CommunityDetailPage() {
   };
 
   const handleLike = async () => {
-    if (!localStorage.getItem("accessToken")) {
+    if (!getAccessToken()) {
       router.push("/login");
       return;
     }

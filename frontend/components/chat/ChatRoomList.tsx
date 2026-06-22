@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,7 +52,7 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
   }), [activeFilter, rooms]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.replace('/login');
       return;
@@ -88,7 +90,7 @@ export function ChatRoomList({ compact = false, sidebar = false, activeRoomId }:
     });
     if (!confirmed) return;
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${roomId}`, {
         method: 'DELETE',

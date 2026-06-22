@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2, Send } from 'lucide-react';
@@ -33,7 +35,7 @@ export default function EditorDetailPage() {
   }, [id]);
 
   const handleRequest = async () => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;

@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
@@ -20,7 +22,7 @@ export function SupportTicketForm({ type }: { type: 'inquiries' | 'reports' }) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token) {
       router.push('/login');
       return;

@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Bell, FileText, Flag, Inbox, LayoutDashboard, LogOut, MessageSquare, ShieldCheck, Users } from 'lucide-react';
@@ -22,7 +24,7 @@ export function AdminNavBar({ user, onLogout }: { user: AuthUser; onLogout: () =
   const searchParams = useSearchParams();
 
   const logout = async () => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     try {
       if (accessToken) {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {

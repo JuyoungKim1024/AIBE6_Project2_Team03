@@ -3,55 +3,50 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
-import { saveAuthSession } from '@/lib/auth-session';
+import { getAccessToken, restoreAuthSession } from '@/lib/auth-session';
 
 function LoginCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const accessToken = searchParams.get('accessToken');
-    const refreshToken = searchParams.get('refreshToken');
     const onboardingRequired = searchParams.get('onboardingRequired') === 'true';
 
-    if (!accessToken || !refreshToken) {
-      router.replace('/login');
-      return;
-    }
+    restoreAuthSession()
+      .then(async (auth) => {
+        if (!auth) {
+          router.replace('/login');
+          return;
+        }
+        if (!onboardingRequired) {
+          router.replace('/');
+          return;
+        }
 
-    saveAuthSession(accessToken, refreshToken, onboardingRequired);
-
-    if (!onboardingRequired) {
-      router.replace('/');
-      return;
-    }
-
-    fetch(`${API_BASE_URL}/api/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      })
-      .then((response) => response.ok ? response.json() : null)
-      .then((user) => {
+        const token = getAccessToken();
+        const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const user = response.ok ? await response.json() : null;
         if (!user?.termsAgreed) {
           router.replace('/onboarding/terms');
           return;
         }
-        router.replace(user?.role ? '/onboarding/profile' : '/onboarding/role');
+        router.replace(user.role ? '/onboarding/profile' : '/onboarding/role');
       })
-      .catch(() => router.replace('/onboarding/terms'));
+      .catch(() => router.replace('/login'));
   }, [router, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <p className="text-sm text-text-secondary">로그인 처리 중입니다...</p>
+      <p className="text-sm text-text-secondary">로그인 처리 중입니다.</p>
     </div>
   );
 }
 
 export default function LoginCallbackPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center px-4">로그인 처리 중입니다...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center px-4">로그인 처리 중입니다.</div>}>
       <LoginCallbackContent />
     </Suspense>
   );

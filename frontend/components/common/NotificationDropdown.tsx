@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, Trash2, X } from 'lucide-react';
@@ -21,7 +23,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   const hasUnread = notifications.some((n) => n.status === 'PENDING');
 
   const fetchNotifications = async () => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
     try {
       const headers = { Authorization: `Bearer ${accessToken}` };
@@ -65,7 +67,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   };
 
   const handleAccept = async (notification: Notification) => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
     try {
       const res = await fetch(getActionUrl(notification, 'accept'), {
@@ -83,7 +85,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   };
 
   const handleReject = async (notification: Notification) => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
     try {
       const res = await fetch(getActionUrl(notification, 'reject'), {
@@ -98,7 +100,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   };
 
   const openProjectNotification = async (notification: Notification) => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
     try {
       const response = await fetch(`${API_BASE_URL}/api/notifications/${notification.id}/read`, {
@@ -120,7 +122,7 @@ export function NotificationDropdown({ userId }: { userId: string }) {
       confirmLabel: '삭제',
     });
     if (!confirmed) return;
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
 
     setDeletingId(notification.id);

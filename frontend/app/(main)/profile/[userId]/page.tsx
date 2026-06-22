@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -190,7 +192,7 @@ export default function PublicProfilePage() {
   const [chatErrorMessage, setChatErrorMessage] = useState('');
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       setCurrentUserId(null);
       return;

@@ -50,6 +50,7 @@ app:
     from: ${MAIL_FROM:${SMTP_USERNAME:}}
   cookie:
     secure: ${COOKIE_SECURE:false}
+    same-site: ${COOKIE_SAME_SITE:Lax}
 
 cloudflare:
   r2:

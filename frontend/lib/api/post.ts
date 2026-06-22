@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth-session";
 import {
   CommunityCategory,
   CommunityPostDetailDto,
@@ -54,7 +55,7 @@ export async function createComment(
   content: string,
   parentId?: string,
 ): Promise<CommentDto> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/comments`, {
     method: "POST",
     headers: {
@@ -71,7 +72,7 @@ export async function updateComment(
   commentId: string,
   content: string,
 ): Promise<CommentDto> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   const res = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
     method: "PATCH",
     headers: {
@@ -85,7 +86,7 @@ export async function updateComment(
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   const res = await fetch(`${API_BASE_URL}/api/comments/${commentId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
@@ -100,7 +101,7 @@ export async function incrementPostView(postId: string): Promise<void> {
 export async function togglePostLike(
   postId: string,
 ): Promise<{ liked: boolean; likeCount: number }> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token ?? ""}` },
@@ -112,7 +113,7 @@ export async function togglePostLike(
 export async function getPostLikedStatus(
   postId: string,
 ): Promise<{ liked: boolean }> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
@@ -123,7 +124,7 @@ export async function getPostLikedStatus(
 }
 
 export async function getLikedPostIds(): Promise<string[]> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   if (!token) return [];
   const res = await fetch(`${API_BASE_URL}/api/posts/liked`, {
     headers: { Authorization: `Bearer ${token}` },
