@@ -6,21 +6,12 @@ public record AuthorResponse(
         String id,
         String nickname,
         String profileImage,
-        String rank,
         boolean isDeleted
 ) {
     public static AuthorResponse from(User user) {
         if (user.isDeleted()) {
-            return new AuthorResponse(user.getId(), "탈퇴한 사용자", null, "bronze", true);
+            return new AuthorResponse(user.getId(), "탈퇴한 사용자", null, true);
         }
-        return new AuthorResponse(user.getId(), user.getNickname(), user.getProfileImage(), toRank(user.getMannerScore()), false);
-    }
-
-    private static String toRank(int score) {
-        if (score >= 90) return "diamond";
-        if (score >= 70) return "platinum";
-        if (score >= 50) return "gold";
-        if (score > 30) return "silver";
-        return "bronze";
+        return new AuthorResponse(user.getId(), user.getNickname(), user.getProfileImage(), false);
     }
 }

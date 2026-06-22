@@ -7,7 +7,6 @@ export interface AuthorDto {
   id: string;
   nickname: string;
   profileImage: string | null;
-  rank?: string;
   isDeleted?: boolean;
 }
 

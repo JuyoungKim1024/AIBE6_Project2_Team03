@@ -17,7 +17,7 @@ export interface PostCardProps {
   type: PostType;
   title: string;
   preview?: string;
-  author: { id?: string; name: string; avatar?: string; rank?: string };
+  author: { id?: string; name: string; avatar?: string };
   categoryTags: string[];
   toolTags: string[];
   minPrice?: number;

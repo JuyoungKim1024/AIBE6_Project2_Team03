@@ -97,7 +97,6 @@ public class PublicProfileService {
                 user.getRole() == null ? null : user.getRole().name(),
                 getTagNames(userId, UserTagType.FIELD),
                 getTagNames(userId, UserTagType.TOOL),
-                user.getMannerScore(),
                 projectRepository.countByEditor_IdAndStatus(userId, ProjectStatus.COMPLETED),
                 reviewRepository.countByTargetUser_Id(userId),
                 getPortfolioGroups(userId),
