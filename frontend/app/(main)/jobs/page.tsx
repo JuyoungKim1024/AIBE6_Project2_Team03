@@ -120,7 +120,7 @@ function JobsContent() {
             <div className="relative">
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
+                onChange={(e) => { setSort(e.target.value); setPage(1); }}
                 className="appearance-none bg-surface border border-border rounded-lg pl-3 pr-9 py-2 text-sm text-text-primary focus:outline-none focus:border-primary cursor-pointer"
               >
                 <option value="latest">최신순</option>

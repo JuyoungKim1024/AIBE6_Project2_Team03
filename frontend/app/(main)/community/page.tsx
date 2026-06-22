@@ -126,7 +126,7 @@ function CommunityContent() {
           <div className="flex items-center gap-3">
             <div className="flex bg-surface-elevated p-1 rounded-lg border border-border">
               {[{ id: 'latest', label: '최신순' }, { id: 'popular', label: '인기순' }].map((opt) => (
-                <button key={opt.id} onClick={() => setSort(opt.id as 'latest' | 'popular')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                <button key={opt.id} onClick={() => { setSort(opt.id as 'latest' | 'popular'); setPage(1); }} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
                   {opt.label}
                 </button>
               ))}
