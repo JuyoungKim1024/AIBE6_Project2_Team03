@@ -32,6 +32,35 @@ public class VerificationMailService {
     }
 
     public void sendSignupCode(String email, String code) {
+        sendVerificationCode(
+                email,
+                code,
+                "[크크킄] 회원가입 이메일 인증",
+                "회원가입 이메일 인증",
+                "회원가입을 계속하려면 아래 인증번호를 인증 화면에 입력해주세요.",
+                "이 메일은 크크킄 회원가입 요청에 따라 자동 발송되었습니다."
+        );
+    }
+
+    public void sendPasswordResetCode(String email, String code) {
+        sendVerificationCode(
+                email,
+                code,
+                "[크크킄] 비밀번호 재설정 인증",
+                "비밀번호 재설정 인증",
+                "비밀번호를 재설정하려면 아래 인증번호를 인증 화면에 입력해주세요.",
+                "이 메일은 크크킄 비밀번호 재설정 요청에 따라 자동 발송되었습니다."
+        );
+    }
+
+    private void sendVerificationCode(
+            String email,
+            String code,
+            String subject,
+            String title,
+            String description,
+            String footer
+    ) {
         if (apiKey.isBlank() || senderEmail.isBlank()) {
             throw new IllegalStateException(
                     "Brevo 발송 설정이 없습니다. BREVO_API_KEY와 BREVO_SENDER_EMAIL을 확인해주세요."
@@ -42,8 +71,8 @@ public class VerificationMailService {
             SendEmailRequest request = new SendEmailRequest(
                     new Sender(senderEmail, senderName),
                     List.of(new Recipient(email)),
-                    "[크크킄] 회원가입 이메일 인증",
-                    createSignupVerificationHtml(code)
+                    subject,
+                    createVerificationHtml(code, title, description, footer)
             );
 
             restClient.post()
@@ -76,7 +105,12 @@ public class VerificationMailService {
     private record Recipient(String email) {
     }
 
-    private String createSignupVerificationHtml(String code) {
+    private String createVerificationHtml(
+            String code,
+            String title,
+            String description,
+            String footer
+    ) {
         return """
                 <!doctype html>
                 <html lang="ko">
@@ -107,9 +141,9 @@ public class VerificationMailService {
                                   </td>
                                 </tr>
                               </table>
-                              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.4;color:#111827;">이메일 인증번호를 확인해주세요</h1>
+                              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.4;color:#111827;">%s</h1>
                               <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#6B7280;">
-                                회원가입을 계속하려면 아래 인증번호를 인증 화면에 입력해주세요.
+                                %s
                               </p>
                               <div style="padding:24px;text-align:center;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;">
                                 <div style="margin-bottom:10px;font-size:12px;font-weight:700;color:#3B82F6;">인증번호</div>
@@ -126,7 +160,7 @@ public class VerificationMailService {
                           <tr>
                             <td style="padding:20px 40px;background:#F9FAFB;border-top:1px solid #E5E7EB;">
                               <p style="margin:0;font-size:12px;line-height:1.6;color:#9CA3AF;">
-                                이 메일은 크크킄 회원가입 요청에 따라 자동 발송되었습니다.
+                                %s
                               </p>
                             </td>
                           </tr>
@@ -136,7 +170,7 @@ public class VerificationMailService {
                   </table>
                 </body>
                 </html>
-                """.formatted(createLogoDataUrl(), code);
+                """.formatted(createLogoDataUrl(), title, description, code, footer);
     }
 
     private String createLogoDataUrl() {

@@ -9,6 +9,7 @@ import com.backend.domain.auth.dto.EmailVerificationSendRequest;
 import com.backend.domain.auth.dto.LocalLoginRequest;
 import com.backend.domain.auth.dto.LocalSignupRequest;
 import com.backend.domain.auth.dto.PasswordChangeRequest;
+import com.backend.domain.auth.dto.PasswordResetCompleteRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.RoleUpdateRequest;
 import com.backend.domain.auth.dto.UserResponse;
@@ -119,6 +120,22 @@ public class AuthController {
     public ResponseEntity<AuthResponse> completeLocalSignup(@RequestBody LocalSignupRequest request) {
         AuthResponse response = authService.completeLocalSignup(request);
         return withRefreshCookie(response);
+    }
+
+    @PostMapping("/auth/local/password-reset/request")
+    public EmailVerificationResponse requestPasswordReset(@RequestBody EmailVerificationSendRequest request) {
+        return authService.requestPasswordReset(request);
+    }
+
+    @PostMapping("/auth/local/password-reset/verify")
+    public EmailVerificationCompleteResponse verifyPasswordReset(@RequestBody EmailVerificationRequest request) {
+        return authService.verifyPasswordReset(request);
+    }
+
+    @PostMapping("/auth/local/password-reset/complete")
+    public ResponseEntity<Void> completePasswordReset(@RequestBody PasswordResetCompleteRequest request) {
+        authService.completePasswordReset(request);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/auth/local/login")
