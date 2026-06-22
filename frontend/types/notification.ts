@@ -1,7 +1,7 @@
 export type NotificationType =
   | 'MATCHING_REQUEST'
-  | 'MATCHING_ACCEPTED'
-  | 'MATCHING_REJECTED'
+  | 'MATCHING_ACCEPTED'   // 에디터가 매칭 수락 → 크리에이터에게
+  | 'MATCHING_REJECTED'   // 에디터가 매칭 거절 → 크리에이터에게
   | 'CHAT_REQUEST'
   | 'DISPUTE_FILED'
   | 'PROJECT_REQUESTED'

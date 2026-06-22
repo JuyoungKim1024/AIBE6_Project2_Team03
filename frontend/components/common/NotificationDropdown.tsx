@@ -9,7 +9,7 @@ import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
 
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = 3_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
@@ -21,7 +21,9 @@ export function NotificationDropdown({ userId }: { userId: string }) {
 
   const isUnreadNotification = (n: Notification) =>
     n.status === 'PENDING' ||
-    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status));
+    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status)) ||
+    n.type === 'MATCHING_ACCEPTED' ||
+    n.type === 'MATCHING_REJECTED';
 
   const hasUnread = notifications.some((n) => isUnreadNotification(n) && !seenIds.has(n.id));
 
@@ -294,6 +296,7 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
   const isChatRequest = notification.type === 'CHAT_REQUEST';
   const isDispute = notification.type === 'DISPUTE_FILED';
   const isProjectNotification = notification.type.startsWith('PROJECT_');
+  const isMatchingResult = notification.type === 'MATCHING_ACCEPTED' || notification.type === 'MATCHING_REJECTED';
   const actionLabel = isChatRequest ? '채팅 문의' : '매칭';
 
   if (isDispute) {
@@ -317,6 +320,49 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
               채팅방에서 확인하기
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에디터가 매칭 수락/거절했을 때 크리에이터에게 보이는 알림
+  if (isMatchingResult) {
+    const accepted = notification.type === 'MATCHING_ACCEPTED';
+    return (
+      <div className="px-4 py-3 border-b border-border/50 last:border-0">
+        <div className="flex items-start gap-3">
+          {notification.senderAvatar ? (
+            <img src={notification.senderAvatar} alt={notification.senderName} className="w-9 h-9 rounded-full object-cover flex-shrink-0 mt-0.5" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-surface-elevated flex-shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-text-primary">
+              <span className="font-bold">{notification.senderName}</span>님이 매칭 요청을{' '}
+              <span className={accepted ? 'text-primary font-bold' : 'text-text-muted font-bold'}>
+                {accepted ? '수락' : '거절'}
+              </span>
+              했습니다.
+            </p>
+            <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
+            {accepted && notification.chatRoomId && (
+              <button
+                onClick={() => { onDelete(notification); router.push(`/chat/${notification.chatRoomId}`); }}
+                className="mt-2 text-xs font-bold text-primary hover:underline"
+              >
+                채팅방으로 이동
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onDelete(notification)}
+            disabled={isDeleting}
+            className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="알림 닫기"
+          >
+            <X size={14} />
+          </button>
         </div>
       </div>
     );
