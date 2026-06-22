@@ -37,6 +37,9 @@ public class ChatService {
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
 
+    @Value("${cloudflare.r2.public-url}")
+    private String r2PublicUrl;
+
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatParticipantRepository chatParticipantRepository;
@@ -170,7 +173,7 @@ public class ChatService {
             return ChatMessageResponseDTO.requested(roomId, sender.getId(), dto.content(), dto.messageType());
         }
 
-        validateAttachment(dto);
+        validateAttachment(roomId, dto);
 
         ChatMessage message = new ChatMessage(
                 chatRoom,
@@ -197,12 +200,18 @@ public class ChatService {
 
     }
 
-    private void validateAttachment(ChatMessageSendRequestDTO dto) {
+    private void validateAttachment(String roomId, ChatMessageSendRequestDTO dto) {
         if (dto.messageType() != MessageType.IMAGE && dto.messageType() != MessageType.FILE) {
             return;
         }
-        String expectedPrefix = baseUrl.replaceAll("/$", "") + "/files/";
-        if (dto.fileUrl() == null || !dto.fileUrl().startsWith(expectedPrefix)
+        String r2ChatPrefix = r2PublicUrl.replaceAll("/+$", "") + "/chat/" + roomId + "/";
+        String legacyLocalPrefix = baseUrl.replaceAll("/+$", "") + "/files/";
+        String fileUrl = dto.fileUrl();
+
+        // 신규 R2 URL과 이전에 저장한 서버 로컬 URL을 함께 허용한다.
+        boolean validFileUrl = fileUrl != null
+                && (fileUrl.startsWith(r2ChatPrefix) || fileUrl.startsWith(legacyLocalPrefix));
+        if (!validFileUrl
                 || dto.fileName() == null || dto.fileName().isBlank()
                 || dto.fileSize() == null || dto.fileSize() <= 0
                 || dto.contentType() == null || dto.contentType().isBlank()) {

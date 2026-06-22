@@ -18,6 +18,7 @@ import com.backend.domain.auth.entity.EmailVerification;
 import com.backend.domain.auth.repository.AuthLogoutTokenRepository;
 import com.backend.domain.auth.repository.AuthRefreshTokenRepository;
 import com.backend.domain.auth.repository.EmailVerificationRepository;
+import com.backend.domain.editor.service.R2UploadService;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.SocialProvider;
 import com.backend.domain.user.entity.User;
@@ -38,8 +39,13 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private static final int EMAIL_VERIFICATION_SECONDS = 300;
+    private static final int MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,64}$");
+    private static final Pattern PROFILE_IMAGE_PATTERN = Pattern.compile(
+            "^data:(image/(png|jpeg|gif|webp));base64,(.+)$",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+    );
 
     private final OAuthClient oAuthClient;
     private final JwtTokenProvider jwtTokenProvider;
@@ -50,6 +56,7 @@ public class AuthService {
     private final EmailVerificationRepository emailVerificationRepository;
     private final VerificationMailService verificationMailService;
     private final PasswordEncoder passwordEncoder;
+    private final R2UploadService r2UploadService;
     private final long refreshTokenValiditySeconds;
     private final boolean testAccountsEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -64,6 +71,7 @@ public class AuthService {
             EmailVerificationRepository emailVerificationRepository,
             VerificationMailService verificationMailService,
             PasswordEncoder passwordEncoder,
+            R2UploadService r2UploadService,
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds,
             @Value("${app.test-accounts.enabled:false}") boolean testAccountsEnabled
     ) {
@@ -76,6 +84,7 @@ public class AuthService {
         this.emailVerificationRepository = emailVerificationRepository;
         this.verificationMailService = verificationMailService;
         this.passwordEncoder = passwordEncoder;
+        this.r2UploadService = r2UploadService;
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
         this.testAccountsEnabled = testAccountsEnabled;
     }
@@ -273,11 +282,45 @@ public class AuthService {
         }
 
         user.updateNickname(nickname);
-        user.updateProfileImage(request.profileImage());
+        user.updateProfileImage(storeProfileImage(userId, request.profileImage()));
         Profile profile = profileRepository.findByUser_Id(userId)
                 .orElseGet(() -> profileRepository.save(new Profile(user, name, phone)));
         profile.update(name, phone);
         return UserResponse.from(user, profile.getName(), profile.getPhone());
+    }
+
+    private String storeProfileImage(String userId, String profileImage) {
+        if (profileImage == null || profileImage.isBlank() || !profileImage.startsWith("data:")) {
+            // 이미 R2 또는 소셜 로그인 URL인 경우 다시 업로드하지 않는다.
+            return profileImage;
+        }
+
+        var matcher = PROFILE_IMAGE_PATTERN.matcher(profileImage);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("PNG, JPG, GIF, WEBP 이미지만 등록할 수 있습니다.");
+        }
+
+        byte[] content;
+        try {
+            content = Base64.getDecoder().decode(matcher.group(3));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("올바른 프로필 이미지가 아닙니다.", exception);
+        }
+        if (content.length > MAX_PROFILE_IMAGE_SIZE) {
+            throw new IllegalArgumentException("프로필 이미지는 5MB 이하만 등록할 수 있습니다.");
+        }
+
+        String contentType = matcher.group(1).toLowerCase(Locale.ROOT);
+        String extension = matcher.group(2).toLowerCase(Locale.ROOT);
+        String normalizedExtension = "jpeg".equals(extension) ? "jpg" : extension;
+
+        // Base64 원문 대신 R2 URL만 사용자 테이블에 저장한다.
+        return r2UploadService.upload(
+                content,
+                contentType,
+                normalizedExtension,
+                "profile/" + userId
+        );
     }
 
     @Transactional

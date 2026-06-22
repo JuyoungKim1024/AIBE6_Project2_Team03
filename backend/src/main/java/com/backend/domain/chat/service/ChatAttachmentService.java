@@ -3,17 +3,16 @@ package com.backend.domain.chat.service;
 import com.backend.domain.chat.dto.ChatAttachmentResponseDTO;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.type.MessageType;
+import com.backend.domain.editor.service.R2UploadService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.exception.SdkException;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,12 +24,7 @@ public class ChatAttachmentService {
     );
 
     private final ChatParticipantRepository chatParticipantRepository;
-
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
-
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    private final R2UploadService r2UploadService;
 
     public ChatAttachmentResponseDTO upload(String roomId, String userId, MultipartFile file) {
         if (!chatParticipantRepository.existsByChatRoom_IdAndUser_IdAndDeletedAtIsNull(roomId, userId)) {
@@ -45,24 +39,24 @@ public class ChatAttachmentService {
 
         String originalName = sanitizeFileName(file.getOriginalFilename());
         String extension = getExtension(originalName);
-        MessageType messageType = resolveMessageType(extension, file.getContentType());
-        String storedName = UUID.randomUUID() + "." + extension;
-        File directory = resolveUploadDirectory();
+        String contentType = file.getContentType() == null
+                ? "application/octet-stream"
+                : file.getContentType();
+        MessageType messageType = resolveMessageType(extension, contentType);
+        String fileUrl;
 
         try {
-            if (!directory.exists() && !directory.mkdirs()) {
-                throw new IOException("업로드 디렉터리를 생성하지 못했습니다.");
-            }
-            file.transferTo(new File(directory, storedName));
-        } catch (IOException exception) {
-            throw new IllegalStateException("첨부파일을 저장하지 못했습니다.", exception);
+            // 채팅방별 R2 경로에 저장해 다른 채팅방 및 다른 종류의 파일과 구분한다.
+            fileUrl = r2UploadService.upload(file, "chat/" + roomId);
+        } catch (IOException | SdkException exception) {
+            throw new IllegalStateException("첨부파일을 R2에 저장하지 못했습니다.", exception);
         }
 
         return new ChatAttachmentResponseDTO(
-                baseUrl.replaceAll("/$", "") + "/files/" + storedName,
+                fileUrl,
                 originalName,
                 file.getSize(),
-                file.getContentType() == null ? "application/octet-stream" : file.getContentType(),
+                contentType,
                 messageType
         );
     }
@@ -87,10 +81,5 @@ public class ChatAttachmentService {
             return MessageType.FILE;
         }
         throw new IllegalArgumentException("지원하지 않는 파일 형식입니다.");
-    }
-
-    private File resolveUploadDirectory() {
-        File directory = new File(uploadDir);
-        return directory.isAbsolute() ? directory : new File(System.getProperty("user.dir"), uploadDir);
     }
 }
