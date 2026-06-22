@@ -703,7 +703,7 @@ function JobsWriteContent() {
       {/* 미리보기 FAB */}
       <button
         onClick={() => setPreviewOpen((v) => !v)}
-        className={`fixed bottom-24 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg text-sm font-bold transition-all ${previewOpen ? "bg-surface-elevated text-text-primary border border-border" : "bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-primary/50"}`}
+        className={`fixed bottom-24 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg text-sm font-bold transition-all ${previewOpen ? "bg-primary/20 text-primary border border-primary/50" : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20 hover:border-primary/50"}`}
       >
         {previewOpen ? <EyeOff size={16} /> : <Eye size={16} />}
         미리보기
