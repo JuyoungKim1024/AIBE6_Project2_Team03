@@ -6,6 +6,7 @@ import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.dto.ProjectUpdateRequestDTO;
 import com.backend.domain.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,12 +27,14 @@ public class ProjectController {
     }
 
     @GetMapping("/rooms/{roomId}")
-    public ProjectResponseDTO getProjectByRoom(
+    public ResponseEntity<ProjectResponseDTO> getProjectByRoom(
             @RequestHeader("Authorization") String authorization,
             @PathVariable String roomId
     ) {
         String userId = authService.resolveUserId(authorization);
-        return projectService.getProjectByRoom(userId, roomId);
+        return projectService.getProjectByRoom(userId, roomId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
     }
 
     @PatchMapping("/{projectId}")

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -125,7 +126,7 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public ProjectResponseDTO getProjectByRoom(String userId, String roomId) {
+    public Optional<ProjectResponseDTO> getProjectByRoom(String userId, String roomId) {
         if (!chatParticipantRepository.existsByChatRoom_IdAndUser_Id(roomId, userId)) {
             throw new IllegalArgumentException("채팅방 참여자만 프로젝트를 조회할 수 있습니다.");
         }
@@ -139,10 +140,7 @@ public class ProjectService {
                         ProjectStatus.CANCELLATION_PENDING
                 )
         );
-        if (project == null) {
-            throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
-        }
-        return ProjectResponseDTO.from(project);
+        return Optional.ofNullable(project).map(ProjectResponseDTO::from);
     }
 
     @Transactional

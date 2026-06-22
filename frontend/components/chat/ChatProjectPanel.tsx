@@ -2,7 +2,7 @@
 
 import { getAccessToken } from '@/lib/auth-session';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Briefcase, Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import {
@@ -87,7 +87,16 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       const body = await response.json().catch(() => null);
       throw new Error(body?.message ?? '요청을 처리하지 못했습니다.');
     }
+    if (response.status === 204) return null as T;
     return response.json() as Promise<T>;
+  };
+
+  const refreshPointBalance = () => {
+    request<{ point: number; safePaymentPoint: number }>('/api/point')
+      .then((data) => {
+        window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: data }));
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -107,6 +116,19 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
 
     return () => { isActive = false; };
   }, [roomId]);
+
+  // 포인트에 영향을 주는 상태 전환 시 양쪽 모두 잔액 갱신
+  // (상대방 액션으로 WebSocket을 통해 project prop이 바뀔 때도 포함)
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!project) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = project.status;
+    const balanceAffectingStatuses = ['WORKING', 'COMPLETED', 'CANCELED'];
+    if (prev !== null && prev !== project.status && balanceAffectingStatuses.includes(project.status)) {
+      refreshPointBalance();
+    }
+  }, [project?.status]);
 
   const openCreateForm = () => {
     setIsEditing(false);
@@ -210,6 +232,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
     try {
       const saved = await request<ProjectMessagePayload>(`/api/projects/${project.id}/${action}`, { method: 'PATCH' });
       onProjectChange(saved);
+      refreshPointBalance();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.');
     } finally {

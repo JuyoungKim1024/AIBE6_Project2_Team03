@@ -197,7 +197,14 @@ export function NotificationDropdown({ userId }: { userId: string }) {
     return () => {
       isActive = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      socket?.close();
+      if (!socket) return;
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.onopen = () => socket?.close();
+        socket.onerror = null;
+        socket.onclose = null;
+      } else {
+        socket.close();
+      }
     };
   }, [userId]);
 

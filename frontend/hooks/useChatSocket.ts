@@ -106,10 +106,15 @@ export function useChatSocket(
       const socket = socketRef.current;
       socketRef.current = null;
       setIsConnected(false);
-      if (socket?.readyState === WebSocket.OPEN) {
+      if (!socket) return;
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.onopen = () => socket.close();
+        socket.onerror = null;
+        socket.onclose = null;
+      } else if (socket.readyState === WebSocket.OPEN) {
         socket.send(createStompFrame('DISCONNECT', { receipt: `disconnect-${roomId}` }));
+        socket.close();
       }
-      socket?.close();
     };
   }, [roomId]);
 

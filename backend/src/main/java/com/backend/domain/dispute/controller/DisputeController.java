@@ -48,7 +48,7 @@ public class DisputeController {
         String userId = authService.resolveUserId(authorization);
         return disputeService.getActiveDisputeByProject(userId, projectId)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.ok().build());
     }
 
     @GetMapping("/{disputeId}")
