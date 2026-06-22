@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Briefcase,
   Check,
   ChevronDown,
@@ -41,6 +42,8 @@ import {
   type ProjectMessagePayload,
 } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, ChatPostSummary, MyChatRoom } from '@/types/chat';
+import { DisputeModal } from '@/components/dispute/DisputeModal';
+import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import {
   fetchCommunityPosts,
   fetchJobPosts,
@@ -1065,6 +1068,8 @@ function ChatsSection() {
     memo: '',
   });
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
 
   const selectedRoom = chatRooms.find((room) => room.id === selectedRoomId);
   const selectedPost = selectedRoom?.post ?? null;
@@ -1124,10 +1129,23 @@ function ChatsSection() {
     }
   };
 
+  const MONEY_STATUSES = ['WORKING', 'COMPLETED', 'CANCELED'];
+
+  const refreshPointBalance = () => {
+    fetchMyPageData<{ point: number; safePaymentPoint: number }>('/api/point')
+      .then((balance) => window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: balance })))
+      .catch(() => {});
+  };
+
   const fetchProject = async (roomId: string) => {
     try {
       const project = await fetchMyPageData<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`);
-      setCurrentProject(project);
+      setCurrentProject((prev) => {
+        if (prev?.status !== project.status && MONEY_STATUSES.includes(project.status)) {
+          refreshPointBalance();
+        }
+        return project;
+      });
       return project;
     } catch {
       try {
@@ -1685,6 +1703,17 @@ function ChatsSection() {
                     <Briefcase size={14} />프로젝트 시작
                   </button>
                 ) : null}
+                {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisputeModal(true)}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
+                    aria-label="AI 분쟁 조정"
+                  >
+                    <AlertTriangle size={14} />
+                    AI 분쟁 조정
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => selectedRoomId && loadMessages(selectedRoomId)}
@@ -1917,6 +1946,24 @@ function ChatsSection() {
             </div>
           </form>
         </div>
+      )}
+      {showDisputeModal && currentProject?.id && (
+        <DisputeModal
+          projectId={currentProject.id}
+          accessToken={getAccessToken()}
+          onClose={() => setShowDisputeModal(false)}
+          onCreated={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+          }}
+        />
+      )}
+      {activeDisputeId && (
+        <DisputeResultModal
+          disputeId={activeDisputeId}
+          accessToken={getAccessToken()}
+          onClose={() => setActiveDisputeId(null)}
+        />
       )}
     </SectionCard>
   );
@@ -2787,7 +2834,7 @@ function PricingSection({ userId }: { userId: string | null }) {
 type PointTransaction = {
   id: string;
   amount: number;
-  type: 'CHARGE' | 'ESCROW_HOLD' | 'ESCROW_RELEASE' | 'ESCROW_REFUND';
+  type: 'CHARGE' | 'SAFE_PAYMENT_HOLD' | 'SAFE_PAYMENT_RELEASE' | 'SAFE_PAYMENT_REFUND' | 'DISPUTE_SETTLEMENT';
   description: string;
   matchRequestId: string | null;
   createdAt: string;
@@ -2795,23 +2842,25 @@ type PointTransaction = {
 
 const transactionTypeLabel: Record<PointTransaction['type'], string> = {
   CHARGE: '충전',
-  ESCROW_HOLD: '거래 보증 차감',
-  ESCROW_RELEASE: '작업 완료 지급',
-  ESCROW_REFUND: '거래 취소 환불',
+  SAFE_PAYMENT_HOLD: '안전결제 차감',
+  SAFE_PAYMENT_RELEASE: '작업 완료 지급',
+  SAFE_PAYMENT_REFUND: '거래 취소 환불',
+  DISPUTE_SETTLEMENT: '분쟁 조정 정산',
 };
 
 const transactionTypeClass: Record<PointTransaction['type'], string> = {
   CHARGE: 'bg-primary/10 text-primary',
-  ESCROW_HOLD: 'bg-amber-500/10 text-amber-500',
-  ESCROW_RELEASE: 'bg-emerald-500/10 text-emerald-500',
-  ESCROW_REFUND: 'bg-cyan-400/10 text-cyan-400',
+  SAFE_PAYMENT_HOLD: 'bg-amber-500/10 text-amber-500',
+  SAFE_PAYMENT_RELEASE: 'bg-emerald-500/10 text-emerald-500',
+  SAFE_PAYMENT_REFUND: 'bg-cyan-400/10 text-cyan-400',
+  DISPUTE_SETTLEMENT: 'bg-purple-500/10 text-purple-500',
 };
 
 const CHARGE_PRESETS = [1000, 5000, 10000, 30000, 50000, 100000];
 
 function PointSection() {
   const [point, setPoint] = useState(0);
-  const [escrowPoint, setEscrowPoint] = useState(0);
+  const [safePaymentPoint, setEscrowPoint] = useState(0);
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [chargeAmount, setChargeAmount] = useState('');
@@ -2820,12 +2869,12 @@ function PointSection() {
 
   const loadData = () => {
     Promise.all([
-      fetchMyPageData<{ point: number; escrowPoint: number }>('/api/point'),
+      fetchMyPageData<{ point: number; safePaymentPoint: number }>('/api/point'),
       fetchMyPageData<PointTransaction[]>('/api/point/transactions'),
     ])
       .then(([balance, txList]) => {
         setPoint(balance.point);
-        setEscrowPoint(balance.escrowPoint);
+        setEscrowPoint(balance.safePaymentPoint);
         setTransactions(txList);
       })
       .catch(() => {})
@@ -2874,8 +2923,8 @@ function PointSection() {
               <p className="text-3xl font-extrabold text-text-primary">{fmt(point)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
             </div>
             <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-5">
-              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">거래 중 보관</p>
-              <p className="text-3xl font-extrabold text-text-primary">{fmt(escrowPoint)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">안전결제 보관</p>
+              <p className="text-3xl font-extrabold text-text-primary">{fmt(safePaymentPoint)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
               <p className="text-xs text-text-muted mt-1">작업 완료 확인 시 에디터에게 지급됩니다</p>
             </div>
           </div>
@@ -2933,8 +2982,8 @@ function PointSection() {
                       <span className="text-sm text-text-secondary truncate">{tx.description}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`font-bold text-sm ${tx.type === 'ESCROW_HOLD' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                        {tx.type === 'ESCROW_HOLD' ? '-' : '+'}{fmt(tx.amount)}P
+                      <p className={`font-bold text-sm ${tx.amount < 0 || tx.type === 'SAFE_PAYMENT_HOLD' ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {tx.amount < 0 ? '' : tx.type === 'SAFE_PAYMENT_HOLD' ? '-' : '+'}{fmt(Math.abs(tx.amount))}P
                       </p>
                       <p className="text-xs text-text-muted mt-0.5">{tx.createdAt}</p>
                     </div>

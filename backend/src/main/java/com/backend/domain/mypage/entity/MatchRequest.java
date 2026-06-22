@@ -39,9 +39,6 @@ public class MatchRequest {
     @Column(nullable = false, length = 30)
     private MatchRequestStatus status;
 
-    @Column(name = "agreed_amount")
-    private Integer agreedAmount;
-
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -54,13 +51,6 @@ public class MatchRequest {
         this.status = MatchRequestStatus.WAITING;
     }
 
-    public MatchRequest(User requester, User editor, Integer agreedAmount) {
-        this.requester = requester;
-        this.editor = editor;
-        this.status = MatchRequestStatus.WAITING;
-        this.agreedAmount = agreedAmount;
-    }
-
     @PrePersist
     void prePersist() {
         if (id == null) {
@@ -69,10 +59,16 @@ public class MatchRequest {
     }
 
     public void accept() {
+        if (this.status != MatchRequestStatus.WAITING) {
+            throw new IllegalStateException("이미 처리된 요청입니다.");
+        }
         this.status = MatchRequestStatus.ACCEPTED;
     }
 
     public void reject() {
+        if (this.status != MatchRequestStatus.WAITING) {
+            throw new IllegalStateException("이미 처리된 요청입니다.");
+        }
         this.status = MatchRequestStatus.REJECTED;
     }
 

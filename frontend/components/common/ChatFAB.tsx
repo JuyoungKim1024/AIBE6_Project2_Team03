@@ -1,15 +1,15 @@
 'use client';
 
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Loader2, MessageSquare, Paperclip, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Loader2, MessageSquare, Paperclip, RefreshCw, Send, Trash2, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from '@/lib/api/chat';
 import { DirectChatRequestModal } from '@/components/common/DirectChatRequestModal';
 import { parseProjectMessage, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
-import type { ChatMessage } from '@/types/chat';
+import type { ChatMessage, MyChatRoom } from '@/types/chat';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
@@ -19,17 +19,6 @@ import { useModal } from '@/store/modalStore';
 type AuthUser = {
   id: string;
   nickname: string;
-};
-
-type MyChatRoom = {
-  id: string;
-  partnerId?: string;
-  partnerName: string;
-  lastMessage: string;
-  time: string;
-  unreadCount: number;
-  partnerDeleted?: boolean;
-  partnerWithdrawn?: boolean;
 };
 
 type MyProject = {
@@ -68,7 +57,6 @@ export function ChatFAB() {
   const { activeDMUser, closeDM } = useDM();
 
   const isDMActive = activeDMUser !== null;
-  const showPopup = isOpen;
   const activeRoom = chatRooms.find((chat) => chat.id === activeRoomId);
   const activePartnerName = activeRoom?.partnerName ?? '채팅방';
   const isPartnerWithdrawn = Boolean(activeRoom?.partnerDeleted || activeRoom?.partnerWithdrawn);
@@ -77,16 +65,16 @@ export function ChatFAB() {
       ? current
       : [...current, message]);
     loadRooms();
-    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
+    if (isOpen && document.visibilityState === 'visible') markActiveRoomAsRead();
   }, (project) => {
     setCurrentProject(project);
-    if (showPopup && document.visibilityState === 'visible') markActiveRoomAsRead();
+    if (isOpen && document.visibilityState === 'visible') markActiveRoomAsRead();
   });
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('accessToken');
-  }, [showPopup]);
+  }, [isOpen]);
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -177,7 +165,7 @@ export function ChatFAB() {
   };
 
   useEffect(() => {
-    if (!showPopup) return;
+    if (!isOpen) return;
     if (!accessToken) {
       router.push('/login');
       return;
@@ -191,14 +179,14 @@ export function ChatFAB() {
       });
 
     loadRooms();
-  }, [accessToken, router, showPopup]);
+  }, [accessToken, router, isOpen]);
 
   useEffect(() => {
-    if (!showPopup || !activeRoomId || isDMActive) return;
+    if (!isOpen || !activeRoomId || isDMActive) return;
     loadMessages(activeRoomId);
     loadProject(activeRoomId);
     markActiveRoomAsRead();
-  }, [activeRoomId, isDMActive, showPopup]);
+  }, [activeRoomId, isDMActive, isOpen]);
 
   useEffect(() => {
     if (!activeDMUser) return;
@@ -370,7 +358,7 @@ export function ChatFAB() {
         />
       )}
       <AnimatePresence>
-        {showPopup && (
+        {isOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -460,6 +448,15 @@ export function ChatFAB() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { router.push(`/chat/${activeRoomId}`); handleClose(); }}
+                        className="text-text-muted hover:text-text-primary"
+                        aria-label="전체 화면으로 열기"
+                        title="전체 화면으로 열기"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
                       <button
                         type="button"
                         onClick={refreshActiveRoom}

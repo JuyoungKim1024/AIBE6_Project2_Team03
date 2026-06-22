@@ -108,7 +108,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { point: number; escrowPoint: number } | null) => {
+      .then((data: { point: number; safePaymentPoint: number } | null) => {
         if (data) setPointBalance(data.point);
       })
       .catch(() => {});
@@ -142,7 +142,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   }, [isEditor, user.id]);
 
   useEffect(() => {
-    const handleUpdated = (event: Event) => {
+    const handleMatchingPriceUpdated = (event: Event) => {
       const detail = (event as CustomEvent<MatchingPrice>).detail;
       if (detail) {
         setMatchingPrice({
@@ -152,9 +152,19 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       }
     };
 
-    window.addEventListener('matchingPriceUpdated', handleUpdated);
-    return () => window.removeEventListener('matchingPriceUpdated', handleUpdated);
+    window.addEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
+    return () => window.removeEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
   }, [user.id]);
+
+  useEffect(() => {
+    const handlePointBalanceUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ point: number; safePaymentPoint: number }>).detail;
+      if (detail) setPointBalance(detail.point);
+    };
+
+    window.addEventListener('pointBalanceUpdated', handlePointBalanceUpdated);
+    return () => window.removeEventListener('pointBalanceUpdated', handlePointBalanceUpdated);
+  }, []);
 
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');

@@ -1,9 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Loader2, MessageSquare, Paperclip, RefreshCw, Send, X } from 'lucide-react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, ArrowLeft, Check, Loader2, MessageSquare, Paperclip, RefreshCw, Send, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
@@ -12,6 +12,8 @@ import { useChatSocket } from '@/hooks/useChatSocket';
 import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
 import type { ChatUnreadState } from '@/hooks/useChatUnreadCount';
 import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } from '@/components/common/ProjectMessageCard';
+import { DisputeModal } from '@/components/dispute/DisputeModal';
+import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
 import { useModal } from '@/store/modalStore';
 
@@ -32,6 +34,7 @@ export default function ChatRoomPage() {
   const router = useRouter();
   const { confirmModal } = useModal();
   const params = useParams<{ roomId: string }>();
+  const searchParams = useSearchParams();
   const roomId = params.roomId;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -46,12 +49,15 @@ export default function ChatRoomPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [activeProjectAction, setActiveProjectAction] = useState<ProjectAction | null>(null);
   const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(
+    () => searchParams.get('disputeId')
+  );
+  const [isCheckingDispute, setIsCheckingDispute] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
-  const accessToken = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  }, []);
+  const getToken = () => localStorage.getItem('accessToken');
+  const accessToken = getToken();
 
   const { isConnected, publishMessage } = useChatSocket(roomId, (message) => {
     setMessages((current) => current.some((item) => item.messageId === message.messageId)
@@ -64,10 +70,11 @@ export default function ChatRoomPage() {
   });
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
+    const token = getToken();
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers: {
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -95,7 +102,7 @@ export default function ChatRoomPage() {
   };
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!getToken()) {
       router.replace('/login');
       return;
     }
@@ -105,20 +112,38 @@ export default function ChatRoomPage() {
       fetchJson<ChatRoomDetail>(`/api/chat/rooms/${roomId}`),
       fetchJson<ChatMessage[]>(`/api/chat/rooms/${roomId}/messages`),
       fetchJson<MyChatRoom[]>('/api/users/me/chats'),
+      fetchJson<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`).catch(() => null),
     ])
-      .then(([me, roomDetail, messageList, rooms]) => {
+      .then(([me, roomDetail, messageList, rooms, project]) => {
         setUser(me);
         setRoom(roomDetail);
         setMessages(messageList);
         const currentRoom = rooms.find((item) => item.id === roomId);
         setRoomSummary(currentRoom ?? null);
         setIsPartnerWithdrawn(Boolean(currentRoom?.partnerDeleted || currentRoom?.partnerWithdrawn));
+        setCurrentProject(project);
         if (document.visibilityState === 'visible') markRoomAsRead();
       })
       .catch(() => setErrorMessage('채팅방 정보를 불러오지 못했습니다.'))
       .finally(() => setIsLoading(false));
 
   }, [accessToken, roomId, router]);
+
+  // currentProject 로드 후 진행 중인 분쟁 ID 자동 조회
+  useEffect(() => {
+    if (!currentProject?.id) return;
+    if (searchParams.get('disputeId')) return;
+
+    const token = getToken();
+    if (!token) return;
+
+    fetch(`${API_BASE_URL}/api/disputes/project/${currentProject.id}/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.status === 200 ? r.json() : null))
+      .then((d) => { if (d?.id) setActiveDisputeId(d.id); })
+      .catch(() => {});
+  }, [currentProject?.id, accessToken]);
 
   useEffect(() => {
     const markWhenVisible = () => {
@@ -237,6 +262,26 @@ export default function ChatRoomPage() {
   };
 
   return (
+    <>
+      {showDisputeModal && currentProject && (
+        <DisputeModal
+          projectId={currentProject.id}
+          accessToken={accessToken}
+          onClose={() => setShowDisputeModal(false)}
+          onCreated={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+            window.history.replaceState(null, '', `?disputeId=${disputeId}`);
+          }}
+        />
+      )}
+      {activeDisputeId && (
+        <DisputeResultModal
+          disputeId={activeDisputeId}
+          accessToken={accessToken}
+          onClose={() => setActiveDisputeId(null)}
+        />
+      )}
     <div className="flex h-[calc(100dvh-6rem)] min-h-[560px] w-full overflow-hidden border-y border-border bg-surface">
       <aside className="hidden h-full w-80 flex-shrink-0 border-r border-border bg-surface md:block">
         <ChatRoomList compact sidebar activeRoomId={roomId} />
@@ -258,7 +303,48 @@ export default function ChatRoomPage() {
               </p>
             </div>
           </div>
-
+          <div className="flex items-center gap-1">
+            {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!currentProject || isCheckingDispute) return;
+                  setIsCheckingDispute(true);
+                  try {
+                    const token = getToken();
+                    const res = await fetch(`${API_BASE_URL}/api/disputes/project/${currentProject.id}/active`, {
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    });
+                    if (res.status === 200) {
+                      const dispute = await res.json();
+                      if (dispute?.id) {
+                        setActiveDisputeId(dispute.id);
+                        return;
+                      }
+                    }
+                    setShowDisputeModal(true);
+                  } catch {
+                    setShowDisputeModal(true);
+                  } finally {
+                    setIsCheckingDispute(false);
+                  }
+                }}
+                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
+                aria-label="AI 분쟁 조정"
+              >
+                <AlertTriangle size={14} />
+                AI 분쟁 조정
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
+              className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
+              aria-label="새로고침"
+            >
+              <RefreshCw size={17} />
+            </button>
+          </div>
         </header>
 
         <ChatProjectPanel
@@ -351,5 +437,6 @@ export default function ChatRoomPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }

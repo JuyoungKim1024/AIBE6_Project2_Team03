@@ -4,6 +4,9 @@ import com.backend.domain.chat.entity.ChatParticipant;
 import com.backend.domain.chat.entity.ChatRoom;
 import com.backend.domain.chat.repository.ChatParticipantRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
+import com.backend.domain.dispute.entity.DisputeStatus;
+import com.backend.domain.dispute.repository.DisputeRepository;
+import com.backend.domain.point.service.PointService;
 import com.backend.domain.project.dto.ProjectCreateRequestDTO;
 import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.dto.ProjectUpdateRequestDTO;
@@ -30,6 +33,8 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PointService pointService;
+    private final DisputeRepository disputeRepository;
     private final ProjectNotificationService projectNotificationService;
 
     private ProjectResponseDTO publishProject(Project project) {
@@ -168,6 +173,8 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateEditor(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
+        // 안전결제 보관 먼저: 포인트 부족이면 여기서 실패해야 status가 오염되지 않음
+        pointService.holdSafePaymentForProject(project);
         project.start();
         return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_ACCEPTED);
     }
@@ -185,7 +192,11 @@ public class ProjectService {
     public ProjectResponseDTO completeProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
+        validateNoActiveDispute(project);
         project.requestComplete(userId);
+        if (project.getStatus() == ProjectStatus.COMPLETED) {
+            pointService.releaseSafePaymentForProject(project);
+        }
         ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.COMPLETION_PENDING
                 ? ProjectNotificationType.PROJECT_COMPLETION_REQUESTED
                 : ProjectNotificationType.PROJECT_COMPLETED;
@@ -196,10 +207,15 @@ public class ProjectService {
     public ProjectResponseDTO cancelProject(String userId, String projectId) {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
+        validateNoActiveDispute(project);
+        ProjectStatus statusBeforeCancel = project.getStatus();
         project.requestCancel(userId);
         ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.CANCELLATION_PENDING
                 ? ProjectNotificationType.PROJECT_CANCELLATION_REQUESTED
                 : ProjectNotificationType.PROJECT_CANCELED;
+        if (project.getStatus() == ProjectStatus.CANCELED && statusBeforeCancel != ProjectStatus.WAITING) {
+            pointService.refundSafePaymentForProject(project);
+        }
         return publishProjectChange(project, userId, notificationType);
     }
 
@@ -273,5 +289,15 @@ public class ProjectService {
         return project.getStatus() == ProjectStatus.COMPLETED
                 || project.getStatus() == ProjectStatus.CANCELED
                 || project.getStatus() == ProjectStatus.REJECTED;
+    }
+
+    private void validateNoActiveDispute(Project project) {
+        boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
+                project.getId(),
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
+        );
+        if (hasActiveDispute) {
+            throw new IllegalStateException("진행 중인 분쟁이 있어 프로젝트를 변경할 수 없습니다.");
+        }
     }
 }

@@ -7,8 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProjectRepository extends JpaRepository<Project, String> {
+
+    @Query("SELECT p FROM Project p JOIN FETCH p.requester JOIN FETCH p.editor WHERE p.id = :id")
+    Optional<Project> findByIdWithParticipants(@Param("id") String id);
     List<Project> findTop3ByRequester_IdOrEditor_IdOrderByUpdatedAtDesc(String requesterId, String editorId);
 
     boolean existsByRoom_IdAndStatusIn(String roomId, List<ProjectStatus> statuses);

@@ -111,6 +111,11 @@ public class Project extends BaseEntity {
         throw new IllegalStateException("완료 처리할 수 없는 프로젝트 상태입니다.");
     }
 
+    // 분쟁 조정 양측 동의 시 프로젝트 완료 처리
+    public void completeByDispute() {
+        this.status = ProjectStatus.COMPLETED;
+    }
+
     public void requestCancel(String userId) {
         if (status == ProjectStatus.WAITING
                 || status == ProjectStatus.WORKING
