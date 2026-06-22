@@ -19,7 +19,7 @@ public record DisputeNotificationResponse(
         return new DisputeNotificationResponse(
                 dispute.getId(),
                 "DISPUTE_FILED",
-                "PENDING",
+                dispute.getStatus().name(),
                 dispute.getReportedBy().getNickname(),
                 dispute.getReportedBy().getProfileImage(),
                 dispute.getProject().getRoom().getId(),

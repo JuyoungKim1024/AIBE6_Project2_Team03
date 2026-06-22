@@ -6,11 +6,15 @@ import com.backend.domain.dispute.dto.DisputeResponse;
 import com.backend.domain.dispute.entity.Dispute;
 import com.backend.domain.dispute.entity.DisputeStatus;
 import com.backend.domain.dispute.repository.DisputeRepository;
+import com.backend.domain.notification.entity.ProjectNotificationType;
+import com.backend.domain.notification.service.ProjectNotificationService;
 import com.backend.domain.point.service.PointService;
+import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.entity.Project;
 import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -24,8 +28,12 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class DisputeService {
 
+    // 알림/조회용 - 사용자에게 보여줄 분쟁 상태
     private static final List<DisputeStatus> ACTIVE_STATUSES =
             List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED);
+    // 새 분쟁 생성 차단용 - AI 판정 진행 중인 상태만
+    private static final List<DisputeStatus> BLOCKING_STATUSES =
+            List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED);
 
     public record DisputeCreateResult(DisputeResponse dispute, boolean isNew) {}
 
@@ -33,6 +41,8 @@ public class DisputeService {
     private final ProjectRepository projectRepository;
     private final PointService pointService;
     private final DisputeJudgeService judgeService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ProjectNotificationService projectNotificationService;
 
     @Transactional
     public DisputeCreateResult createDispute(String userId, DisputeCreateRequest request) {
@@ -50,8 +60,9 @@ public class DisputeService {
             throw new IllegalArgumentException("진행 중인 프로젝트에서만 분쟁을 신고할 수 있습니다.");
         }
 
-        // 이미 진행 중인 분쟁이 있으면 기존 분쟁 반환 (프론트에서 결과 모달로 바로 열 수 있도록)
-        List<Dispute> existingDisputes = disputeRepository.findActiveByProjectId(project.getId(), ACTIVE_STATUSES);
+        // AI 판정이 진행 중인 분쟁이 있으면 기존 분쟁 반환 (프론트에서 결과 모달로 바로 열 수 있도록)
+        // AI_FAILED / REJECTED는 재신고 허용
+        List<Dispute> existingDisputes = disputeRepository.findActiveByProjectId(project.getId(), BLOCKING_STATUSES);
         if (!existingDisputes.isEmpty()) {
             return new DisputeCreateResult(DisputeResponse.from(existingDisputes.get(0)), false);
         }
@@ -109,9 +120,35 @@ public class DisputeService {
             }
             pointService.settleDispute(dispute.getProject(), finalAmount);
             dispute.getProject().completeByDispute();
+
+            // 커밋 후 브로드캐스트 (커밋 실패 시 잘못된 상태 전송 방지)
+            Project project = dispute.getProject();
+            String actorId = userId;
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    broadcastProjectUpdate(project, actorId);
+                }
+            });
         }
 
         return DisputeResponse.from(dispute);
+    }
+
+    @Transactional
+    public DisputeResponse reject(String userId, String disputeId) {
+        Dispute dispute = findAndValidateParticipant(disputeId, userId);
+        dispute.reject(userId);
+        return DisputeResponse.from(dispute);
+    }
+
+    private void broadcastProjectUpdate(Project project, String changedByUserId) {
+        ProjectResponseDTO response = ProjectResponseDTO.from(project);
+        messagingTemplate.convertAndSend(
+                "/topic/chat/rooms/" + project.getRoom().getId() + "/project",
+                response
+        );
+        projectNotificationService.notify(project, changedByUserId, ProjectNotificationType.PROJECT_COMPLETED);
     }
 
     private Dispute findAndValidateParticipant(String disputeId, String userId) {
