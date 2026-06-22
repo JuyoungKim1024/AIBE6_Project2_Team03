@@ -151,9 +151,12 @@ public class PointService {
         User creator = getCreator(project);
         User performer = getPerformer(project);
         int amount = project.getPrice();
-        creator.refundSafePayment(amount);
+        // 실제 보관된 금액만 환불 (DB 상태 불일치 방어)
+        int refundAmount = Math.min(amount, creator.getSafePaymentPoint());
+        if (refundAmount <= 0) return;
+        creator.refundSafePayment(refundAmount);
         transactionRepository.save(new PointTransaction(
-                creator, amount, PointTransactionType.SAFE_PAYMENT_REFUND,
+                creator, refundAmount, PointTransactionType.SAFE_PAYMENT_REFUND,
                 performer.getNickname() + "님과의 프로젝트 취소 환불",
                 null
         ));

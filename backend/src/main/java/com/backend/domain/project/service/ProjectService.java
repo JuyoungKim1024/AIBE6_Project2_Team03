@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,11 +41,19 @@ public class ProjectService {
     private final ProjectNotificationService projectNotificationService;
 
     private ProjectResponseDTO publishProject(Project project) {
+        // 트랜잭션 커밋 전에 WebSocket을 보내면 프론트엔드가 구버전 데이터를 읽는 race condition 발생
+        // → snapshot을 미리 만들고 커밋 후에 전송
         ProjectResponseDTO response = ProjectResponseDTO.from(project);
-        messagingTemplate.convertAndSend(
-                "/topic/chat/rooms/" + project.getRoom().getId() + "/project",
-                response
-        );
+        String roomId = project.getRoom().getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend(
+                        "/topic/chat/rooms/" + roomId + "/project",
+                        response
+                );
+            }
+        });
         return response;
     }
 
@@ -137,7 +147,10 @@ public class ProjectService {
                         ProjectStatus.WAITING,
                         ProjectStatus.WORKING,
                         ProjectStatus.COMPLETION_PENDING,
-                        ProjectStatus.CANCELLATION_PENDING
+                        ProjectStatus.CANCELLATION_PENDING,
+                        ProjectStatus.COMPLETED,
+                        ProjectStatus.CANCELED,
+                        ProjectStatus.REJECTED
                 )
         );
         return Optional.ofNullable(project).map(ProjectResponseDTO::from);
@@ -290,9 +303,10 @@ public class ProjectService {
     }
 
     private void validateNoActiveDispute(Project project) {
+        // AI_FAILED / REJECTED 는 종료된 분쟁이므로 프로젝트 조작 허용
         boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
                 project.getId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED)
         );
         if (hasActiveDispute) {
             throw new IllegalStateException("진행 중인 분쟁이 있어 프로젝트를 변경할 수 없습니다.");
