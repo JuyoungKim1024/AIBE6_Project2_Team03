@@ -260,7 +260,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== userId && (
         <ActionButton onClick={() => changeStatus('cancel')} disabled={Boolean(activeAction)} tone="danger"><X size={12} />취소 확인</ActionButton>
       )}
-      {['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) && project.requesterId === userId && (
+      {project.status === 'WAITING' && project.requesterId === userId && (
         <ActionButton onClick={openEditForm} disabled={Boolean(activeAction)}><Pencil size={12} />수정</ActionButton>
       )}
     </div>
@@ -324,7 +324,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
               </label>
               <label className="text-sm font-bold text-text-secondary">
                 마감 시간
-                <select required value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2">
+                <select required value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2 leading-normal">
                   <option value="">시간 선택</option>
                   {deadlineTimes.map((time) => <option key={time} value={time}>{time}</option>)}
                 </select>
