@@ -97,6 +97,9 @@ public class Dispute extends BaseEntity {
         if (this.status != DisputeStatus.AI_JUDGED) {
             throw new IllegalStateException("AI 판정이 완료된 분쟁에만 거절할 수 있습니다.");
         }
+        if (Boolean.TRUE.equals(this.requesterAccepted) || Boolean.TRUE.equals(this.editorAccepted)) {
+            throw new IllegalStateException("이미 동의한 참여자가 있어 거절할 수 없습니다.");
+        }
         String requesterId = project.getRequester().getId();
         String editorId = project.getEditor().getId();
         if (!userId.equals(requesterId) && !userId.equals(editorId)) {
