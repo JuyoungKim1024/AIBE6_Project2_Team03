@@ -308,13 +308,6 @@ function JobsWriteContent() {
           </h1>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPreviewOpen((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${previewOpen ? "bg-surface-elevated text-text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
-            >
-              {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-              미리보기
-            </button>
-            <button
               onClick={() => setAiPanelOpen((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
             >
@@ -706,6 +699,15 @@ function JobsWriteContent() {
           </button>
         </div>
       </div>
+
+      {/* 미리보기 FAB */}
+      <button
+        onClick={() => setPreviewOpen((v) => !v)}
+        className={`fixed bottom-24 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg text-sm font-bold transition-all ${previewOpen ? "bg-surface-elevated text-text-primary border border-border" : "bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-primary/50"}`}
+      >
+        {previewOpen ? <EyeOff size={16} /> : <Eye size={16} />}
+        미리보기
+      </button>
 
       {/* 미리보기 드로어 */}
       {previewOpen && (
