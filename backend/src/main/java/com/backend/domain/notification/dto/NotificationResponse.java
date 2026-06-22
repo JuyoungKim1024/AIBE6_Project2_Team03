@@ -57,6 +57,23 @@ public record NotificationResponse(
         );
     }
 
+    /** 에디터가 수락/거절했을 때 크리에이터(requester)에게 보내는 알림 */
+    public static NotificationResponse fromForRequester(MatchRequest request, String chatRoomId) {
+        String type = request.getStatus() == MatchRequestStatus.ACCEPTED
+                ? "MATCHING_ACCEPTED"
+                : "MATCHING_REJECTED";
+        return new NotificationResponse(
+                request.getId(),
+                type,
+                "PENDING",
+                request.getEditor().getNickname(),
+                request.getEditor().getProfileImage(),
+                chatRoomId,
+                null,
+                request.getCreatedAt() != null ? request.getCreatedAt().format(FORMATTER) : null
+        );
+    }
+
     private static String toFrontendStatus(MatchRequestStatus status) {
         return switch (status) {
             case WAITING -> "PENDING";

@@ -17,5 +17,12 @@ public interface MyPageMatchRequestRepository extends JpaRepository<MatchRequest
             MatchRequestStatus status
     );
 
+    // 크리에이터(requester)에게 보여줄 수락/거절 알림 (editor 정보 포함)
+    @Query("SELECT m FROM MatchRequest m JOIN FETCH m.editor WHERE m.requester.id = :requesterId AND m.status IN :statuses AND m.requesterNotifDismissedAt IS NULL ORDER BY m.createdAt DESC")
+    List<MatchRequest> findByRequester_IdAndStatusInAndRequesterNotifDismissedAtIsNullOrderByCreatedAtDesc(
+            @Param("requesterId") String requesterId,
+            @Param("statuses") List<MatchRequestStatus> statuses
+    );
+
     boolean existsByRequester_IdAndEditor_IdAndStatus(String requesterId, String editorId, MatchRequestStatus status);
 }

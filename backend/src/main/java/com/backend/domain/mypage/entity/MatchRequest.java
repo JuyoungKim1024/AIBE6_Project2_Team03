@@ -45,6 +45,9 @@ public class MatchRequest {
     @Column(name = "notification_dismissed_at")
     private LocalDateTime notificationDismissedAt;
 
+    @Column(name = "requester_notif_dismissed_at")
+    private LocalDateTime requesterNotifDismissedAt;
+
     public MatchRequest(User requester, User editor) {
         this.requester = requester;
         this.editor = editor;
@@ -74,5 +77,9 @@ public class MatchRequest {
 
     public void dismissNotification() {
         this.notificationDismissedAt = LocalDateTime.now();
+    }
+
+    public void dismissRequesterNotification() {
+        this.requesterNotifDismissedAt = LocalDateTime.now();
     }
 }
