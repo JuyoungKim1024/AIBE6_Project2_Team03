@@ -2,16 +2,20 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, X } from 'lucide-react';
+import { AlertTriangle, Bell, Check, Trash2, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
+import { useModal } from '@/store/modalStore';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
+  const { openModal, confirmModal } = useModal();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const hasUnread = notifications.some((n) => n.status === 'PENDING');
@@ -21,9 +25,10 @@ export function NotificationDropdown({ userId }: { userId: string }) {
     if (!accessToken) return;
     try {
       const headers = { Authorization: `Bearer ${accessToken}` };
-      const [notificationRes, chatRequestRes] = await Promise.all([
+      const [notificationRes, chatRequestRes, disputeRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/notifications`, { headers }),
         fetch(`${API_BASE_URL}/api/chat/requests/received`, { headers }),
+        fetch(`${API_BASE_URL}/api/disputes/notifications`, { headers }),
       ]);
 
       const notifications = notificationRes.ok
@@ -32,8 +37,12 @@ export function NotificationDropdown({ userId }: { userId: string }) {
       const chatRequests = chatRequestRes.ok
         ? await chatRequestRes.json() as ChatRequestNotification[]
         : [];
+      const disputes = disputeRes.ok
+        ? await disputeRes.json() as Notification[]
+        : [];
 
       setNotifications([
+        ...disputes,
         ...chatRequests.map(toNotification),
         ...notifications,
       ]);
@@ -103,8 +112,42 @@ export function NotificationDropdown({ userId }: { userId: string }) {
     }
   };
 
+  const handleDelete = async (notification: Notification) => {
+    if (deletingId) return;
+    const confirmed = await confirmModal({
+      title: '알림 삭제',
+      message: '이 알림을 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+    });
+    if (!confirmed) return;
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) return;
+
+    setDeletingId(notification.id);
+    try {
+      const path = notification.type === 'CHAT_REQUEST'
+        ? `/api/chat/requests/${notification.id}`
+        : `/api/notifications/${notification.id}`;
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error('알림을 삭제하지 못했습니다.');
+      setNotifications((current) => current.filter((item) => item.id !== notification.id));
+    } catch {
+      openModal({
+        title: '알림 삭제 실패',
+        message: '알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
+    const timer = setInterval(fetchNotifications, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -201,6 +244,8 @@ export function NotificationDropdown({ userId }: { userId: string }) {
                   onAccept={handleAccept}
                   onReject={handleReject}
                   onOpenProject={openProjectNotification}
+                  onDelete={handleDelete}
+                  isDeleting={deletingId === notification.id}
                 />
               ))
             )}
@@ -230,15 +275,45 @@ interface NotificationItemProps {
   onAccept: (n: Notification) => void;
   onReject: (n: Notification) => void;
   onOpenProject: (n: Notification) => void;
+  onDelete: (n: Notification) => void;
+  isDeleting: boolean;
 }
 
-function NotificationItem({ notification, onAccept, onReject, onOpenProject }: NotificationItemProps) {
+function NotificationItem({ notification, onAccept, onReject, onOpenProject, onDelete, isDeleting }: NotificationItemProps) {
+  const router = useRouter();
   const isPending = notification.status === 'PENDING';
   const isAccepted = notification.status === 'ACCEPTED';
   const isRejected = notification.status === 'REJECTED';
   const isChatRequest = notification.type === 'CHAT_REQUEST';
+  const isDispute = notification.type === 'DISPUTE_FILED';
   const isProjectNotification = notification.type.startsWith('PROJECT_');
   const actionLabel = isChatRequest ? '채팅 문의' : '매칭';
+
+  if (isDispute) {
+    return (
+      <div className="px-4 py-3 border-b border-border/50 last:border-0">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <AlertTriangle size={16} className="text-amber-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-text-primary">
+              <span className="font-bold">{notification.senderName}</span>님이 AI 분쟁 조정을 신청했습니다.
+            </p>
+            <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
+            <button
+              onClick={() => {
+                router.push(`/chat/${notification.chatRoomId}?disputeId=${notification.id}`);
+              }}
+              className="mt-2 w-full py-1.5 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+            >
+              채팅방에서 확인하기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-3 border-b border-border/50 last:border-0">
@@ -309,6 +384,16 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject }: N
             </div>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => onDelete(notification)}
+          disabled={isDeleting}
+          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="알림 삭제"
+          title="알림 삭제"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import com.backend.domain.auth.dto.PasswordChangeRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.SocialUserInfo;
 import com.backend.domain.auth.dto.UserResponse;
+import com.backend.global.exception.SuspendedAccountException;
 import com.backend.domain.auth.entity.AuthLogoutToken;
 import com.backend.domain.auth.entity.AuthRefreshToken;
 import com.backend.domain.auth.entity.EmailVerification;
@@ -340,6 +341,7 @@ public class AuthService {
         if (user.isDeleted()) {
             throw new IllegalArgumentException("탈퇴한 계정입니다.");
         }
+        ensureNotSuspended(user);
         return userId;
     }
 
@@ -349,6 +351,7 @@ public class AuthService {
         if (user.isDeleted()) {
             throw new IllegalArgumentException("탈퇴한 계정입니다.");
         }
+        ensureNotSuspended(user);
         return user;
     }
 
@@ -388,6 +391,7 @@ public class AuthService {
     }
 
     private AuthResponse issueTokens(User user) {
+        ensureNotSuspended(user);
         String accessToken = jwtTokenProvider.createAccessToken(user.getId());
         String refreshToken = createRefreshToken();
         refreshTokenRepository.save(new AuthRefreshToken(
@@ -396,6 +400,16 @@ public class AuthService {
                 LocalDateTime.now().plusSeconds(refreshTokenValiditySeconds)
         ));
         return AuthResponse.of(accessToken, refreshToken, user, isOnboardingRequired(user));
+    }
+
+    private void ensureNotSuspended(User user) {
+        if (!user.isSuspended()) {
+            return;
+        }
+        throw new SuspendedAccountException(
+                user.getSuspensionReason(),
+                user.getSuspendedUntil()
+        );
     }
 
     private String normalizeAndValidateEmail(String email) {

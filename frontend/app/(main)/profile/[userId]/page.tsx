@@ -8,6 +8,7 @@ import { RankBadge } from '@/components/common/RankBadge';
 import { TrustTemperature } from '@/components/profile/TrustTemperature';
 import type { RankTier } from '@/types/user';
 import { createDirectChatRoom } from '@/lib/api/chat';
+import { useModal } from '@/store/modalStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -175,6 +176,7 @@ function ProfilePostSection({ title, posts, emptyMessage }: { title: string; pos
 
 export default function PublicProfilePage() {
   const router = useRouter();
+  const { openModal } = useModal();
   const params = useParams<{ userId: string }>();
   const userId = params.userId;
   const [data, setData] = useState<PublicProfile | null>(null);
@@ -219,6 +221,10 @@ export default function PublicProfilePage() {
         }
         if (response.status === 410) {
           setProfileError('탈퇴한 계정입니다');
+          return null;
+        }
+        if (response.status === 423) {
+          setProfileError('정지된 계정입니다');
           return null;
         }
         if (response.status === 404) {
@@ -312,6 +318,13 @@ export default function PublicProfilePage() {
 
   const startChat = async () => {
     if (isCreatingChat) return;
+    if (currentUserId === data.id) {
+      openModal({
+        title: '채팅 문의 불가',
+        message: '본인에게는 DM을 보낼 수 없습니다.',
+      });
+      return;
+    }
 
     setIsCreatingChat(true);
     setChatErrorMessage('');

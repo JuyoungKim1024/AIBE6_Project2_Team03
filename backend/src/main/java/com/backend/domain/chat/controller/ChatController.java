@@ -6,6 +6,8 @@ import com.backend.domain.chat.dto.ChatMessageSendRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomCreateRequestDTO;
 import com.backend.domain.chat.dto.ChatRoomResponseDTO;
 import com.backend.domain.chat.dto.ChatUnreadResponseDTO;
+import com.backend.domain.chat.dto.ChatAttachmentResponseDTO;
+import com.backend.domain.chat.service.ChatAttachmentService;
 import com.backend.domain.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -13,6 +15,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -24,9 +27,13 @@ public class ChatController {
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final AuthService authService;
+    private final ChatAttachmentService chatAttachmentService;
 
     @GetMapping
-    public List<ChatRoomResponseDTO> findRoomsByUserId (@RequestParam String userId) {
+    public List<ChatRoomResponseDTO> findMyRooms(
+            @RequestHeader("Authorization") String authorization
+    ) {
+        String userId = authService.resolveUserId(authorization);
         return chatService.findRoomsByUserId(userId);
     }
 
@@ -36,7 +43,11 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}")
-    public ChatRoomResponseDTO findByChatRoom(@PathVariable String roomId) {
+    public ChatRoomResponseDTO findByChatRoom(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String roomId
+    ) {
+        authService.resolveUserId(authorization);
         return chatService.findByChatRoomId(roomId);
     }
 
@@ -50,7 +61,11 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}/messages")
-    public List<ChatMessageResponseDTO> findByChatRoomMessage(@PathVariable String roomId) {
+    public List<ChatMessageResponseDTO> findByChatRoomMessage(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String roomId
+    ) {
+        authService.resolveUserId(authorization);
         return chatService.getMessageList(roomId);
     }
 
@@ -72,6 +87,19 @@ public class ChatController {
     @PostMapping("/{roomId}/messages")
     public ChatMessageResponseDTO saveMessage(@PathVariable String roomId, @RequestBody ChatMessageSendRequestDTO dto) {
         return chatService.saveMessage(roomId, dto);
+    }
+
+    @PostMapping("/{roomId}/attachments")
+    public ChatAttachmentResponseDTO uploadAttachment(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PathVariable String roomId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return chatAttachmentService.upload(
+                roomId,
+                authService.resolveUserId(authorizationHeader),
+                file
+        );
     }
 
     @MessageMapping("/chat/rooms/{roomId}/messages")

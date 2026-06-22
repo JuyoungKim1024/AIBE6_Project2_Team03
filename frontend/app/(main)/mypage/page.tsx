@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Briefcase,
   Check,
   ChevronDown,
@@ -17,7 +18,9 @@ import {
   GripVertical,
   Heart,
   Image as ImageIcon,
+  Loader2,
   MessageCircle,
+  Paperclip,
   Pencil,
   Plus,
   RefreshCw,
@@ -31,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
+import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
 import {
   parseProjectMessage,
   ProjectMessageCard,
@@ -38,12 +42,16 @@ import {
   type ProjectMessagePayload,
 } from '@/components/common/ProjectMessageCard';
 import type { ChatMessage, ChatPostSummary, MyChatRoom } from '@/types/chat';
+import { DisputeModal } from '@/components/dispute/DisputeModal';
+import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import {
   fetchCommunityPosts,
   fetchJobPosts,
   getLikedPostIds,
   togglePostLike,
 } from '@/lib/api/post';
+import { requestPointPayment } from '@/lib/toss-payments';
+import { CHAT_ATTACHMENT_ACCEPT, uploadChatAttachment } from '@/lib/api/chat-attachments';
 
 type Section = 'editor-profile' | 'posts' | 'liked' | 'chats' | 'portfolio' | 'projects' | 'pricing' | 'point';
 type SidebarItemId = Section | 'settings';
@@ -112,6 +120,7 @@ type MyProject = {
   requesterId?: string;
   editorId?: string;
   completionRequestedBy?: string | null;
+  cancellationRequestedBy?: string | null;
   partnerName: string;
   field: string | null;
   status: string;
@@ -178,18 +187,23 @@ function isCompletionPendingProject(project: ProjectMessagePayload | null | unde
   return project?.status === 'COMPLETION_PENDING';
 }
 
+function isCancellationPendingProject(project: ProjectMessagePayload | null | undefined) {
+  return project?.status === 'CANCELLATION_PENDING';
+}
+
 function isOpenProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING'].includes(project.status) : false;
 }
 
 function isVisibleChatProject(project: ProjectMessagePayload | null | undefined) {
-  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
+  return project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(project.status) : false;
 }
 
 function getProjectMessageLabel(project: ProjectMessagePayload) {
   if (project.status === 'WAITING') return '프로젝트 수락 대기';
   if (project.status === 'WORKING') return '프로젝트 진행 중';
   if (project.status === 'COMPLETION_PENDING') return '프로젝트 완료 대기';
+  if (project.status === 'CANCELLATION_PENDING') return '프로젝트 취소 대기';
   if (project.status === 'COMPLETED') return '프로젝트 완료';
   if (project.status === 'REJECTED') return '프로젝트 거절';
   if (project.status === 'CANCELED') return '프로젝트 취소';
@@ -1025,6 +1039,7 @@ function ChatsSection() {
   const searchParams = useSearchParams();
   const roomIdParam = searchParams.get('roomId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [chatRooms, setChatRooms] = useState<MyChatRoom[]>([]);
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('ALL');
   const [chatPage, setChatPage] = useState(1);
@@ -1036,6 +1051,7 @@ function ChatsSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectAction, setProjectAction] = useState<ProjectAction | null>(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -1052,6 +1068,8 @@ function ChatsSection() {
     memo: '',
   });
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
 
   const selectedRoom = chatRooms.find((room) => room.id === selectedRoomId);
   const selectedPost = selectedRoom?.post ?? null;
@@ -1111,15 +1129,28 @@ function ChatsSection() {
     }
   };
 
+  const MONEY_STATUSES = ['WORKING', 'COMPLETED', 'CANCELED'];
+
+  const refreshPointBalance = () => {
+    fetchMyPageData<{ point: number; safePaymentPoint: number }>('/api/point')
+      .then((balance) => window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: balance })))
+      .catch(() => {});
+  };
+
   const fetchProject = async (roomId: string) => {
     try {
       const project = await fetchMyPageData<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`);
-      setCurrentProject(project);
+      setCurrentProject((prev) => {
+        if (prev?.status !== project.status && MONEY_STATUSES.includes(project.status)) {
+          refreshPointBalance();
+        }
+        return project;
+      });
       return project;
     } catch {
       try {
         const data = await fetchMyPageData<MyProjects>('/api/users/me/projects');
-        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
+        const project = data.ongoing.find((item) => item.roomId === roomId && ['COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'].includes(item.status));
         if (project) {
           const memo =
             project.status === 'REJECTED'
@@ -1128,12 +1159,15 @@ function ChatsSection() {
                 ? '취소된 프로젝트입니다.'
                 : project.status === 'COMPLETION_PENDING'
                   ? '상대방의 완료 확인을 기다리는 중입니다.'
+                  : project.status === 'CANCELLATION_PENDING'
+                    ? '상대방의 취소 확인을 기다리는 중입니다.'
                   : '완료된 프로젝트입니다.';
           const completedProject: ProjectMessagePayload = {
             id: project.id,
             roomId,
             requesterId: project.requesterId,
             completionRequestedBy: project.completionRequestedBy,
+            cancellationRequestedBy: project.cancellationRequestedBy,
             field: project.field,
             price: null,
             videoLength: null,
@@ -1242,6 +1276,39 @@ function ChatsSection() {
     }
   };
 
+  const sendAttachment = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedRoomId || !user || isUploadingAttachment || isPartnerWithdrawn) return;
+
+    setIsUploadingAttachment(true);
+    setErrorMessage('');
+    try {
+      const attachment = await uploadChatAttachment(selectedRoomId, file);
+      const response = await fetch(`${API_BASE_URL}/api/chat/rooms/${selectedRoomId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAccessToken()}`,
+        },
+        body: JSON.stringify({
+          senderId: user.id,
+          content: attachment.fileName,
+          ...attachment,
+        }),
+      });
+      if (!response.ok) throw new Error('첨부파일 메시지를 저장하지 못했습니다.');
+
+      const saved = await response.json() as ChatMessage;
+      setMessages((current) => [...current, saved]);
+      loadRooms();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '첨부파일을 전송하지 못했습니다.');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
   const deleteRoom = (roomId: string) => {
     openModal({
       title: '확인',
@@ -1345,7 +1412,9 @@ function ChatsSection() {
           ? '프로젝트를 거절하시겠습니까?'
           : action === 'complete'
             ? '프로젝트를 완료하시겠습니까?'
-            : '프로젝트를 취소하시겠습니까?';
+            : project.status === 'CANCELLATION_PENDING'
+              ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+              : '프로젝트 취소를 요청하시겠습니까?';
 
     openModal({
       title: '확인',
@@ -1395,7 +1464,7 @@ function ChatsSection() {
                 ? '프로젝트를 거절했습니다.'
                 : action === 'complete'
                   ? savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.'
-                  : '프로젝트를 취소했습니다.',
+                  : savedProject.status === 'CANCELLATION_PENDING' ? '프로젝트 취소 요청을 보냈습니다.' : '프로젝트를 취소했습니다.',
           });
           loadRooms();
         } catch (error) {
@@ -1438,6 +1507,11 @@ function ChatsSection() {
       {isCompletionPendingProject(project) && project.completionRequestedBy !== user?.id ? (
         <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'complete')} className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">
           <Check size={12} />완료 확인
+        </button>
+      ) : null}
+      {isCancellationPendingProject(project) && project.cancellationRequestedBy !== user?.id ? (
+        <button type="button" disabled={Boolean(projectAction)} onClick={() => updateProjectStatus(project, 'cancel')} className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">
+          <X size={12} />취소 확인
         </button>
       ) : null}
       {isOpenProject(project) ? (
@@ -1629,6 +1703,17 @@ function ChatsSection() {
                     <Briefcase size={14} />프로젝트 시작
                   </button>
                 ) : null}
+                {(currentProject?.status === 'WORKING' || currentProject?.status === 'COMPLETION_PENDING') && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisputeModal(true)}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-500/10 transition-colors"
+                    aria-label="AI 분쟁 조정"
+                  >
+                    <AlertTriangle size={14} />
+                    AI 분쟁 조정
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => selectedRoomId && loadMessages(selectedRoomId)}
@@ -1660,6 +1745,8 @@ function ChatsSection() {
                         ? '거절된 프로젝트'
                         : pinnedProject.status === 'CANCELED'
                           ? '취소된 프로젝트'
+                          : pinnedProject.status === 'CANCELLATION_PENDING'
+                            ? '취소 대기 프로젝트'
                           : pinnedProject.status === 'COMPLETION_PENDING'
                             ? '완료 대기 프로젝트'
                             : '진행 중인 프로젝트'}
@@ -1708,7 +1795,7 @@ function ChatsSection() {
                     return (
                       <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[72%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
-                          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                          <ChatMessageContent message={message} isMine={isMine} />
                           <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
                             {new Date(message.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
@@ -1730,6 +1817,16 @@ function ChatsSection() {
 
             <form onSubmit={sendMessage} className="border-t border-border bg-surface px-4 py-4">
               <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-elevated p-2">
+                <input ref={attachmentInputRef} type="file" accept={CHAT_ATTACHMENT_ACCEPT} onChange={sendAttachment} className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  disabled={!selectedRoomId || isPartnerWithdrawn || isUploadingAttachment}
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="파일 첨부"
+                >
+                  {isUploadingAttachment ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                </button>
                 <input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
@@ -1739,7 +1836,7 @@ function ChatsSection() {
                 />
                 <button
                   type="submit"
-                  disabled={!draft.trim() || !selectedRoomId || isSending || isPartnerWithdrawn}
+                  disabled={!draft.trim() || !selectedRoomId || isSending || isUploadingAttachment || isPartnerWithdrawn}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="메시지 보내기"
                 >
@@ -1850,6 +1947,24 @@ function ChatsSection() {
           </form>
         </div>
       )}
+      {showDisputeModal && currentProject?.id && (
+        <DisputeModal
+          projectId={currentProject.id}
+          accessToken={getAccessToken()}
+          onClose={() => setShowDisputeModal(false)}
+          onCreated={(disputeId) => {
+            setShowDisputeModal(false);
+            setActiveDisputeId(disputeId);
+          }}
+        />
+      )}
+      {activeDisputeId && (
+        <DisputeResultModal
+          disputeId={activeDisputeId}
+          accessToken={getAccessToken()}
+          onClose={() => setActiveDisputeId(null)}
+        />
+      )}
     </SectionCard>
   );
 }
@@ -1909,13 +2024,17 @@ function ProjectsSection() {
     loadProjects();
   }, []);
 
-  const updateProjectFromBoard = async (project: MyProject, action: 'start' | 'reject' | 'complete') => {
+  const updateProjectFromBoard = async (project: MyProject, action: ProjectAction) => {
     const confirmMessage =
       action === 'start'
         ? '프로젝트를 수락하시겠습니까?'
         : action === 'reject'
           ? '프로젝트를 거절하시겠습니까?'
-          : '프로젝트를 완료하시겠습니까?';
+          : action === 'complete'
+            ? '프로젝트를 완료하시겠습니까?'
+            : project.status === 'CANCELLATION_PENDING'
+              ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
+              : '프로젝트 취소를 요청하시겠습니까?';
 
     openModal({
       title: '확인',
@@ -1935,7 +2054,9 @@ function ProjectsSection() {
               ? '프로젝트를 수락했습니다.'
               : action === 'reject'
                 ? '프로젝트를 거절했습니다.'
-                : savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.',
+                : action === 'complete'
+                  ? savedProject.status === 'COMPLETION_PENDING' ? '프로젝트 완료 요청을 보냈습니다.' : '프로젝트를 완료했습니다.'
+                  : savedProject.status === 'CANCELLATION_PENDING' ? '프로젝트 취소 요청을 보냈습니다.' : '프로젝트를 취소했습니다.',
           });
           await loadProjects();
         } catch (error) {
@@ -1953,11 +2074,13 @@ function ProjectsSection() {
   const pendingProjects = visibleProjects.filter((project) => project.status === 'WAITING');
   const workingProjects = visibleProjects.filter((project) => project.status === 'WORKING');
   const completionPendingProjects = visibleProjects.filter((project) => project.status === 'COMPLETION_PENDING');
+  const cancellationPendingProjects = visibleProjects.filter((project) => project.status === 'CANCELLATION_PENDING');
   const completedProjects = visibleProjects.filter((project) => project.status === 'COMPLETED');
   const canConfirmCompletion = (project: MyProject) => {
     if (project.completionRequestedBy) return project.completionRequestedBy !== user?.id;
     return !completionRequestedProjectIds.includes(project.id);
   };
+  const canConfirmCancellation = (project: MyProject) => project.cancellationRequestedBy !== user?.id;
 
   return (
     <SectionCard title="프로젝트 관리" description="받은 매칭 요청과 진행 중인 프로젝트를 관리합니다.">
@@ -2006,7 +2129,10 @@ function ProjectsSection() {
                 statusLabel="진행 중"
                 accentClass="border-l-amber-500"
                 actions={(
-                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
+                  <>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'cancel')} className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">취소</button>
+                    <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료</button>
+                  </>
                 )}
               />
             ))}
@@ -2021,6 +2147,20 @@ function ProjectsSection() {
                 accentClass="border-l-primary"
                 actions={canConfirmCompletion(project) ? (
                   <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'complete')} className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60">완료 확인</button>
+                ) : null}
+              />
+            ))}
+          </ProjectBoardColumn>
+
+          <ProjectBoardColumn title="취소 대기 프로젝트" emptyMessage="취소 확인 대기 중인 프로젝트가 없습니다">
+            {cancellationPendingProjects.map((project) => (
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="취소 대기"
+                accentClass="border-l-accent"
+                actions={canConfirmCancellation(project) ? (
+                  <button type="button" disabled={projectActionId === project.id} onClick={() => updateProjectFromBoard(project, 'cancel')} className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-60">취소 확인</button>
                 ) : null}
               />
             ))}
@@ -2694,7 +2834,7 @@ function PricingSection({ userId }: { userId: string | null }) {
 type PointTransaction = {
   id: string;
   amount: number;
-  type: 'CHARGE' | 'ESCROW_HOLD' | 'ESCROW_RELEASE' | 'ESCROW_REFUND';
+  type: 'CHARGE' | 'SAFE_PAYMENT_HOLD' | 'SAFE_PAYMENT_RELEASE' | 'SAFE_PAYMENT_REFUND' | 'DISPUTE_SETTLEMENT';
   description: string;
   matchRequestId: string | null;
   createdAt: string;
@@ -2702,23 +2842,25 @@ type PointTransaction = {
 
 const transactionTypeLabel: Record<PointTransaction['type'], string> = {
   CHARGE: '충전',
-  ESCROW_HOLD: '거래 보증 차감',
-  ESCROW_RELEASE: '작업 완료 지급',
-  ESCROW_REFUND: '거래 취소 환불',
+  SAFE_PAYMENT_HOLD: '안전결제 차감',
+  SAFE_PAYMENT_RELEASE: '작업 완료 지급',
+  SAFE_PAYMENT_REFUND: '거래 취소 환불',
+  DISPUTE_SETTLEMENT: '분쟁 조정 정산',
 };
 
 const transactionTypeClass: Record<PointTransaction['type'], string> = {
   CHARGE: 'bg-primary/10 text-primary',
-  ESCROW_HOLD: 'bg-amber-500/10 text-amber-500',
-  ESCROW_RELEASE: 'bg-emerald-500/10 text-emerald-500',
-  ESCROW_REFUND: 'bg-cyan-400/10 text-cyan-400',
+  SAFE_PAYMENT_HOLD: 'bg-amber-500/10 text-amber-500',
+  SAFE_PAYMENT_RELEASE: 'bg-emerald-500/10 text-emerald-500',
+  SAFE_PAYMENT_REFUND: 'bg-cyan-400/10 text-cyan-400',
+  DISPUTE_SETTLEMENT: 'bg-purple-500/10 text-purple-500',
 };
 
 const CHARGE_PRESETS = [1000, 5000, 10000, 30000, 50000, 100000];
 
 function PointSection() {
   const [point, setPoint] = useState(0);
-  const [escrowPoint, setEscrowPoint] = useState(0);
+  const [safePaymentPoint, setEscrowPoint] = useState(0);
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [chargeAmount, setChargeAmount] = useState('');
@@ -2727,12 +2869,12 @@ function PointSection() {
 
   const loadData = () => {
     Promise.all([
-      fetchMyPageData<{ point: number; escrowPoint: number }>('/api/point'),
+      fetchMyPageData<{ point: number; safePaymentPoint: number }>('/api/point'),
       fetchMyPageData<PointTransaction[]>('/api/point/transactions'),
     ])
       .then(([balance, txList]) => {
         setPoint(balance.point);
-        setEscrowPoint(balance.escrowPoint);
+        setEscrowPoint(balance.safePaymentPoint);
         setTransactions(txList);
       })
       .catch(() => {})
@@ -2743,23 +2885,24 @@ function PointSection() {
 
   const handleCharge = async () => {
     const amount = Number(chargeAmount);
-    if (!amount || amount <= 0) { setChargeError('충전 금액을 입력해주세요.'); return; }
+    if (!amount || amount < 100) {
+      setChargeError('충전 금액은 100원 이상 입력해주세요.');
+      return;
+    }
     setIsCharging(true);
     setChargeError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/api/point/charge`, {
+      const res = await fetch(`${API_BASE_URL}/api/point/payments/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
         body: JSON.stringify({ amount }),
       });
-      if (!res.ok) throw new Error('충전에 실패했습니다.');
-      const balance = await res.json();
-      setPoint(balance.point);
-      setEscrowPoint(balance.escrowPoint);
-      setChargeAmount('');
-      loadData();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message ?? '결제 주문 생성에 실패했습니다.');
+
+      await requestPointPayment(data);
     } catch (e) {
-      setChargeError(e instanceof Error ? e.message : '충전에 실패했습니다.');
+      setChargeError(e instanceof Error ? e.message : '결제창을 열지 못했습니다.');
     } finally {
       setIsCharging(false);
     }
@@ -2780,8 +2923,8 @@ function PointSection() {
               <p className="text-3xl font-extrabold text-text-primary">{fmt(point)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
             </div>
             <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 p-5">
-              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">거래 중 보관</p>
-              <p className="text-3xl font-extrabold text-text-primary">{fmt(escrowPoint)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">안전결제 보관</p>
+              <p className="text-3xl font-extrabold text-text-primary">{fmt(safePaymentPoint)}<span className="text-base font-bold text-text-secondary ml-1">P</span></p>
               <p className="text-xs text-text-muted mt-1">작업 완료 확인 시 에디터에게 지급됩니다</p>
             </div>
           </div>
@@ -2804,7 +2947,7 @@ function PointSection() {
             <div className="flex gap-2">
               <input
                 type="number"
-                min="1"
+                min="100"
                 value={chargeAmount}
                 onChange={(e) => { setChargeAmount(e.target.value); setChargeError(''); }}
                 onWheel={(e) => e.currentTarget.blur()}
@@ -2839,8 +2982,8 @@ function PointSection() {
                       <span className="text-sm text-text-secondary truncate">{tx.description}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className={`font-bold text-sm ${tx.type === 'ESCROW_HOLD' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                        {tx.type === 'ESCROW_HOLD' ? '-' : '+'}{fmt(tx.amount)}P
+                      <p className={`font-bold text-sm ${tx.amount < 0 || tx.type === 'SAFE_PAYMENT_HOLD' ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {tx.amount < 0 ? '' : tx.type === 'SAFE_PAYMENT_HOLD' ? '-' : '+'}{fmt(Math.abs(tx.amount))}P
                       </p>
                       <p className="text-xs text-text-muted mt-0.5">{tx.createdAt}</p>
                     </div>

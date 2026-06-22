@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { type AuthUser, clearTokens } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/lib/api';
+import { useModal } from '@/store/modalStore';
 
 const roleLabel: Record<NonNullable<AuthUser['role']>, string> = {
   YOUTUBER: '크리에이터',
@@ -80,6 +81,7 @@ interface Props {
 
 export function ProfileDropdown({ user, onLogout }: Props) {
   const router = useRouter();
+  const { openModal } = useModal();
   const [open, setOpen] = useState(false);
   const [matchingPrice, setMatchingPrice] = useState<MatchingPrice | null>(null);
   const [isMatchSaving, setIsMatchSaving] = useState(false);
@@ -106,7 +108,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { point: number; escrowPoint: number } | null) => {
+      .then((data: { point: number; safePaymentPoint: number } | null) => {
         if (data) setPointBalance(data.point);
       })
       .catch(() => {});
@@ -140,7 +142,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   }, [isEditor, user.id]);
 
   useEffect(() => {
-    const handleUpdated = (event: Event) => {
+    const handleMatchingPriceUpdated = (event: Event) => {
       const detail = (event as CustomEvent<MatchingPrice>).detail;
       if (detail) {
         setMatchingPrice({
@@ -150,9 +152,19 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       }
     };
 
-    window.addEventListener('matchingPriceUpdated', handleUpdated);
-    return () => window.removeEventListener('matchingPriceUpdated', handleUpdated);
+    window.addEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
+    return () => window.removeEventListener('matchingPriceUpdated', handleMatchingPriceUpdated);
   }, [user.id]);
+
+  useEffect(() => {
+    const handlePointBalanceUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ point: number; safePaymentPoint: number }>).detail;
+      if (detail) setPointBalance(detail.point);
+    };
+
+    window.addEventListener('pointBalanceUpdated', handlePointBalanceUpdated);
+    return () => window.removeEventListener('pointBalanceUpdated', handlePointBalanceUpdated);
+  }, []);
 
   const logout = async () => {
     const accessToken = localStorage.getItem('accessToken');
@@ -185,11 +197,11 @@ export function ProfileDropdown({ user, onLogout }: Props) {
     const nextEnabled = !matchingPrice.matchEnabled;
     const representativePortfolioConfigured = matchingPrice.representativePortfolioConfigured || hasLocalRepresentativePortfolio(user.id);
     if (nextEnabled && (!matchingPrice.matchPrice || matchingPrice.matchPrice <= 0)) {
-      alert('단가를 먼저 설정해주세요');
+      openModal({ title: '매칭 활성화 불가', message: '단가를 먼저 설정해주세요.' });
       return;
     }
     if (nextEnabled && !representativePortfolioConfigured) {
-      alert('대표 포트폴리오를 먼저 설정해주세요');
+      openModal({ title: '매칭 활성화 불가', message: '대표 포트폴리오를 먼저 설정해주세요.' });
       return;
     }
 
@@ -216,7 +228,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
 
       if (!response.ok) {
         const error = await response.json().catch(() => null);
-        alert(error?.message ?? '저장에 실패했습니다.');
+        openModal({ title: '저장 실패', message: error?.message ?? '저장에 실패했습니다.' });
         return;
       }
 

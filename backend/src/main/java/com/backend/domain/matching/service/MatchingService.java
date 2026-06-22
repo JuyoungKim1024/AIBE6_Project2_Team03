@@ -104,7 +104,7 @@ public class MatchingService {
             throw new IllegalArgumentException("이미 매칭 요청을 보낸 에디터입니다. 에디터의 수락을 기다려주세요.");
         }
 
-        MatchRequest request = new MatchRequest(requester, editor, body.agreedAmount());
+        MatchRequest request = new MatchRequest(requester, editor);
         matchRequestRepository.save(request);
         return new MatchRequestResponse(request.getId());
     }

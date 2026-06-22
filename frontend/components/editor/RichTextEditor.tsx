@@ -12,6 +12,7 @@ import Link from "@tiptap/extension-link";
 import ResizableImage from "tiptap-extension-resize-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { API_BASE_URL } from "@/lib/api";
+import { useModal } from "@/store/modalStore";
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
   AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2, FileIcon, CheckCircle2,
@@ -203,6 +204,7 @@ function Toolbar({
   selectedImageAlign: string | null;
   setSelectedImageAlign: (align: string | null) => void;
 }) {
+  const { openModal } = useModal();
   const [showColors, setShowColors] = useState(false);
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -315,7 +317,7 @@ function Toolbar({
       const url = await uploadFile(file);
       editor.chain().focus("end").setImage({ src: url }).createParagraphNear().run();
     } catch {
-      alert("이미지 업로드에 실패했습니다.");
+      openModal({ title: "업로드 실패", message: "이미지 업로드에 실패했습니다." });
     } finally {
       setUploading(false);
     }

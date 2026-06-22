@@ -28,10 +28,39 @@ public class ChatMessage extends BaseEntity {
     @Column(nullable = false)
     private MessageType messageType;
 
+    @Column(name = "file_url", length = 2048)
+    private String fileUrl;
+
+    @Column(name = "file_name", length = 255)
+    private String fileName;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Column(name = "content_type", length = 100)
+    private String contentType;
+
     public ChatMessage(ChatRoom room , User sender, String content, MessageType type) {
+        this(room, sender, content, type, null, null, null, null);
+    }
+
+    public ChatMessage(
+            ChatRoom room,
+            User sender,
+            String content,
+            MessageType type,
+            String fileUrl,
+            String fileName,
+            Long fileSize,
+            String contentType
+    ) {
         this.chatRoom = room;
         this.sender = sender;
         this.content = content;
         this.messageType = type;
+        this.fileUrl = fileUrl;
+        this.fileName = fileName;
+        this.fileSize = fileSize;
+        this.contentType = contentType;
     }
 }

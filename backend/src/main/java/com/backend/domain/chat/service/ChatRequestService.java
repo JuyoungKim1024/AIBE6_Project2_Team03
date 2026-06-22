@@ -51,6 +51,23 @@ public class ChatRequestService {
          if(requester.getId().equals(receiver.getId())) {
              throw new IllegalArgumentException("본인에게는 채팅을 보낼 수 없습니다.");
          }
+         if (receiver.isDeleted()) {
+             throw new IllegalArgumentException("탈퇴한 사용자에게는 채팅을 보낼 수 없습니다.");
+         }
+         if (!isDirectRequest) {
+             if (post == null) {
+                 throw new IllegalArgumentException("문의할 게시글이 필요합니다.");
+             }
+             if (!post.getAuthor().getId().equals(receiver.getId())) {
+                 throw new IllegalArgumentException("게시글 작성자에게만 문의할 수 있습니다.");
+             }
+             if (requester.getRole() == null || receiver.getRole() == null) {
+                 throw new IllegalArgumentException("역할 설정 후 게시글에 문의할 수 있습니다.");
+             }
+             if (requester.getRole() == receiver.getRole()) {
+                 throw new IllegalArgumentException("게시글 문의는 다른 역할의 사용자에게만 보낼 수 있습니다.");
+             }
+         }
 
          boolean existsWaitingRequest = post == null
                  ? chatRequestRepository.existsByRequester_IdAndReceiver_IdAndPostIsNullAndStatus(
@@ -137,10 +154,19 @@ public class ChatRequestService {
     @Transactional(readOnly = true)
     public List<ChatRequestResponseDTO> getReceivedRequests(String receiverId) {
         return chatRequestRepository
-                .findByReceiver_IdAndStatusOrderByCreatedAtDesc(receiverId, ChatRequestStatus.WAITING)
+                .findByReceiver_IdAndStatusAndNotificationDismissedAtIsNullOrderByCreatedAtDesc(
+                        receiverId,
+                        ChatRequestStatus.WAITING
+                )
                 .stream()
                 .map(ChatRequestResponseDTO::from)
                 .toList();
+    }
+
+    @Transactional
+    public void deleteNotification(String requestId, String receiverId) {
+        ChatRequest request = findAndValidateReceiver(requestId, receiverId);
+        request.dismissNotification();
     }
 
 }

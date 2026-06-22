@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/post";
 import { CommunityPostDetailDto, CommentDto } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
+import { useModal } from "@/store/modalStore";
 
 const categoryConfig: Record<string, { label: string; color: string; bg: string }> = {
   INFO: { label: "정보공유", color: "text-cyan-400", bg: "bg-cyan-400/10" },
@@ -35,6 +36,7 @@ const categoryConfig: Record<string, { label: string; color: string; bg: string 
 export default function CommunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { openModal } = useModal();
   const [post, setPost] = useState<CommunityPostDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<CommentDto[]>([]);
@@ -95,7 +97,7 @@ export default function CommunityDetailPage() {
       if (!res.ok) throw new Error("삭제 실패");
       router.push("/community");
     } catch {
-      alert("게시글 삭제에 실패했습니다.");
+      openModal({ title: "삭제 실패", message: "게시글 삭제에 실패했습니다." });
     } finally {
       setPostDeleteConfirm(false);
     }

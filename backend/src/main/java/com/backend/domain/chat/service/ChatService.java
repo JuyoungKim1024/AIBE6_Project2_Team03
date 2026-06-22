@@ -15,12 +15,14 @@ import com.backend.domain.chat.repository.ChatRequestRepository;
 import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.chat.type.ChatRequestStatus;
 import com.backend.domain.chat.type.ChatRoomType;
+import com.backend.domain.chat.type.MessageType;
 import com.backend.domain.post.entity.Post;
 import com.backend.domain.post.repository.PostRepository;
 import com.backend.domain.project.service.ProjectService;
 import com.backend.domain.user.entity.User;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,9 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ChatService {
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -165,15 +170,21 @@ public class ChatService {
             return ChatMessageResponseDTO.requested(roomId, sender.getId(), dto.content(), dto.messageType());
         }
 
+        validateAttachment(dto);
+
         ChatMessage message = new ChatMessage(
                 chatRoom,
                 sender,
                 dto.content(),
-                dto.messageType()
+                dto.messageType(),
+                dto.fileUrl(),
+                dto.fileName(),
+                dto.fileSize(),
+                dto.contentType()
         );
 
         ChatMessage saveMessage = chatMessageRepository.save(message);
-        if (!dto.content().startsWith("__PROJECT_CARD__")) {
+        if (dto.content() == null || !dto.content().startsWith("__PROJECT_CARD__")) {
             chatParticipantRepository.findByChatRoom_Id(roomId).stream()
                     .filter(participant -> participant.getDeletedAt() == null)
                     .filter(participant -> !participant.getUser().getId().equals(sender.getId()))
@@ -184,6 +195,19 @@ public class ChatService {
         }
         return new ChatMessageResponseDTO(saveMessage);
 
+    }
+
+    private void validateAttachment(ChatMessageSendRequestDTO dto) {
+        if (dto.messageType() != MessageType.IMAGE && dto.messageType() != MessageType.FILE) {
+            return;
+        }
+        String expectedPrefix = baseUrl.replaceAll("/$", "") + "/files/";
+        if (dto.fileUrl() == null || !dto.fileUrl().startsWith(expectedPrefix)
+                || dto.fileName() == null || dto.fileName().isBlank()
+                || dto.fileSize() == null || dto.fileSize() <= 0
+                || dto.contentType() == null || dto.contentType().isBlank()) {
+            throw new IllegalArgumentException("올바른 첨부파일 정보가 필요합니다.");
+        }
     }
 
     private void createReopenRequest(User requester, User receiver, String message) {

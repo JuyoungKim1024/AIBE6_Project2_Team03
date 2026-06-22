@@ -109,7 +109,8 @@ export async function createPostChatRequest(
   });
 
   if (!response.ok) {
-    throw new Error('채팅 요청을 보내지 못했습니다.');
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message ?? '채팅 요청을 보내지 못했습니다.');
   }
 }
 
@@ -138,6 +139,7 @@ export async function createDirectChatRequest(receiverId: string, message: strin
   });
 
   if (!response.ok) {
-    throw new Error('DM 요청을 보내지 못했습니다.');
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message ?? 'DM 요청을 보내지 못했습니다.');
   }
 }

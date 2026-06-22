@@ -7,6 +7,7 @@ import { ArrowLeft, AlertCircle, Eye, EyeOff, CheckCircle2, Sparkles, X, Play, V
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { fetchJobPost } from "@/lib/api/post";
+import { useModal } from "@/store/modalStore";
 
 const categoryTags = ["롱폼", "숏폼", "썸네일"];
 const subCategoryTags = ["게임", "여행", "브이로그", "반려동물", "IT", "애니메이션", "기타"];
@@ -24,6 +25,7 @@ interface PortfolioGroupItem {
 
 function JobsWriteContent() {
   const router = useRouter();
+  const { openModal } = useModal();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
 
@@ -211,7 +213,7 @@ function JobsWriteContent() {
       setAiDescription("");
     } catch (err) {
       console.error(err);
-      alert("AI 초안 생성에 실패했습니다.");
+      openModal({ title: "AI 초안 생성 실패", message: "AI 초안 생성에 실패했습니다." });
     } finally {
       setAiGenerating(false);
     }
@@ -267,7 +269,7 @@ function JobsWriteContent() {
       if (!res.ok) {
         const errText = await res.text();
         console.error("[submit] error body:", errText);
-        alert(`저장 실패 (${res.status}): ${errText}`);
+        openModal({ title: "저장 실패", message: `저장 실패 (${res.status}): ${errText}` });
         return;
       }
       if (editId) {
@@ -278,7 +280,7 @@ function JobsWriteContent() {
       }
     } catch (err) {
       console.error("[submit] exception:", err);
-      alert("요청 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
+      openModal({ title: "요청 실패", message: "요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." });
     } finally {
       setSubmitting(false);
     }

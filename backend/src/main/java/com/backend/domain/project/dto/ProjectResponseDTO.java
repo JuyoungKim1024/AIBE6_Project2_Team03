@@ -20,7 +20,8 @@ public record ProjectResponseDTO(
         LocalDateTime deadline,
         String memo,
         ProjectStatus status,
-        String completionRequestedBy
+        String completionRequestedBy,
+        String cancellationRequestedBy
 
 ) {
     public static ProjectResponseDTO from(Project project) {
@@ -38,7 +39,8 @@ public record ProjectResponseDTO(
                 project.getDeadline(),
                 project.getMemo(),
                 project.getStatus(),
-                project.getCompletionRequestedBy()
+                project.getCompletionRequestedBy(),
+                project.getCancellationRequestedBy()
         );
     }
 

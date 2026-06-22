@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Video } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { saveAuthSession } from '@/lib/auth-session';
+import { formatSuspensionMessage, isSuspensionResponse } from '@/lib/suspension';
+import { useModal } from '@/store/modalStore';
 import { TestAccountLoginButtons } from '@/components/auth/TestAccountLoginButtons';
 
 type AuthResponse = {
@@ -18,10 +20,29 @@ type AuthResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { openModal } = useModal();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('errorCode') === 'ACCOUNT_SUSPENDED') {
+      const reason = params.get('reason') ?? '운영 정책 위반';
+      const suspendedUntil = params.get('suspendedUntil') ?? new Date().toISOString();
+      const remainingMinutes = Number(params.get('remainingMinutes')) || 1;
+      openModal({
+        title: '임시 제한 계정입니다',
+        message: formatSuspensionMessage(reason, suspendedUntil, remainingMinutes),
+      });
+      window.history.replaceState({}, '', '/login');
+      return;
+    }
+
+    const loginError = params.get('error');
+    if (loginError) setError(loginError);
+  }, [openModal]);
 
   const handleSocial = (provider: 'google' | 'kakao') => {
     window.location.href = `${API_BASE_URL}/api/auth/${provider}/login`;
@@ -42,6 +63,17 @@ export default function LoginPage() {
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status === 423 && isSuspensionResponse(data)) {
+          openModal({
+            title: '임시 제한 계정입니다',
+            message: formatSuspensionMessage(
+              data.reason,
+              data.suspendedUntil,
+              data.remainingMinutes,
+            ),
+          });
+          return;
+        }
         throw new Error(data?.message ?? '로그인에 실패했습니다.');
       }
 

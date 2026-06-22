@@ -60,6 +60,9 @@ public class Project extends BaseEntity {
     @Column(name = "completion_requested_by", length = 36)
     private String completionRequestedBy;
 
+    @Column(name = "cancellation_requested_by", length = 36)
+    private String cancellationRequestedBy;
+
 
 
     public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
@@ -108,6 +111,30 @@ public class Project extends BaseEntity {
         throw new IllegalStateException("완료 처리할 수 없는 프로젝트 상태입니다.");
     }
 
+    // 분쟁 조정 양측 동의 시 프로젝트 완료 처리
+    public void completeByDispute() {
+        this.status = ProjectStatus.COMPLETED;
+    }
+
+    public void requestCancel(String userId) {
+        if (status == ProjectStatus.WAITING
+                || status == ProjectStatus.WORKING
+                || status == ProjectStatus.COMPLETION_PENDING) {
+            this.status = ProjectStatus.CANCELLATION_PENDING;
+            this.cancellationRequestedBy = userId;
+            this.completionRequestedBy = null;
+            return;
+        }
+        if (status == ProjectStatus.CANCELLATION_PENDING) {
+            if (userId.equals(cancellationRequestedBy)) {
+                throw new IllegalStateException("상대방의 취소 확인을 기다리는 중입니다.");
+            }
+            cancel();
+            return;
+        }
+        throw new IllegalStateException("취소 처리할 수 없는 프로젝트 상태입니다.");
+    }
+
     public void reject() {
         this.status = ProjectStatus.REJECTED;
     }
@@ -115,5 +142,6 @@ public class Project extends BaseEntity {
     public void cancel() {
         this.status = ProjectStatus.CANCELED;
         this.completionRequestedBy = null;
+        this.cancellationRequestedBy = null;
     }
 }
