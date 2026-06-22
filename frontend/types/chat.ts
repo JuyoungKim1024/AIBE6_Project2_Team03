@@ -27,6 +27,7 @@ export interface MyChatRoom {
   id: string;
   partnerId?: string;
   partnerName: string;
+  partnerRole?: 'YOUTUBER' | 'EDITOR' | null;
   lastMessage: string;
   time: string;
   type: ChatRoomType;

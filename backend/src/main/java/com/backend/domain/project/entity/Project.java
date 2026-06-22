@@ -28,6 +28,10 @@ public class Project extends BaseEntity {
     @JoinColumn(name = "editor_id", nullable = false)
     private User editor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "proposed_by_id", nullable = false)
+    private User proposedBy;
+
     @Column(nullable = false, length = 50)
     private String field;
 
@@ -68,10 +72,11 @@ public class Project extends BaseEntity {
 
 
 
-    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
+    public Project(ChatRoom room, User requester, User editor, User proposedBy, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
         this.room = room;
         this.requester = requester;
         this.editor = editor;
+        this.proposedBy = proposedBy;
         this.field = field;
         this.price = price;
         this.workAmount = workAmount;
@@ -80,6 +85,10 @@ public class Project extends BaseEntity {
         this.revisionUnlimited = revisionUnlimited;
         this.deadline = deadline;
         this.memo = memo;
+    }
+
+    public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
+        this(room, requester, editor, requester, field, price, workAmount, workUnit, revisionCount, revisionUnlimited, deadline, memo);
     }
 
     public void update(String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {

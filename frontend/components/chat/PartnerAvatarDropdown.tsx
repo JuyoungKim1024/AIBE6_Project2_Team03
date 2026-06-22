@@ -8,6 +8,7 @@ interface Props {
   partnerId?: string;
   size?: 'sm' | 'lg';
   dropdownPosition?: 'above' | 'below';
+  allowProfileView?: boolean;
 }
 
 export function PartnerAvatarDropdown({
@@ -15,6 +16,7 @@ export function PartnerAvatarDropdown({
   partnerId,
   size = 'sm',
   dropdownPosition = 'above',
+  allowProfileView = true,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -46,18 +48,22 @@ export function PartnerAvatarDropdown({
 
       {open && (
         <div className={`absolute ${positionClass} z-50 min-w-[140px] overflow-hidden rounded-xl border border-border bg-surface shadow-lg`}>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              router.push(partnerId ? `/profile/${partnerId}` : '/');
-            }}
-            disabled={!partnerId}
-            className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            상세 프로필 보기
-          </button>
-          <div className="h-px bg-border" />
+          {allowProfileView && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push(partnerId ? `/profile/${partnerId}` : '/');
+                }}
+                disabled={!partnerId}
+                className="w-full px-4 py-2.5 text-left text-sm text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                상세 프로필 보기
+              </button>
+              <div className="h-px bg-border" />
+            </>
+          )}
           <button
             type="button"
             onClick={() => {

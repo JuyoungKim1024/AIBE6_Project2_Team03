@@ -24,6 +24,7 @@ import com.backend.domain.profile.entity.UserTag;
 import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.profile.repository.PortfolioGroupRepository;
 import com.backend.domain.profile.repository.PortfolioRepository;
+import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.user.entity.Profile;
 import com.backend.domain.user.entity.User;
@@ -51,6 +52,7 @@ public class MyPageService {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioGroupRepository portfolioGroupRepository;
     private final PostRepository postRepository;
+    private final ReviewRepository reviewRepository;
 
     public MyPageService(
             ChatParticipantRepository chatParticipantRepository,
@@ -62,7 +64,8 @@ public class MyPageService {
             UserTagRepository userTagRepository,
             PortfolioRepository portfolioRepository,
             PortfolioGroupRepository portfolioGroupRepository,
-            PostRepository postRepository
+            PostRepository postRepository,
+            ReviewRepository reviewRepository
     ) {
         this.chatParticipantRepository = chatParticipantRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -74,6 +77,7 @@ public class MyPageService {
         this.portfolioRepository = portfolioRepository;
         this.portfolioGroupRepository = portfolioGroupRepository;
         this.postRepository = postRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     public List<MyChatRoomResponseDTO> getChatRooms(String userId) {
@@ -433,6 +437,7 @@ public class MyPageService {
                 roomId,
                 partnerId,
                 partnerName,
+                partner == null ? null : partner.getRole(),
                 lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),
                 formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
                 room.getChatRoomType(),
@@ -457,11 +462,13 @@ public class MyPageService {
                 project.getId(),
                 project.getRoom().getId(),
                 project.getRequester().getId(),
+                project.getProposedBy().getId(),
                 partner.getNickname(),
                 project.getField(),
                 project.getStatus().name(),
                 project.getCompletionRequestedBy(),
                 project.getCancellationRequestedBy(),
+                reviewRepository.existsByProject_Id(project.getId()),
                 formatDate(project.getUpdatedAt())
         );
     }

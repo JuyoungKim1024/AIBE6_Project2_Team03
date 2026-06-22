@@ -33,6 +33,7 @@ type MyProjects = { received: unknown[]; ongoing: MyProject[] };
 type Props = {
   roomId: string;
   userId: string | null;
+  userRole: 'YOUTUBER' | 'EDITOR' | null;
   project: ProjectMessagePayload | null;
   post: ChatPostSummary | null;
   onProjectChange: (project: ProjectMessagePayload | null) => void;
@@ -59,7 +60,7 @@ function getTomorrowMin() {
   return new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-export function ChatProjectPanel({ roomId, userId, project, post, onProjectChange, publishMessage }: Props) {
+export function ChatProjectPanel({ roomId, userId, userRole, project, post, onProjectChange, publishMessage }: Props) {
   const { confirmModal } = useModal();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -239,7 +240,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
 
   const actions = project ? (
     <div className="flex flex-wrap justify-end gap-2">
-      {project.status === 'WAITING' && project.requesterId !== userId && (
+      {project.status === 'WAITING' && (project.proposedById ?? project.requesterId) !== userId && (
         <>
           <ActionButton onClick={() => changeStatus('start')} disabled={Boolean(activeAction)} tone="primary"><Check size={12} />수락</ActionButton>
           <ActionButton onClick={() => changeStatus('reject')} disabled={Boolean(activeAction)} tone="danger"><X size={12} />거절</ActionButton>
@@ -257,7 +258,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== userId && (
         <ActionButton onClick={() => changeStatus('cancel')} disabled={Boolean(activeAction)} tone="danger"><X size={12} />취소 확인</ActionButton>
       )}
-      {project.status === 'WAITING' && project.requesterId === userId && (
+      {project.status === 'WAITING' && (project.proposedById ?? project.requesterId) === userId && (
         <ActionButton onClick={openEditForm} disabled={Boolean(activeAction)}><Pencil size={12} />수정</ActionButton>
       )}
     </div>
@@ -269,7 +270,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
         {!project ? (
           <div className="flex justify-end">
             <button type="button" onClick={openCreateForm} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20">
-              <Briefcase size={14} />프로젝트 시작
+              <Briefcase size={14} />프로젝트 제안
             </button>
           </div>
         ) : (
@@ -285,7 +286,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
                 </button>
               )}
             </div>
-            {isExpanded && <div className="mt-3"><ProjectMessageCard project={project} pinned actions={actions} /></div>}
+            {isExpanded && <div className="mt-3"><ProjectMessageCard project={project} pinned actions={actions} canReview={userRole === 'YOUTUBER'} /></div>}
           </>
         )}
         {errorMessage && !isFormOpen && <p className="mt-2 text-xs font-bold text-accent">{errorMessage}</p>}

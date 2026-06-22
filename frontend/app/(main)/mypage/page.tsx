@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useModal } from '@/store/modalStore';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
+import { ReviewButton } from '@/components/review/ReviewButton';
 import {
   fetchCommunityPosts,
   fetchJobPosts,
@@ -78,6 +79,7 @@ type MyLikedPost = {
 type AuthUser = {
   id: string;
   nickname: string;
+  role: UserRole;
 };
 
 type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
@@ -86,9 +88,11 @@ type MyProject = {
   id: string;
   roomId?: string;
   requesterId?: string;
+  proposedById?: string;
   editorId?: string;
   completionRequestedBy?: string | null;
   cancellationRequestedBy?: string | null;
+  reviewSubmitted?: boolean;
   partnerName: string;
   field: string | null;
   status: string;
@@ -131,9 +135,10 @@ const designTools = ['Photoshop', 'Adobe Illustrator', 'Figma', 'Canva', '기타
 
 type PortfolioType = 'video' | 'image';
 
-function canRespondProject(project: { status?: string; requesterId?: string } | null | undefined, userId: string | null | undefined) {
+function canRespondProject(project: { status?: string; proposedById?: string; requesterId?: string } | null | undefined, userId: string | null | undefined) {
   if (!project || !userId || project.status !== 'WAITING') return false;
-  return project.requesterId ? project.requesterId !== userId : true;
+  const proposerId = project.proposedById ?? project.requesterId;
+  return proposerId ? proposerId !== userId : true;
 }
 
 type PortfolioDraft = {
@@ -1106,7 +1111,27 @@ function ProjectsSection() {
 
           <ProjectBoardColumn title="완료된 프로젝트" emptyMessage="완료된 프로젝트가 없습니다">
             {completedProjects.map((project) => (
-              <ProjectBoardCard key={project.id} project={project} statusLabel="완료" accentClass="border-l-border" />
+              <ProjectBoardCard
+                key={project.id}
+                project={project}
+                statusLabel="완료"
+                accentClass="border-l-border"
+                actions={user?.role === 'YOUTUBER' ? (
+                  <ReviewButton
+                    projectId={project.id}
+                    submitted={project.reviewSubmitted}
+                    compact
+                    onSubmitted={() => {
+                      setProjects((current) => ({
+                        ...current,
+                        ongoing: current.ongoing.map((item) => item.id === project.id
+                          ? { ...item, reviewSubmitted: true }
+                          : item),
+                      }));
+                    }}
+                  />
+                ) : null}
+              />
             ))}
           </ProjectBoardColumn>
         </div>

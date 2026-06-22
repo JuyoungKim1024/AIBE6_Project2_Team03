@@ -49,9 +49,6 @@ public class User {
     @Column(length = 30)
     private UserRole role;
 
-    @Column(name = "manner_score", nullable = false)
-    private int mannerScore = 30;
-
     @Column(name = "match_enabled", nullable = false)
     private boolean matchEnabled = false;
 

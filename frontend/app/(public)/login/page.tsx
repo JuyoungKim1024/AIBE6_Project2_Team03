@@ -129,9 +129,15 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <Link href="/signup" className="block text-center text-sm font-bold text-primary mt-4 hover:underline">
-            이메일로 회원가입
-          </Link>
+          <div className="mt-4 flex items-center justify-center gap-3 text-sm font-bold">
+            <Link href="/signup" className="text-primary hover:underline">
+              이메일로 회원가입
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/forgot-password" className="text-text-secondary hover:text-primary hover:underline">
+              비밀번호 찾기
+            </Link>
+          </div>
 
           <div className="flex items-center gap-3 my-6">
             <div className="h-px flex-1 bg-border" />

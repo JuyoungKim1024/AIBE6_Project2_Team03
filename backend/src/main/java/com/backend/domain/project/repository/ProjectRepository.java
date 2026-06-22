@@ -21,6 +21,14 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
 
     long countByEditor_IdAndStatus(String editorId, ProjectStatus status);
 
+    @Query("""
+        SELECT COUNT(p)
+        FROM Project p
+        WHERE (p.requester.id = :userId OR p.editor.id = :userId)
+        AND p.status = com.backend.domain.project.entity.ProjectStatus.COMPLETED
+    """)
+    long countCompletedByParticipant(@Param("userId") String userId);
+
     List<Project> findByRequester_IdOrEditor_IdOrderByUpdatedAtDesc(String requesterId, String editorId);
 
     @Query("""

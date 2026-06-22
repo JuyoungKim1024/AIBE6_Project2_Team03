@@ -8,6 +8,7 @@ import com.backend.domain.auth.dto.EmailVerificationSendRequest;
 import com.backend.domain.auth.dto.LocalLoginRequest;
 import com.backend.domain.auth.dto.LocalSignupRequest;
 import com.backend.domain.auth.dto.PasswordChangeRequest;
+import com.backend.domain.auth.dto.PasswordResetCompleteRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.SocialUserInfo;
 import com.backend.domain.auth.dto.UserResponse;
@@ -145,6 +146,65 @@ public class AuthService {
     }
 
     public EmailVerificationCompleteResponse verifyLocalSignup(EmailVerificationRequest request) {
+        return verifyEmailCode(request);
+    }
+
+    @Transactional
+    public EmailVerificationResponse requestPasswordReset(EmailVerificationSendRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        User user = userRepository.findByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입된 자체회원 계정을 찾을 수 없습니다."));
+        if (user.getProvider() != SocialProvider.LOCAL || user.getPasswordHash() == null) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.");
+        }
+
+        validateVerificationResendInterval(email);
+        emailVerificationRepository.deleteByEmailIgnoreCase(email);
+        emailVerificationRepository.flush();
+
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+        emailVerificationRepository.save(new EmailVerification(
+                email,
+                passwordEncoder.encode(code),
+                LocalDateTime.now().plusSeconds(EMAIL_VERIFICATION_SECONDS)
+        ));
+        verificationMailService.sendPasswordResetCode(email, code);
+        return new EmailVerificationResponse(EMAIL_VERIFICATION_SECONDS);
+    }
+
+    public EmailVerificationCompleteResponse verifyPasswordReset(EmailVerificationRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        User user = userRepository.findByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입된 자체회원 계정을 찾을 수 없습니다."));
+        if (user.getProvider() != SocialProvider.LOCAL || user.getPasswordHash() == null) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.");
+        }
+        return verifyEmailCode(request);
+    }
+
+    @Transactional
+    public void completePasswordReset(PasswordResetCompleteRequest request) {
+        String email = normalizeAndValidateEmail(request.email());
+        validatePassword(request.password());
+        if (request.verificationToken() == null || request.verificationToken().isBlank()) {
+            throw new IllegalArgumentException("이메일 인증을 완료해주세요.");
+        }
+
+        User user = userRepository.findByProviderEmailIgnoreCaseAndDeletedAtIsNull(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입된 자체회원 계정을 찾을 수 없습니다."));
+        if (user.getProvider() != SocialProvider.LOCAL || user.getPasswordHash() == null) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.");
+        }
+
+        EmailVerification verification = getVerifiedEmail(email, request.verificationToken());
+        if (passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 입력해주세요.");
+        }
+        user.updatePassword(passwordEncoder.encode(request.password()));
+        emailVerificationRepository.delete(verification);
+    }
+
+    private EmailVerificationCompleteResponse verifyEmailCode(EmailVerificationRequest request) {
         String email = normalizeAndValidateEmail(request.email());
         String code = request.code() == null ? "" : request.code().trim();
         EmailVerification verification = emailVerificationRepository.findByEmailIgnoreCase(email)
@@ -167,6 +227,25 @@ public class AuthService {
         verification.completeVerification(passwordEncoder.encode(verificationToken));
         emailVerificationRepository.save(verification);
         return new EmailVerificationCompleteResponse(verificationToken);
+    }
+
+    private void validateVerificationResendInterval(String email) {
+        emailVerificationRepository.findByEmailIgnoreCase(email).ifPresent(existing -> {
+            if (existing.getExpiresAt().isAfter(LocalDateTime.now().plusSeconds(240))) {
+                throw new IllegalArgumentException("인증 메일은 60초 후 다시 요청할 수 있습니다.");
+            }
+        });
+    }
+
+    private EmailVerification getVerifiedEmail(String email, String verificationToken) {
+        EmailVerification verification = emailVerificationRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new IllegalArgumentException("이메일 인증을 완료해주세요."));
+        if (verification.getVerifiedAt() == null || verification.getSignupTokenHash() == null
+                || verification.getVerifiedAt().isBefore(LocalDateTime.now().minusMinutes(10))
+                || !passwordEncoder.matches(verificationToken, verification.getSignupTokenHash())) {
+            throw new IllegalArgumentException("이메일 인증 정보가 만료되었습니다. 다시 인증해주세요.");
+        }
+        return verification;
     }
 
     @Transactional

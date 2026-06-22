@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, HelpCircle, MessageCircle, Star, Tag, User, Wrench } from 'lucide-react';
 import { RankBadge } from '@/components/common/RankBadge';
-import { TrustTemperature } from '@/components/profile/TrustTemperature';
 import type { RankTier } from '@/types/user';
 import { createDirectChatRoom } from '@/lib/api/chat';
 import { useModal } from '@/store/modalStore';
@@ -66,7 +65,6 @@ type PublicProfile = {
   role: 'YOUTUBER' | 'EDITOR' | null;
   fieldTags: string[];
   toolTags: string[];
-  battlePower: number;
   completedProjectCount: number;
   reviewCount: number;
   portfolioGroups: PortfolioGroup[];
@@ -86,15 +84,15 @@ const reviewsPerPage = 5;
 const rankGuide: { tier: RankTier; label: string; condition: string }[] = [
   { tier: 'bronze', label: '브론즈', condition: '기본 등급' },
   { tier: 'silver', label: '실버', condition: '프로젝트 1개 완료, 리뷰 1개' },
-  { tier: 'gold', label: '골드', condition: '전투력 50 이상, 프로젝트 5개 완료, 리뷰 5개' },
-  { tier: 'platinum', label: '플래티넘', condition: '전투력 70 이상, 프로젝트 15개 완료, 리뷰 15개' },
-  { tier: 'diamond', label: '다이아몬드', condition: '전투력 90 이상, 프로젝트 30개 완료, 리뷰 30개' },
+  { tier: 'gold', label: '골드', condition: '프로젝트 5개 완료, 리뷰 5개' },
+  { tier: 'platinum', label: '플래티넘', condition: '프로젝트 15개 완료, 리뷰 15개' },
+  { tier: 'diamond', label: '다이아몬드', condition: '프로젝트 30개 완료, 리뷰 30개' },
 ];
 
-function getRankTier(battlePower: number, completedProjectCount: number, reviewCount: number): RankTier {
-  if (battlePower >= 90 && completedProjectCount >= 30 && reviewCount >= 30) return 'diamond';
-  if (battlePower >= 70 && completedProjectCount >= 15 && reviewCount >= 15) return 'platinum';
-  if (battlePower >= 50 && completedProjectCount >= 5 && reviewCount >= 5) return 'gold';
+function getRankTier(completedProjectCount: number, reviewCount: number): RankTier {
+  if (completedProjectCount >= 30 && reviewCount >= 30) return 'diamond';
+  if (completedProjectCount >= 15 && reviewCount >= 15) return 'platinum';
+  if (completedProjectCount >= 5 && reviewCount >= 5) return 'gold';
   if (completedProjectCount >= 1 && reviewCount >= 1) return 'silver';
   return 'bronze';
 }
@@ -117,7 +115,7 @@ function RoleBadge({ role }: { role: PublicProfile['role'] }) {
   return null;
 }
 
-function RankLegend({ battlePower, completedProjectCount, reviewCount }: { battlePower: number; completedProjectCount: number; reviewCount: number }) {
+function RankLegend({ completedProjectCount, reviewCount }: { completedProjectCount: number; reviewCount: number }) {
   return (
     <div className="relative group">
       <button type="button" className="w-7 h-7 rounded-full border border-border bg-surface-elevated text-text-muted hover:text-text-primary hover:border-primary/50 flex items-center justify-center transition-colors" aria-label="등급 조건 보기">
@@ -127,7 +125,7 @@ function RankLegend({ battlePower, completedProjectCount, reviewCount }: { battl
         <div className="rounded-xl border border-border bg-surface p-4 shadow-2xl">
           <div className="font-bold text-text-primary mb-1">등업 조건</div>
           <p className="text-xs text-text-muted mb-3 leading-relaxed">
-            조건을 모두 만족하면 해당 등급으로 표시됩니다. 현재 전투력 {battlePower}, 완료 프로젝트 {completedProjectCount}개, 리뷰 {reviewCount}개입니다.
+            조건을 모두 만족하면 해당 등급으로 표시됩니다. 현재 완료 프로젝트 {completedProjectCount}개, 리뷰 {reviewCount}개입니다.
           </p>
           <div className="space-y-2">
             {rankGuide.map((rank) => (
@@ -378,18 +376,14 @@ export default function PublicProfilePage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               {isEditor && (
-                <div className="flex flex-col items-start gap-2">
-                  <TrustTemperature temp={data.battlePower} />
-                  <div className="flex items-center gap-2">
-                    <RankBadge tier={getRankTier(data.battlePower, data.completedProjectCount ?? 0, data.reviewCount ?? data.reviews.length)} size="md" />
-                    <RankLegend
-                      battlePower={data.battlePower}
-                      completedProjectCount={data.completedProjectCount ?? 0}
-                      reviewCount={data.reviewCount ?? data.reviews.length}
-                    />
-                  </div>
+                <div className="flex items-center gap-2 min-h-11">
+                  <RankBadge tier={getRankTier(data.completedProjectCount ?? 0, data.reviewCount ?? data.reviews.length)} size="md" />
+                  <RankLegend
+                    completedProjectCount={data.completedProjectCount ?? 0}
+                    reviewCount={data.reviewCount ?? data.reviews.length}
+                  />
                 </div>
               )}
               <div className="flex flex-col items-stretch sm:items-end gap-2">
@@ -411,7 +405,7 @@ export default function PublicProfilePage() {
         {!isEditor && (
           <section className="bg-surface border border-border rounded-xl p-6">
             <h2 className="text-xl font-bold text-text-primary mb-2">크리에이터 계정</h2>
-            <p className="text-sm text-text-secondary">구인과 의뢰 중심 계정입니다. 에디터 전용 전투력과 포트폴리오는 표시하지 않습니다.</p>
+            <p className="text-sm text-text-secondary">구인과 의뢰 중심 계정입니다. 에디터 전용 등급과 포트폴리오는 표시하지 않습니다.</p>
           </section>
         )}
 

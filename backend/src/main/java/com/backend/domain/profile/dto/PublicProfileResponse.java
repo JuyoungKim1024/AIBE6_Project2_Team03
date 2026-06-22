@@ -10,7 +10,6 @@ public record PublicProfileResponse(
         String role,
         List<String> fieldTags,
         List<String> toolTags,
-        int battlePower,
         long completedProjectCount,
         long reviewCount,
         List<PortfolioGroupResponse> portfolioGroups,

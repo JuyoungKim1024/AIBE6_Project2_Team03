@@ -1,5 +1,7 @@
 'use client';
 
+import { ReviewButton } from '@/components/review/ReviewButton';
+
 export const PROJECT_MESSAGE_PREFIX = '__PROJECT_CARD__';
 
 export type ProjectMessagePayload = {
@@ -7,8 +9,10 @@ export type ProjectMessagePayload = {
   roomId: string;
   requesterId?: string;
   editorId?: string;
+  proposedById?: string;
   completionRequestedBy?: string | null;
   cancellationRequestedBy?: string | null;
+  reviewSubmitted?: boolean;
   field: string | null;
   price: number | null;
   workAmount?: number | null;
@@ -91,12 +95,17 @@ export function ProjectMessageCard({
   project,
   pinned = false,
   actions,
+  canReview = false,
 }: {
   project: ProjectMessagePayload;
   pinned?: boolean;
   actions?: React.ReactNode;
+  canReview?: boolean;
 }) {
   const tone = getProjectTone(project.status);
+  const reviewAction = project.status === 'COMPLETED' && canReview
+    ? <ReviewButton projectId={project.id} submitted={project.reviewSubmitted} compact />
+    : null;
 
   if (pinned) {
     return (
@@ -137,7 +146,7 @@ export function ProjectMessageCard({
                 <p className="font-bold text-text-primary">{formatRevisionCount(project)}</p>
               </div>
             </div>
-            {actions ? <div className="flex w-full justify-end lg:w-auto">{actions}</div> : null}
+            {(actions || reviewAction) ? <div className="flex w-full justify-end gap-2 lg:w-auto">{actions}{reviewAction}</div> : null}
           </div>
         </div>
       </div>
@@ -175,7 +184,7 @@ export function ProjectMessageCard({
           {project.memo}
         </p>
       )}
-      {actions ? <div className="mt-2 flex justify-end">{actions}</div> : null}
+      {(actions || reviewAction) ? <div className="mt-2 flex justify-end gap-2">{actions}{reviewAction}</div> : null}
     </div>
   );
 }
