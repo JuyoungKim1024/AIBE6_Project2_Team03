@@ -1821,6 +1821,18 @@ function PointSection() {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ point: number; safePaymentPoint: number }>).detail;
+      if (detail) {
+        setPoint(detail.point);
+        setEscrowPoint(detail.safePaymentPoint);
+      }
+    };
+    window.addEventListener('pointBalanceUpdated', handler);
+    return () => window.removeEventListener('pointBalanceUpdated', handler);
+  }, []);
+
   const handleCharge = async () => {
     const amount = Number(chargeAmount);
     if (!amount || amount < 100) {

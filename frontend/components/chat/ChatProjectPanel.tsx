@@ -2,7 +2,7 @@
 
 import { getAccessToken } from '@/lib/auth-session';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Briefcase, Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import {
@@ -51,9 +51,6 @@ const emptyForm: ProjectForm = {
   memo: '',
 };
 const visibleStatuses = ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'];
-const deadlineTimes = Array.from({ length: 24 }, (_, hour) =>
-  `${String(hour).padStart(2, '0')}:00`,
-);
 
 function getTomorrowMin() {
   const tomorrow = new Date();
@@ -87,7 +84,16 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       const body = await response.json().catch(() => null);
       throw new Error(body?.message ?? '요청을 처리하지 못했습니다.');
     }
+    if (response.status === 204) return null as T;
     return response.json() as Promise<T>;
+  };
+
+  const refreshPointBalance = () => {
+    request<{ point: number; safePaymentPoint: number }>('/api/point')
+      .then((data) => {
+        window.dispatchEvent(new CustomEvent('pointBalanceUpdated', { detail: data }));
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -107,6 +113,19 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
 
     return () => { isActive = false; };
   }, [roomId]);
+
+  // 포인트에 영향을 주는 상태 전환 시 양쪽 모두 잔액 갱신
+  // (상대방 액션으로 WebSocket을 통해 project prop이 바뀔 때도 포함)
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!project) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = project.status;
+    const balanceAffectingStatuses = ['WORKING', 'COMPLETED', 'CANCELED'];
+    if (prev !== null && prev !== project.status && balanceAffectingStatuses.includes(project.status)) {
+      refreshPointBalance();
+    }
+  }, [project?.status]);
 
   const openCreateForm = () => {
     setIsEditing(false);
@@ -210,6 +229,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
     try {
       const saved = await request<ProjectMessagePayload>(`/api/projects/${project.id}/${action}`, { method: 'PATCH' });
       onProjectChange(saved);
+      refreshPointBalance();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '프로젝트 상태를 변경하지 못했습니다.');
     } finally {
@@ -237,7 +257,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
       {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== userId && (
         <ActionButton onClick={() => changeStatus('cancel')} disabled={Boolean(activeAction)} tone="danger"><X size={12} />취소 확인</ActionButton>
       )}
-      {['WAITING', 'WORKING', 'COMPLETION_PENDING'].includes(project.status) && project.requesterId === userId && (
+      {project.status === 'WAITING' && project.requesterId === userId && (
         <ActionButton onClick={openEditForm} disabled={Boolean(activeAction)}><Pencil size={12} />수정</ActionButton>
       )}
     </div>
@@ -301,10 +321,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
               </label>
               <label className="text-sm font-bold text-text-secondary">
                 마감 시간
-                <select required value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2">
-                  <option value="">시간 선택</option>
-                  {deadlineTimes.map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
+                <input required type="time" value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2" />
               </label>
             </div>
             <label className="mt-4 block text-sm font-bold text-text-secondary">

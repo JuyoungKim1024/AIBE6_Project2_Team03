@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, Scale, Loader2, MessageCircle } from 'lucide-react';
+import { X, CheckCircle, Scale, Loader2, MessageCircle, XCircle } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 interface AiJudgment {
@@ -16,7 +16,7 @@ interface AiJudgment {
 
 interface DisputeData {
   id: string;
-  status: 'AI_PENDING' | 'AI_JUDGED' | 'AI_FAILED' | 'ACCEPTED';
+  status: 'AI_PENDING' | 'AI_JUDGED' | 'AI_FAILED' | 'ACCEPTED' | 'REJECTED';
   aiJudgment: string | null;
   finalAmount: number | null;
   requesterAccepted: boolean | null;
@@ -42,6 +42,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
   const [dispute, setDispute] = useState<DisputeData | null>(null);
   const [judgment, setJudgment] = useState<AiJudgment | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [acceptError, setAcceptError] = useState('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const accessTokenRef = useRef(accessToken);
@@ -68,7 +69,7 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
       setDispute(data);
       setJudgment(parseJudgment(data.aiJudgment));
 
-      if (data.status === 'ACCEPTED' || data.status === 'AI_FAILED') stopPolling();
+      if (data.status === 'ACCEPTED' || data.status === 'AI_FAILED' || data.status === 'REJECTED') stopPolling();
     } catch (err) {
       console.error('분쟁 상태 조회 실패:', err);
     }
@@ -105,10 +106,35 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
     }
   };
 
+  const rejectJudgment = async () => {
+    if (isRejecting) return;
+    setIsRejecting(true);
+    setAcceptError('');
+    try {
+      const token = accessTokenRef.current;
+      const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/reject`, {
+        method: 'PATCH',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || '거절 처리에 실패했습니다.');
+      }
+      const data: DisputeData = await res.json();
+      setDispute(data);
+      stopPolling();
+    } catch (err) {
+      setAcceptError(err instanceof Error ? err.message : '거절 처리에 실패했습니다.');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const isPending = !dispute || dispute.status === 'AI_PENDING';
   const isJudged = dispute?.status === 'AI_JUDGED';
   const isFailed = dispute?.status === 'AI_FAILED';
   const isAccepted = dispute?.status === 'ACCEPTED';
+  const isRejected = dispute?.status === 'REJECTED';
 
   const acceptedCount = [dispute?.requesterAccepted, dispute?.editorAccepted].filter((v) => v === true).length;
 
@@ -154,7 +180,17 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
                 <Scale size={32} className="text-text-muted opacity-40" />
                 <p className="font-bold text-text-primary">AI 판정에 실패했습니다</p>
                 <p className="text-sm text-text-muted leading-relaxed">
-                  채팅에서 상대방과 직접 협의하여 해결해 주세요.
+                  채팅에서 상대방과 직접 협의하거나, 분쟁을 다시 신고할 수 있습니다.
+                </p>
+              </div>
+            )}
+
+            {isRejected && (
+              <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                <XCircle size={32} className="text-red-400 opacity-70" />
+                <p className="font-bold text-text-primary">AI 조정안이 거절되었습니다</p>
+                <p className="text-sm text-text-muted leading-relaxed">
+                  채팅에서 상대방과 직접 협의하거나, 분쟁을 다시 신고할 수 있습니다.
                 </p>
               </div>
             )}
@@ -254,18 +290,28 @@ export function DisputeResultModal({ disputeId, accessToken, onClose }: Props) {
             )}
           </div>
 
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-border flex flex-col gap-2">
             {isJudged && (
-              <button
-                onClick={acceptJudgment}
-                disabled={isAccepting}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <CheckCircle size={16} />
-                {isAccepting ? '처리 중...' : 'AI 조정안에 동의 (정산 진행)'}
-              </button>
+              <>
+                <button
+                  onClick={acceptJudgment}
+                  disabled={isAccepting || isRejecting}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle size={16} />
+                  {isAccepting ? '처리 중...' : 'AI 조정안에 동의 (정산 진행)'}
+                </button>
+                <button
+                  onClick={rejectJudgment}
+                  disabled={isAccepting || isRejecting}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-300 text-red-500 text-sm font-medium hover:bg-red-500/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <XCircle size={16} />
+                  {isRejecting ? '처리 중...' : '거절하고 채팅으로 직접 협의'}
+                </button>
+              </>
             )}
-            {(isAccepted || isFailed) && (
+            {(isAccepted || isFailed || isRejected) && (
               <button
                 onClick={onClose}
                 className="w-full py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:bg-surface-elevated transition-colors"

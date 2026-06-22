@@ -4,7 +4,7 @@ import { getAccessToken } from '@/lib/auth-session';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ExternalLink, Loader2, MessageSquare, Paperclip, RefreshCw, Send, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Loader2, MessageSquare, Paperclip, Send, Trash2, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDM } from '@/store/chatStore';
 import { API_BASE_URL } from '@/lib/api';
@@ -44,6 +44,7 @@ export function ChatFAB() {
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const prevProjectStatusRef = useRef<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -265,12 +266,6 @@ export function ChatFAB() {
     }
   };
 
-  const refreshActiveRoom = () => {
-    if (!activeRoomId) return;
-    loadMessages(activeRoomId);
-    loadProject(activeRoomId);
-  };
-
   const getLastMessagePreview = (chat: MyChatRoom) => {
     if (chat.partnerDeleted || chat.partnerWithdrawn) return '탈퇴한 회원입니다';
     if (!chat.lastMessage) return '아직 메시지가 없습니다';
@@ -373,24 +368,14 @@ export function ChatFAB() {
                 <h3 className="font-bold text-text-primary flex items-center gap-2">
                   <MessageSquare size={16} /> 메시지
                 </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={loadRooms}
-                    className="text-text-muted hover:text-text-primary"
-                    aria-label="채팅 목록 새로고침"
-                  >
-                    <RefreshCw size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="text-text-muted hover:text-text-primary"
-                    aria-label="채팅 닫기"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="text-text-muted hover:text-text-primary"
+                  aria-label="채팅 닫기"
+                >
+                  <X size={18} />
+                </button>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {isLoadingRooms ? (
@@ -458,17 +443,6 @@ export function ChatFAB() {
                         title="전체 화면으로 열기"
                       >
                         <ExternalLink size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={refreshActiveRoom}
-                        className="text-text-muted hover:text-text-primary"
-                        aria-label="새로고침"
-                      >
-                        <RefreshCw size={17} />
-                      </button>
-                      <button type="button" onClick={handleClose} className="hidden md:block text-text-muted hover:text-text-primary">
-                        <X size={18} />
                       </button>
                     </div>
                   </div>

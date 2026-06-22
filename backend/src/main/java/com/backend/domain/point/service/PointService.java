@@ -12,6 +12,7 @@ import com.backend.domain.point.entity.PointTransactionType;
 import com.backend.domain.point.repository.PointPaymentOrderRepository;
 import com.backend.domain.point.repository.PointTransactionRepository;
 import com.backend.domain.user.entity.User;
+import com.backend.domain.user.entity.UserRole;
 import com.backend.domain.user.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
@@ -112,12 +113,13 @@ public class PointService {
     @Transactional
     public void holdSafePaymentForProject(Project project) {
         if (project.getPrice() == null || project.getPrice() <= 0) return;
-        User requester = project.getRequester();
+        User creator = getCreator(project);
+        User performer = getPerformer(project);
         int amount = project.getPrice();
-        requester.holdSafePayment(amount);
+        creator.holdSafePayment(amount);
         transactionRepository.save(new PointTransaction(
-                requester, -amount, PointTransactionType.SAFE_PAYMENT_HOLD,
-                project.getEditor().getNickname() + "님 프로젝트 안전결제 보관",
+                creator, -amount, PointTransactionType.SAFE_PAYMENT_HOLD,
+                performer.getNickname() + "님 프로젝트 안전결제 보관",
                 null
         ));
     }
@@ -126,18 +128,19 @@ public class PointService {
     @Transactional
     public void releaseSafePaymentForProject(Project project) {
         if (project.getPrice() == null || project.getPrice() <= 0) return;
-        User requester = project.getRequester();
-        User editor = project.getEditor();
+        User creator = getCreator(project);
+        User performer = getPerformer(project);
         int amount = project.getPrice();
-        requester.releaseSafePayment(amount, editor);
+        creator.releaseSafePayment(amount, performer);
+        project.clearSafePaymentHeld();
         transactionRepository.save(new PointTransaction(
-                editor, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
-                requester.getNickname() + "님 프로젝트 완료 수령",
+                performer, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
+                creator.getNickname() + "님 프로젝트 완료 수령",
                 null
         ));
         transactionRepository.save(new PointTransaction(
-                requester, -amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
-                editor.getNickname() + "님께 프로젝트 완료 정산",
+                creator, -amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
+                performer.getNickname() + "님께 프로젝트 완료 정산",
                 null
         ));
     }
@@ -146,12 +149,17 @@ public class PointService {
     @Transactional
     public void refundSafePaymentForProject(Project project) {
         if (project.getPrice() == null || project.getPrice() <= 0) return;
-        User requester = project.getRequester();
+        User creator = getCreator(project);
+        User performer = getPerformer(project);
         int amount = project.getPrice();
-        requester.refundSafePayment(amount);
+        // 실제 보관된 금액만 환불 (DB 상태 불일치 방어)
+        int refundAmount = Math.min(amount, creator.getSafePaymentPoint());
+        if (refundAmount <= 0) return;
+        creator.refundSafePayment(refundAmount);
+        project.clearSafePaymentHeld();
         transactionRepository.save(new PointTransaction(
-                requester, amount, PointTransactionType.SAFE_PAYMENT_REFUND,
-                project.getEditor().getNickname() + "님과의 프로젝트 취소 환불",
+                creator, refundAmount, PointTransactionType.SAFE_PAYMENT_REFUND,
+                performer.getNickname() + "님과의 프로젝트 취소 환불",
                 null
         ));
     }
@@ -168,27 +176,46 @@ public class PointService {
         }
         int refundAmount = originalAmount - finalAmount;
 
-        User requester = project.getRequester();
-        User editor = project.getEditor();
+        User creator = getCreator(project);
+        User performer = getPerformer(project);
 
         if (finalAmount > 0) {
-            requester.releaseSafePayment(finalAmount, editor);
+            creator.releaseSafePayment(finalAmount, performer);
             transactionRepository.save(new PointTransaction(
-                    editor, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
-                    "분쟁 조정 수령 (" + requester.getNickname() + "님)", null
+                    performer, finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 수령 (" + creator.getNickname() + "님)", null
             ));
             transactionRepository.save(new PointTransaction(
-                    requester, -finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
-                    "분쟁 조정 지급 (" + editor.getNickname() + "님)", null
+                    creator, -finalAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 지급 (" + performer.getNickname() + "님)", null
             ));
         }
         if (refundAmount > 0) {
-            requester.refundSafePayment(refundAmount);
+            creator.refundSafePayment(refundAmount);
             transactionRepository.save(new PointTransaction(
-                    requester, refundAmount, PointTransactionType.DISPUTE_SETTLEMENT,
-                    "분쟁 조정 환불 (" + editor.getNickname() + "님)", null
+                    creator, refundAmount, PointTransactionType.DISPUTE_SETTLEMENT,
+                    "분쟁 조정 환불 (" + performer.getNickname() + "님)", null
             ));
         }
+        project.clearSafePaymentHeld();
+    }
+
+    // 역할 기반으로 크리에이터(YOUTUBER) 반환 - 카드 생성자와 무관하게 항상 포인트 내는 쪽
+    private User getCreator(Project project) {
+        User requester = project.getRequester();
+        if (requester.getRole() == UserRole.YOUTUBER) {
+            return requester;
+        }
+        return project.getEditor();
+    }
+
+    // 역할 기반으로 에디터(EDITOR) 반환 - 카드 생성자와 무관하게 항상 포인트 받는 쪽
+    private User getPerformer(Project project) {
+        User editor = project.getEditor();
+        if (editor.getRole() == UserRole.EDITOR) {
+            return editor;
+        }
+        return project.getRequester();
     }
 
     private User getUser(String userId) {

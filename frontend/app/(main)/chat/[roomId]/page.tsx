@@ -5,7 +5,7 @@ import { getAccessToken } from '@/lib/auth-session';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Check, Loader2, MessageSquare, Paperclip, RefreshCw, Send, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2, MessageSquare, Paperclip, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
@@ -17,8 +17,6 @@ import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } f
 import { DisputeModal } from '@/components/dispute/DisputeModal';
 import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
-import { useModal } from '@/store/modalStore';
-
 type AuthUser = {
   id: string;
   nickname: string;
@@ -30,11 +28,8 @@ type ChatRoomDetail = {
   createdAt: string;
 };
 
-type ProjectAction = 'start' | 'reject' | 'complete' | 'cancel';
-
 export default function ChatRoomPage() {
   const router = useRouter();
-  const { confirmModal } = useModal();
   const params = useParams<{ roomId: string }>();
   const searchParams = useSearchParams();
   const roomId = params.roomId;
@@ -49,7 +44,6 @@ export default function ChatRoomPage() {
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeProjectAction, setActiveProjectAction] = useState<ProjectAction | null>(null);
   const [isPartnerWithdrawn, setIsPartnerWithdrawn] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(
@@ -85,6 +79,7 @@ export default function ChatRoomPage() {
       throw new Error('요청에 실패했습니다.');
     }
 
+    if (response.status === 204) return null as T;
     return response.json();
   };
 
@@ -160,6 +155,11 @@ export default function ChatRoomPage() {
   }, [accessToken, roomId]);
 
   useEffect(() => {
+    const disputeId = searchParams.get('disputeId');
+    if (disputeId) setActiveDisputeId(disputeId);
+  }, [searchParams]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -204,65 +204,6 @@ export default function ChatRoomPage() {
     }
   };
 
-  const changeProjectStatus = async (project: ProjectMessagePayload, action: ProjectAction) => {
-    if (activeProjectAction) return;
-    const labels: Record<ProjectAction, string> = {
-      start: '프로젝트를 수락하시겠습니까?',
-      reject: '프로젝트를 거절하시겠습니까?',
-      complete: '프로젝트 완료를 처리하시겠습니까?',
-      cancel: project.status === 'CANCELLATION_PENDING'
-        ? '상대방의 프로젝트 취소 요청을 확인하시겠습니까?'
-        : '프로젝트 취소를 요청하시겠습니까?',
-    };
-    const confirmed = await confirmModal({
-      title: '프로젝트 상태 변경',
-      message: labels[action],
-      confirmLabel: '확인',
-    });
-    if (!confirmed) return;
-
-    setActiveProjectAction(action);
-    setErrorMessage('');
-    try {
-      const saved = await fetchJson<ProjectMessagePayload>(`/api/projects/${project.id}/${action}`, { method: 'PATCH' });
-      setCurrentProject(saved);
-    } catch {
-      setErrorMessage('프로젝트 상태를 변경하지 못했습니다.');
-    } finally {
-      setActiveProjectAction(null);
-    }
-  };
-
-  const renderMessageProjectActions = (project: ProjectMessagePayload) => {
-    if (currentProject?.id !== project.id) return null;
-    const disabled = Boolean(activeProjectAction);
-    const primaryClass = 'inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary disabled:opacity-50';
-    const dangerClass = 'inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-xs font-bold text-accent disabled:opacity-50';
-
-    return (
-      <div className="flex flex-wrap justify-end gap-2">
-        {project.status === 'WAITING' && project.requesterId !== user?.id && (
-          <>
-            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'start')} className={primaryClass}><Check size={12} />수락</button>
-            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'reject')} className={dangerClass}><X size={12} />거절</button>
-          </>
-        )}
-        {project.status === 'WORKING' && (
-          <>
-            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료</button>
-            <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'cancel')} className={dangerClass}><X size={12} />취소</button>
-          </>
-        )}
-        {project.status === 'COMPLETION_PENDING' && project.completionRequestedBy !== user?.id && (
-          <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'complete')} className={primaryClass}><Check size={12} />완료 확인</button>
-        )}
-        {project.status === 'CANCELLATION_PENDING' && project.cancellationRequestedBy !== user?.id && (
-          <button type="button" disabled={disabled} onClick={() => changeProjectStatus(project, 'cancel')} className={dangerClass}><X size={12} />취소 확인</button>
-        )}
-      </div>
-    );
-  };
-
   return (
     <>
       {showDisputeModal && currentProject && (
@@ -281,7 +222,12 @@ export default function ChatRoomPage() {
         <DisputeResultModal
           disputeId={activeDisputeId}
           accessToken={accessToken}
-          onClose={() => setActiveDisputeId(null)}
+          onClose={() => {
+            setActiveDisputeId(null);
+            fetchJson<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`)
+              .then((project) => { if (project !== null) setCurrentProject(project); })
+              .catch(() => {});
+          }}
         />
       )}
     <div className="flex h-[calc(100dvh-6rem)] min-h-[560px] w-full overflow-hidden border-y border-border bg-surface">
@@ -338,14 +284,6 @@ export default function ChatRoomPage() {
                 AI 분쟁 조정
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
-              className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-              aria-label="새로고침"
-            >
-              <RefreshCw size={17} />
-            </button>
           </div>
         </header>
 
@@ -380,7 +318,7 @@ export default function ChatRoomPage() {
                     : projectMessage;
                   return (
                     <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <ProjectMessageCard project={displayProject} actions={renderMessageProjectActions(displayProject)} />
+                      <ProjectMessageCard project={displayProject} />
                     </div>
                   );
                 }

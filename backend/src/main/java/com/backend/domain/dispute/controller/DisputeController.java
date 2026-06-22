@@ -48,7 +48,7 @@ public class DisputeController {
         String userId = authService.resolveUserId(authorization);
         return disputeService.getActiveDisputeByProject(userId, projectId)
                 .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.ok().build());
     }
 
     @GetMapping("/{disputeId}")
@@ -67,5 +67,14 @@ public class DisputeController {
     ) {
         String userId = authService.resolveUserId(authorization);
         return disputeService.accept(userId, disputeId);
+    }
+
+    @PatchMapping("/{disputeId}/reject")
+    public DisputeResponse reject(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String disputeId
+    ) {
+        String userId = authService.resolveUserId(authorization);
+        return disputeService.reject(userId, disputeId);
     }
 }

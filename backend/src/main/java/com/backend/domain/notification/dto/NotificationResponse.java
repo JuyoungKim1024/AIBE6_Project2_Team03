@@ -52,8 +52,26 @@ public record NotificationResponse(
                     case PROJECT_COMPLETED -> "프로젝트가 완료되었습니다.";
                     case PROJECT_CANCELLATION_REQUESTED -> "프로젝트 취소 요청이 있습니다.";
                     case PROJECT_CANCELED -> "프로젝트가 취소되었습니다.";
+                    case PROJECT_DISPUTE_REJECTED -> "AI 분쟁 조정이 거절되었습니다.";
                 },
                 notification.getCreatedAt() != null ? notification.getCreatedAt().format(FORMATTER) : null
+        );
+    }
+
+    /** 에디터가 수락/거절했을 때 크리에이터(requester)에게 보내는 알림 */
+    public static NotificationResponse fromForRequester(MatchRequest request, String chatRoomId) {
+        String type = request.getStatus() == MatchRequestStatus.ACCEPTED
+                ? "MATCHING_ACCEPTED"
+                : "MATCHING_REJECTED";
+        return new NotificationResponse(
+                request.getId(),
+                type,
+                "PENDING",
+                request.getEditor().getNickname(),
+                request.getEditor().getProfileImage(),
+                chatRoomId,
+                null,
+                request.getCreatedAt() != null ? request.getCreatedAt().format(FORMATTER) : null
         );
     }
 

@@ -56,7 +56,7 @@ public class DisputeJudgeService {
 
             JsonNode node = objectMapper.readTree(cleaned);
             JsonNode amountNode = node.path("adjustedAmount");
-            if (!amountNode.isInt()) {
+            if (!amountNode.isNumber() || !amountNode.canConvertToInt()) {
                 throw new IllegalStateException("AI 응답에 유효한 adjustedAmount가 없습니다: " + amountNode);
             }
             int finalAmount = amountNode.asInt();

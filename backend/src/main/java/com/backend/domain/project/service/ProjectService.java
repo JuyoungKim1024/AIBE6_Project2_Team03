@@ -22,8 +22,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,11 +41,19 @@ public class ProjectService {
     private final ProjectNotificationService projectNotificationService;
 
     private ProjectResponseDTO publishProject(Project project) {
+        // 트랜잭션 커밋 전에 WebSocket을 보내면 프론트엔드가 구버전 데이터를 읽는 race condition 발생
+        // → snapshot을 미리 만들고 커밋 후에 전송
         ProjectResponseDTO response = ProjectResponseDTO.from(project);
-        messagingTemplate.convertAndSend(
-                "/topic/chat/rooms/" + project.getRoom().getId() + "/project",
-                response
-        );
+        String roomId = project.getRoom().getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend(
+                        "/topic/chat/rooms/" + roomId + "/project",
+                        response
+                );
+            }
+        });
         return response;
     }
 
@@ -52,7 +63,14 @@ public class ProjectService {
             ProjectNotificationType notificationType
     ) {
         ProjectResponseDTO response = publishProject(project);
-        projectNotificationService.notify(project, changedByUserId, notificationType);
+        // notify()도 afterCommit에서 실행해야 WebSocket이 DB 커밋 이후에 전송된다.
+        // (publishProject와 동일한 이유: 커밋 전 발송 시 프론트 polling이 구버전 데이터를 읽는 race condition)
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                projectNotificationService.notify(project, changedByUserId, notificationType);
+            }
+        });
         return response;
     }
 
@@ -125,7 +143,7 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public ProjectResponseDTO getProjectByRoom(String userId, String roomId) {
+    public Optional<ProjectResponseDTO> getProjectByRoom(String userId, String roomId) {
         if (!chatParticipantRepository.existsByChatRoom_IdAndUser_Id(roomId, userId)) {
             throw new IllegalArgumentException("채팅방 참여자만 프로젝트를 조회할 수 있습니다.");
         }
@@ -136,13 +154,13 @@ public class ProjectService {
                         ProjectStatus.WAITING,
                         ProjectStatus.WORKING,
                         ProjectStatus.COMPLETION_PENDING,
-                        ProjectStatus.CANCELLATION_PENDING
+                        ProjectStatus.CANCELLATION_PENDING,
+                        ProjectStatus.COMPLETED,
+                        ProjectStatus.CANCELED,
+                        ProjectStatus.REJECTED
                 )
         );
-        if (project == null) {
-            throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
-        }
-        return ProjectResponseDTO.from(project);
+        return Optional.ofNullable(project).map(ProjectResponseDTO::from);
     }
 
     @Transactional
@@ -208,12 +226,11 @@ public class ProjectService {
         Project project = getProject(projectId);
         validateParticipant(project, userId);
         validateNoActiveDispute(project);
-        ProjectStatus statusBeforeCancel = project.getStatus();
         project.requestCancel(userId);
         ProjectNotificationType notificationType = project.getStatus() == ProjectStatus.CANCELLATION_PENDING
                 ? ProjectNotificationType.PROJECT_CANCELLATION_REQUESTED
                 : ProjectNotificationType.PROJECT_CANCELED;
-        if (project.getStatus() == ProjectStatus.CANCELED && statusBeforeCancel != ProjectStatus.WAITING) {
+        if (project.getStatus() == ProjectStatus.CANCELED && project.isSafePaymentHeld()) {
             pointService.refundSafePaymentForProject(project);
         }
         return publishProjectChange(project, userId, notificationType);
@@ -292,9 +309,10 @@ public class ProjectService {
     }
 
     private void validateNoActiveDispute(Project project) {
+        // AI_FAILED / REJECTED 는 종료된 분쟁이므로 프로젝트 조작 허용
         boolean hasActiveDispute = disputeRepository.existsByProject_IdAndStatusIn(
                 project.getId(),
-                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED, DisputeStatus.AI_FAILED)
+                List.of(DisputeStatus.AI_PENDING, DisputeStatus.AI_JUDGED)
         );
         if (hasActiveDispute) {
             throw new IllegalStateException("진행 중인 분쟁이 있어 프로젝트를 변경할 수 없습니다.");

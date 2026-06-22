@@ -5,22 +5,27 @@ import { API_BASE_URL } from '@/lib/api';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Bell, Check, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
-import { useModal } from '@/store/modalStore';
 
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = 3_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
-  const { openModal, confirmModal } = useModal();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
 
-  const hasUnread = notifications.some((n) => n.status === 'PENDING');
+  const isUnreadNotification = (n: Notification) =>
+    n.status === 'PENDING' ||
+    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status)) ||
+    n.type === 'MATCHING_ACCEPTED' ||
+    n.type === 'MATCHING_REJECTED';
+
+  const hasUnread = notifications.some((n) => isUnreadNotification(n) && !seenIds.has(n.id));
 
   const fetchNotifications = async () => {
     const accessToken = getAccessToken();
@@ -116,31 +121,23 @@ export function NotificationDropdown({ userId }: { userId: string }) {
 
   const handleDelete = async (notification: Notification) => {
     if (deletingId) return;
-    const confirmed = await confirmModal({
-      title: '알림 삭제',
-      message: '이 알림을 삭제하시겠습니까?',
-      confirmLabel: '삭제',
-    });
-    if (!confirmed) return;
     const accessToken = getAccessToken();
     if (!accessToken) return;
+
+    // 즉시 목록에서 제거
+    setNotifications((current) => current.filter((item) => item.id !== notification.id));
 
     setDeletingId(notification.id);
     try {
       const path = notification.type === 'CHAT_REQUEST'
         ? `/api/chat/requests/${notification.id}`
         : `/api/notifications/${notification.id}`;
-      const response = await fetch(`${API_BASE_URL}${path}`, {
+      await fetch(`${API_BASE_URL}${path}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!response.ok) throw new Error('알림을 삭제하지 못했습니다.');
-      setNotifications((current) => current.filter((item) => item.id !== notification.id));
     } catch {
-      openModal({
-        title: '알림 삭제 실패',
-        message: '알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      });
+      // 백엔드 삭제 실패해도 UI는 이미 제거됨
     } finally {
       setDeletingId(null);
     }
@@ -197,7 +194,14 @@ export function NotificationDropdown({ userId }: { userId: string }) {
     return () => {
       isActive = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      socket?.close();
+      if (!socket) return;
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.onopen = () => socket?.close();
+        socket.onerror = null;
+        socket.onclose = null;
+      } else {
+        socket.close();
+      }
     };
   }, [userId]);
 
@@ -212,7 +216,10 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   }, [open]);
 
   const toggleOpen = () => {
-    if (!open) fetchNotifications();
+    if (!open) {
+      fetchNotifications();
+      setSeenIds(new Set(notifications.filter(isUnreadNotification).map((n) => n.id)));
+    }
     setOpen((prev) => !prev);
   };
 
@@ -289,6 +296,7 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
   const isChatRequest = notification.type === 'CHAT_REQUEST';
   const isDispute = notification.type === 'DISPUTE_FILED';
   const isProjectNotification = notification.type.startsWith('PROJECT_');
+  const isMatchingResult = notification.type === 'MATCHING_ACCEPTED' || notification.type === 'MATCHING_REJECTED';
   const actionLabel = isChatRequest ? '채팅 문의' : '매칭';
 
   if (isDispute) {
@@ -312,6 +320,49 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
               채팅방에서 확인하기
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에디터가 매칭 수락/거절했을 때 크리에이터에게 보이는 알림
+  if (isMatchingResult) {
+    const accepted = notification.type === 'MATCHING_ACCEPTED';
+    return (
+      <div className="px-4 py-3 border-b border-border/50 last:border-0">
+        <div className="flex items-start gap-3">
+          {notification.senderAvatar ? (
+            <img src={notification.senderAvatar} alt={notification.senderName} className="w-9 h-9 rounded-full object-cover flex-shrink-0 mt-0.5" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-surface-elevated flex-shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-text-primary">
+              <span className="font-bold">{notification.senderName}</span>님이 매칭 요청을{' '}
+              <span className={accepted ? 'text-primary font-bold' : 'text-text-muted font-bold'}>
+                {accepted ? '수락' : '거절'}
+              </span>
+              했습니다.
+            </p>
+            <p className="text-xs text-text-muted mt-0.5">{notification.createdAt}</p>
+            {accepted && notification.chatRoomId && (
+              <button
+                onClick={() => { onDelete(notification); router.push(`/chat/${notification.chatRoomId}`); }}
+                className="mt-2 text-xs font-bold text-primary hover:underline"
+              >
+                채팅방으로 이동
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onDelete(notification)}
+            disabled={isDeleting}
+            className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="알림 닫기"
+          >
+            <X size={14} />
+          </button>
         </div>
       </div>
     );
@@ -390,11 +441,11 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
           type="button"
           onClick={() => onDelete(notification)}
           disabled={isDeleting}
-          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="알림 삭제"
-          title="알림 삭제"
+          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="알림 닫기"
+          title="알림 닫기"
         >
-          <Trash2 size={14} />
+          <X size={14} />
         </button>
       </div>
     </div>
