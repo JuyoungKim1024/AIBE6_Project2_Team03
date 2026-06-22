@@ -5,7 +5,7 @@ import { getAccessToken } from '@/lib/auth-session';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Loader2, MessageSquare, Paperclip, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2, MessageSquare, Paperclip, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
@@ -284,14 +284,6 @@ export default function ChatRoomPage() {
                 AI 분쟁 조정
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => loadMessages().catch(() => setErrorMessage('메시지를 새로고침하지 못했습니다.'))}
-              className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-              aria-label="새로고침"
-            >
-              <RefreshCw size={17} />
-            </button>
           </div>
         </header>
 
