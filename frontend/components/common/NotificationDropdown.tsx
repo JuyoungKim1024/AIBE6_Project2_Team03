@@ -18,12 +18,14 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const ref = useRef<HTMLDivElement>(null);
 
-  const hasUnread = notifications.some((n) =>
+  const isUnreadNotification = (n: Notification) =>
     n.status === 'PENDING' ||
-    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status))
-  );
+    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status));
+
+  const hasUnread = notifications.some((n) => isUnreadNotification(n) && !seenIds.has(n.id));
 
   const fetchNotifications = async () => {
     const accessToken = getAccessToken();
@@ -222,7 +224,10 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   }, [open]);
 
   const toggleOpen = () => {
-    if (!open) fetchNotifications();
+    if (!open) {
+      fetchNotifications();
+      setSeenIds(new Set(notifications.filter(isUnreadNotification).map((n) => n.id)));
+    }
     setOpen((prev) => !prev);
   };
 
