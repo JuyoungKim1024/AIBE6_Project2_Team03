@@ -13,6 +13,7 @@ public record JobPostResponse(
         Integer minPrice,
         Integer maxPrice,
         boolean priceVisible,
+        JobPost.PriceUnit priceUnit,
         JobPost.PostType postType,
         List<String> fieldTags,
         List<String> toolTags,
@@ -31,6 +32,7 @@ public record JobPostResponse(
                 post.getMinPrice(),
                 post.getMaxPrice(),
                 post.isPriceVisible(),
+                post.getPriceUnit(),
                 post.getPostType(),
                 post.getTags().stream()
                         .filter(t -> t.getTagType() == PostTag.TagType.FIELD)

@@ -11,6 +11,8 @@ export interface AuthorDto {
   isDeleted?: boolean;
 }
 
+export type PriceUnit = "PER_MINUTE" | "PER_PROJECT";
+
 export interface JobPostDto {
   id: string;
   author: AuthorDto;
@@ -18,6 +20,7 @@ export interface JobPostDto {
   minPrice: number | null;
   maxPrice: number | null;
   priceVisible: boolean;
+  priceUnit: PriceUnit;
   postType: JobPostType;
   fieldTags: string[];
   toolTags: string[];

@@ -38,6 +38,7 @@ function JobsWriteContent() {
   const [minPrice, setMinPrice] = useState(10000);
   const [maxPrice, setMaxPrice] = useState(20000);
   const [priceHidden, setPriceHidden] = useState(false);
+  const [priceUnit, setPriceUnit] = useState<"PER_MINUTE" | "PER_PROJECT">("PER_MINUTE");
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string[]>([]);
   const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
@@ -113,6 +114,7 @@ function JobsWriteContent() {
           const fetchedMinPrice = post.minPrice ?? 10000;
           const fetchedMaxPrice = post.maxPrice ?? 20000;
           const fetchedPriceHidden = !post.priceVisible;
+          if (post.priceUnit) setPriceUnit(post.priceUnit);
           const fetchedCategory = post.fieldTags.filter((t) => categoryTags.includes(t));
           const fetchedSubCategory = post.fieldTags.filter((t) => subCategoryTags.includes(t));
           const fetchedVideoTools = post.toolTags.filter((t) => videoToolTags.includes(t));
@@ -246,6 +248,7 @@ function JobsWriteContent() {
       minPrice: priceHidden ? null : minPrice,
       maxPrice: priceHidden ? null : maxPrice,
       priceVisible: !priceHidden,
+      priceUnit,
       fieldTags: [...selectedCategory, ...selectedSubCategory],
       toolTags,
       revisionCount: unlimitedRevision ? null : revisionCount,
@@ -293,24 +296,17 @@ function JobsWriteContent() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div>
         <div className="flex items-center justify-between mb-8">
-          <Link
-            href={editId ? `/jobs/${editId}` : "/jobs"}
+          <button
+            onClick={() => editId ? router.push(`/jobs/${editId}`) : router.back()}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
           >
             <ArrowLeft size={16} />
             {editId ? "상세로" : "목록으로"}
-          </Link>
+          </button>
           <h1 className="text-xl font-bold text-text-primary">
             {editId ? "글 수정" : "글 작성"}
           </h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPreviewOpen((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${previewOpen ? "bg-surface-elevated text-text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
-            >
-              {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
-              미리보기
-            </button>
             <button
               onClick={() => setAiPanelOpen((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition-colors"
@@ -412,9 +408,23 @@ function JobsWriteContent() {
           {/* 단가 */}
           <div ref={priceSectionRef} className="bg-surface border border-border rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-text-primary">
-                희망 단가 (분당) <span className="text-accent">*</span>
-              </label>
+              <div className="flex items-center gap-3">
+                <label className="block text-sm font-bold text-text-primary">
+                  희망 단가 <span className="text-accent">*</span>
+                </label>
+                <div className="flex bg-surface-elevated p-0.5 rounded-lg border border-border">
+                  {([{ value: "PER_MINUTE", label: "분당" }, { value: "PER_PROJECT", label: "건당" }] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPriceUnit(opt.value)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${priceUnit === opt.value ? "bg-primary/10 text-primary" : "text-text-secondary hover:text-text-primary"}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => setPriceHidden(!priceHidden)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${priceHidden ? "bg-primary/10 text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
@@ -600,7 +610,7 @@ function JobsWriteContent() {
               {portfolioGroups.filter((g) => g.items.length > 0).length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
                   <span className="text-sm font-medium mb-2">등록된 포트폴리오 그룹이 없습니다.</span>
-                  <Link href="/profile" className="text-xs text-primary hover:underline">
+                  <Link href="/mypage" className="text-xs text-primary hover:underline">
                     포트폴리오를 등록해서 이용해보세요 →
                   </Link>
                 </div>
@@ -689,6 +699,15 @@ function JobsWriteContent() {
           </button>
         </div>
       </div>
+
+      {/* 미리보기 FAB */}
+      <button
+        onClick={() => setPreviewOpen((v) => !v)}
+        className={`fixed bottom-24 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg text-sm font-bold transition-all ${previewOpen ? "bg-surface-elevated text-text-primary border border-border" : "bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-primary/50"}`}
+      >
+        {previewOpen ? <EyeOff size={16} /> : <Eye size={16} />}
+        미리보기
+      </button>
 
       {/* 미리보기 드로어 */}
       {previewOpen && (

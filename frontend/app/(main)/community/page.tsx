@@ -2,7 +2,7 @@
 
 import { getAccessToken } from '@/lib/auth-session';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -27,11 +27,29 @@ function CommunityContent() {
   const router = useRouter();
   const query = searchParams.get('q') ?? '';
 
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (typeof window === 'undefined') return 'all';
+    const saved = sessionStorage.getItem('community_category');
+    if (saved) { sessionStorage.removeItem('community_category'); return saved; }
+    return 'all';
+  });
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const pageRestoredRef = useRef(false);
+  const [page, setPage] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = sessionStorage.getItem('community_page');
+    if (saved) {
+      sessionStorage.removeItem('community_page');
+      pageRestoredRef.current = true;
+      return parseInt(saved, 10);
+    }
+    return 1;
+  });
+  const PAGE_SIZE = 5;
 
   const toggleTag = (tag: string) => {
+    setPage(1);
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   };
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +65,13 @@ function CommunityContent() {
   };
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const savedScroll = sessionStorage.getItem('community_scroll');
+    if (savedScroll) {
+      sessionStorage.removeItem('community_scroll');
+      setTimeout(() => window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'instant' }), 50);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
     const token = getAccessToken();
     if (token) {
@@ -72,6 +96,11 @@ function CommunityContent() {
 
   useEffect(() => {
     setLoading(true);
+    if (pageRestoredRef.current) {
+      pageRestoredRef.current = false;
+    } else {
+      setPage(1);
+    }
     const request =
       activeCategory === 'all'
         ? Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')]).then(
@@ -101,6 +130,10 @@ function CommunityContent() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedPosts = filteredPosts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -118,7 +151,7 @@ function CommunityContent() {
           <div className="flex items-center gap-3">
             <div className="flex bg-surface-elevated p-1 rounded-lg border border-border">
               {[{ id: 'latest', label: '최신순' }, { id: 'popular', label: '인기순' }].map((opt) => (
-                <button key={opt.id} onClick={() => setSort(opt.id as 'latest' | 'popular')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                <button key={opt.id} onClick={() => { setSort(opt.id as 'latest' | 'popular'); setPage(1); }} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${sort === opt.id ? 'bg-surface text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
                   {opt.label}
                 </button>
               ))}
@@ -126,6 +159,8 @@ function CommunityContent() {
             <button
               onClick={() => {
                 if (!getAccessToken()) { router.push("/login"); return; }
+                sessionStorage.setItem('community_page', String(safePage));
+                sessionStorage.setItem('community_scroll', String(window.scrollY));
                 router.push("/community/write");
               }}
               className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]"
@@ -163,26 +198,55 @@ function CommunityContent() {
             ) : filteredPosts.length === 0 ? (
               <div className="text-center py-20 text-text-muted">조건에 맞는 게시글이 없습니다.</div>
             ) : (
-              filteredPosts.map((post, i) => (
-                <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
-                  <PostCard
-                    id={post.id}
-                    linkTo={`/community/${post.id}`}
-                    type={post.category.toLowerCase() as PostType}
-                    title={post.title}
-                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
-                    categoryTags={post.tags}
-                    toolTags={[]}
-                    likes={post.likeCount}
-                    comments={post.commentCount}
-                    views={post.viewCount}
-                    timeAgo={formatTimeAgo(post.createdAt)}
-                    thumbnail={post.thumbnailUrl ?? undefined}
-                    initialLiked={likedIds.has(post.id)}
-                    isOwn={currentUserId === post.author.id}
-                  />
-                </motion.div>
-              ))
+              <>
+                {pagedPosts.map((post, i) => (
+                  <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }} onClick={() => { sessionStorage.setItem('community_page', String(safePage)); sessionStorage.setItem('community_scroll', String(window.scrollY)); sessionStorage.setItem('community_category', activeCategory); }}>
+                    <PostCard
+                      id={post.id}
+                      linkTo={`/community/${post.id}`}
+                      type={post.category.toLowerCase() as PostType}
+                      title={post.title}
+                      author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
+                      categoryTags={post.tags}
+                      toolTags={[]}
+                      likes={post.likeCount}
+                      comments={post.commentCount}
+                      views={post.viewCount}
+                      timeAgo={formatTimeAgo(post.createdAt)}
+                      thumbnail={post.thumbnailUrl ?? undefined}
+                      initialLiked={likedIds.has(post.id)}
+                      isOwn={currentUserId === post.author.id}
+                    />
+                  </motion.div>
+                ))}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-1 mt-8">
+                    <button
+                      onClick={() => { setPage(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={safePage === 1}
+                      className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      ←
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${p === safePage ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setPage(totalPages); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={safePage === totalPages}
+                      className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </main>
           <aside className="w-full lg:w-72 flex-shrink-0">

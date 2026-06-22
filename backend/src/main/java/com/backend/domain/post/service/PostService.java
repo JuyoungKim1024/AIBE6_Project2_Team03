@@ -51,7 +51,7 @@ public class PostService {
 
         JobPost post = new JobPost(
                 author, req.title(), req.content(), req.thumbnailUrl(),
-                req.minPrice(), req.maxPrice(), req.priceVisible(), req.postType()
+                req.minPrice(), req.maxPrice(), req.priceVisible(), req.postType(), req.priceUnit()
         );
         post.setRevisionCount(req.revisionCount());
         jobPostRepository.save(post);
@@ -113,7 +113,7 @@ public class PostService {
             throw new IllegalArgumentException("수정 권한이 없습니다.");
 
         post.update(req.title(), req.content(), req.thumbnailUrl(),
-                req.minPrice(), req.maxPrice(), req.priceVisible(), req.revisionCount());
+                req.minPrice(), req.maxPrice(), req.priceVisible(), req.revisionCount(), req.priceUnit());
 
         post.getTags().clear();
         entityManager.flush();

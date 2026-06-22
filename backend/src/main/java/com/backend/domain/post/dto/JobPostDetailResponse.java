@@ -18,6 +18,7 @@ public record JobPostDetailResponse(
         Integer minPrice,
         Integer maxPrice,
         boolean priceVisible,
+        JobPost.PriceUnit priceUnit,
         JobPost.PostType postType,
         List<AttachedPortfolioGroup> portfolioGroups,
         List<String> fieldTags,
@@ -72,6 +73,7 @@ public record JobPostDetailResponse(
                 post.getMinPrice(),
                 post.getMaxPrice(),
                 post.isPriceVisible(),
+                post.getPriceUnit(),
                 post.getPostType(),
                 post.getPortfolioGroups().stream().map(AttachedPortfolioGroup::from).toList(),
                 post.getTags().stream()

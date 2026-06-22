@@ -306,7 +306,7 @@ export default function JobDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <Link
-          href="/jobs"
+          href={`/jobs?tab=${post.postType === "RECRUITING" ? "hiring" : "looking"}`}
           className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium mb-6 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -388,7 +388,7 @@ export default function JobDetailPage() {
             <div className="inline-flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl px-5 py-3">
               <span className="font-mono text-2xl font-bold text-primary">
                 {priceText}
-                <span className="text-base font-sans text-primary/70">/분</span>
+                <span className="text-base font-sans text-primary/70">{post.priceUnit === "PER_PROJECT" ? "/건" : "/분"}</span>
               </span>
               {post.fieldTags.length > 0 && (
                 <>

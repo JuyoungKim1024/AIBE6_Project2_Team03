@@ -23,12 +23,14 @@ export interface PostCardProps {
   minPrice?: number;
   maxPrice?: number;
   priceHidden?: boolean;
+  priceUnit?: "PER_MINUTE" | "PER_PROJECT";
   likes: number;
   comments: number;
   views: number;
   timeAgo: string;
   thumbnail?: string;
   onUnlike?: (id: string) => void;
+  onLikeChange?: (id: string, liked: boolean, likeCount: number) => void;
   initialLiked?: boolean;
   isOwn?: boolean;
 }
@@ -61,12 +63,14 @@ export function PostCard({
   minPrice,
   maxPrice,
   priceHidden,
+  priceUnit,
   likes: initialLikes,
   comments,
   views,
   timeAgo,
   thumbnail,
   onUnlike,
+  onLikeChange,
   initialLiked = false,
   isOwn = false,
 }: PostCardProps) {
@@ -90,15 +94,17 @@ export function PostCard({
       setLiked(result.liked);
       setLikeCount(result.likeCount);
       if (!result.liked && onUnlike) onUnlike(id);
+      if (onLikeChange) onLikeChange(id, result.liked, result.likeCount);
     } catch {
-      // 비로그인 fallback
       if (liked) {
         setLikeCount((prev) => prev - 1);
         setLiked(false);
         if (onUnlike) onUnlike(id);
+        if (onLikeChange) onLikeChange(id, false, likeCount - 1);
       } else {
         setLikeCount((prev) => prev + 1);
         setLiked(true);
+        if (onLikeChange) onLikeChange(id, true, likeCount + 1);
       }
     }
   };
@@ -135,6 +141,7 @@ export function PostCard({
             maxPrice={maxPrice}
             hidden={priceHidden}
             display="list"
+            unit={priceUnit === "PER_PROJECT" ? "건" : "분"}
             variant={
               !priceHidden
                 ? type === "hiring"
