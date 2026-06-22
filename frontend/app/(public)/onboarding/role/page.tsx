@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Check, Scissors, Video, Youtube } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { useModal } from '@/store/modalStore';
+import { getAccessToken } from '@/lib/auth-session';
 
 type Role = 'YOUTUBER' | 'EDITOR';
 
@@ -60,7 +61,7 @@ export default function OnboardingRolePage() {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;

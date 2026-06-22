@@ -9,6 +9,7 @@ import { fetchJobPosts, getLikedPostIds } from "@/lib/api/post";
 import { JobPostDto } from "@/types/post";
 import { API_BASE_URL } from "@/lib/api";
 import { formatTimeAgo } from "@/lib/utils/time";
+import { getAccessToken } from "@/lib/auth-session";
 
 type JobType = "hiring" | "looking";
 
@@ -37,7 +38,7 @@ function JobsContent() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => r.ok ? r.json() : null)
@@ -130,7 +131,7 @@ function JobsContent() {
             </div>
             <button
               onClick={() => {
-                if (!localStorage.getItem("accessToken")) { router.push("/login"); return; }
+                if (!getAccessToken()) { router.push("/login"); return; }
                 router.push("/jobs/write");
               }}
               className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"

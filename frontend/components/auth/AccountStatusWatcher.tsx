@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/api';
@@ -40,7 +42,7 @@ export function AccountStatusWatcher() {
     };
 
     const checkAccountStatus = async () => {
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = getAccessToken();
       if (!accessToken || suspensionHandled.current) return;
 
       try {

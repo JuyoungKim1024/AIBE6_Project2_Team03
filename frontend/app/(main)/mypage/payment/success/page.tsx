@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, LoaderCircle } from 'lucide-react';
@@ -18,7 +20,7 @@ function PaymentSuccessContent() {
     const paymentKey = searchParams.get('paymentKey');
     const orderId = searchParams.get('orderId');
     const amount = Number(searchParams.get('amount'));
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
 
     if (!paymentKey || !orderId || !amount || !accessToken) {
       setError('결제 승인 정보가 올바르지 않습니다.');

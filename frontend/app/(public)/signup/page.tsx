@@ -10,7 +10,6 @@ import { TermsAgreement } from '@/components/auth/TermsAgreement';
 
 type AuthResponse = {
   accessToken: string;
-  refreshToken: string;
 };
 
 export default function SignupPage() {
@@ -117,7 +116,7 @@ export default function SignupPage() {
       if (!response.ok) throw new Error(data?.message ?? '회원가입에 실패했습니다.');
 
       const auth = data as AuthResponse;
-      saveAuthSession(auth.accessToken, auth.refreshToken, true);
+      saveAuthSession(auth.accessToken, true);
       router.replace('/onboarding/role');
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : '회원가입에 실패했습니다.');

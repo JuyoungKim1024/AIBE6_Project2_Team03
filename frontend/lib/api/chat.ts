@@ -1,3 +1,4 @@
+import { getAccessToken } from '@/lib/auth-session';
 import { API_BASE_URL } from '@/lib/api';
 
 type AuthUser = {
@@ -42,7 +43,7 @@ async function fetchMe(accessToken: string) {
 }
 
 export async function createDirectChatRoom(targetUserId: string) {
-  const accessToken = localStorage.getItem('accessToken');
+  const accessToken = getAccessToken();
   if (!accessToken) {
     throw new Error('로그인이 필요합니다.');
   }
@@ -84,7 +85,7 @@ export async function createPostChatRequest(
   postId: string,
   message: string,
 ) {
-  const accessToken = localStorage.getItem('accessToken');
+  const accessToken = getAccessToken();
   if (!accessToken) {
     throw new Error('로그인이 필요합니다.');
   }
@@ -115,7 +116,7 @@ export async function createPostChatRequest(
 }
 
 export async function createDirectChatRequest(receiverId: string, message: string) {
-  const accessToken = localStorage.getItem('accessToken');
+  const accessToken = getAccessToken();
   if (!accessToken) {
     throw new Error('로그인이 필요합니다.');
   }

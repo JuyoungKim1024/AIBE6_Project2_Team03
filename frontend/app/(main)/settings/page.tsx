@@ -1,5 +1,7 @@
 'use client';
 
+import { clearAuthSession, getAccessToken } from '@/lib/auth-session';
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -81,7 +83,7 @@ export default function SettingsPage() {
     && !isPasswordSubmitting;
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.replace('/login');
       return;
@@ -120,7 +122,7 @@ export default function SettingsPage() {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;
@@ -151,7 +153,7 @@ export default function SettingsPage() {
 
   const changePassword = async () => {
     if (!canChangePassword) return;
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;
@@ -182,7 +184,7 @@ export default function SettingsPage() {
 
   const deleteAccount = async () => {
     if (!canDelete) return;
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;
@@ -204,8 +206,7 @@ export default function SettingsPage() {
       setDeleteError(await readErrorMessage(response, '회원탈퇴에 실패했습니다.'));
       return;
     }
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearAuthSession();
     window.location.href = '/';
   };
 

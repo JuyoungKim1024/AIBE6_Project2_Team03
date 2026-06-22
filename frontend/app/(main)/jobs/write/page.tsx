@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
 import { fetchJobPost } from "@/lib/api/post";
 import { useModal } from "@/store/modalStore";
+import { getAccessToken, getUserRole } from "@/lib/auth-session";
 
 const categoryTags = ["롱폼", "숏폼", "썸네일"];
 const subCategoryTags = ["게임", "여행", "브이로그", "반려동물", "IT", "애니메이션", "기타"];
@@ -77,8 +78,8 @@ function JobsWriteContent() {
   const revisionSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    const cachedRole = localStorage.getItem("userRole") as UserRole | null;
+    const token = getAccessToken();
+    const cachedRole = getUserRole() as UserRole | null;
 
     if (cachedRole) {
       setUserRole(cachedRole);
@@ -227,7 +228,7 @@ function JobsWriteContent() {
       priceSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push("/login");
       return;

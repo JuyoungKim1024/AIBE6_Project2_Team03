@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -56,7 +58,7 @@ export default function ChatRoomPage() {
   const [isCheckingDispute, setIsCheckingDispute] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
-  const getToken = () => localStorage.getItem('accessToken');
+  const getToken = () => getAccessToken();
   const accessToken = getToken();
 
   const { isConnected, publishMessage } = useChatSocket(roomId, (message) => {
