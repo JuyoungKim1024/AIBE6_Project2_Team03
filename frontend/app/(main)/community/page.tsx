@@ -28,8 +28,11 @@ function CommunityContent() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const toggleTag = (tag: string) => {
+    setPage(1);
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   };
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,6 +73,7 @@ function CommunityContent() {
 
   useEffect(() => {
     setLoading(true);
+    setPage(1);
     const request =
       activeCategory === 'all'
         ? Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')]).then(
@@ -98,6 +102,10 @@ function CommunityContent() {
       if (sort === 'popular') return b.likeCount - a.likeCount;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedPosts = filteredPosts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="min-h-screen">
@@ -161,26 +169,55 @@ function CommunityContent() {
             ) : filteredPosts.length === 0 ? (
               <div className="text-center py-20 text-text-muted">조건에 맞는 게시글이 없습니다.</div>
             ) : (
-              filteredPosts.map((post, i) => (
-                <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
-                  <PostCard
-                    id={post.id}
-                    linkTo={`/community/${post.id}`}
-                    type={post.category.toLowerCase() as PostType}
-                    title={post.title}
-                    author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
-                    categoryTags={post.tags}
-                    toolTags={[]}
-                    likes={post.likeCount}
-                    comments={post.commentCount}
-                    views={post.viewCount}
-                    timeAgo={formatTimeAgo(post.createdAt)}
-                    thumbnail={post.thumbnailUrl ?? undefined}
-                    initialLiked={likedIds.has(post.id)}
-                    isOwn={currentUserId === post.author.id}
-                  />
-                </motion.div>
-              ))
+              <>
+                {pagedPosts.map((post, i) => (
+                  <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
+                    <PostCard
+                      id={post.id}
+                      linkTo={`/community/${post.id}`}
+                      type={post.category.toLowerCase() as PostType}
+                      title={post.title}
+                      author={{ id: post.author.id, name: post.author.nickname, avatar: post.author.profileImage ?? undefined, rank: post.author.rank }}
+                      categoryTags={post.tags}
+                      toolTags={[]}
+                      likes={post.likeCount}
+                      comments={post.commentCount}
+                      views={post.viewCount}
+                      timeAgo={formatTimeAgo(post.createdAt)}
+                      thumbnail={post.thumbnailUrl ?? undefined}
+                      initialLiked={likedIds.has(post.id)}
+                      isOwn={currentUserId === post.author.id}
+                    />
+                  </motion.div>
+                ))}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-1 mt-8">
+                    <button
+                      onClick={() => { setPage(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={safePage === 1}
+                      className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      ←
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${p === safePage ? 'bg-primary text-white' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'}`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setPage(totalPages); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={safePage === totalPages}
+                      className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </main>
           <aside className="w-full lg:w-72 flex-shrink-0">

@@ -599,7 +599,7 @@ function JobsWriteContent() {
               {portfolioGroups.filter((g) => g.items.length > 0).length === 0 ? (
                 <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-text-muted bg-surface-elevated/30">
                   <span className="text-sm font-medium mb-2">등록된 포트폴리오 그룹이 없습니다.</span>
-                  <Link href="/profile" className="text-xs text-primary hover:underline">
+                  <Link href="/mypage" className="text-xs text-primary hover:underline">
                     포트폴리오를 등록해서 이용해보세요 →
                   </Link>
                 </div>
