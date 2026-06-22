@@ -4,6 +4,7 @@ import com.backend.domain.chat.type.ChatRoomType;
 
 public record MyChatRoomResponseDTO(
         String id,
+        String partnerId,
         String partnerName,
         String lastMessage,
         String time,

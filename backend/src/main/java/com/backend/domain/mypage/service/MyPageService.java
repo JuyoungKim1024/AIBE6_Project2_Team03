@@ -395,6 +395,7 @@ public class MyPageService {
                 .filter(user -> !user.getId().equals(userId))
                 .findFirst()
                 .orElse(null);
+        String partnerId = partner == null ? null : partner.getId();
         String partnerName = partner == null ? "알 수 없음" : partner.getNickname();
         boolean partnerDeleted = partner != null && partner.isDeleted();
 
@@ -430,6 +431,7 @@ public class MyPageService {
 
         return new MyChatRoomResponseDTO(
                 roomId,
+                partnerId,
                 partnerName,
                 lastMessage == null || lastMessage.getContent() == null ? "" : lastMessage.getContent(),
                 formatDate(lastMessage == null ? roomUser.getJoinedAt() : lastMessage.getCreatedAt()),
