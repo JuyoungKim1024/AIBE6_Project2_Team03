@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Info } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 const DISPUTE_TYPES = [
@@ -27,6 +27,7 @@ export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Pro
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const handleSubmit = async () => {
     if (!selectedType || !description.trim()) {
@@ -57,7 +58,7 @@ export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Pro
 
       if (res.status === 200) {
         // 이미 진행 중인 분쟁 — 결과 모달로 바로 이동
-        setError('이미 진행 중인 분쟁이 있습니다. 결과를 확인합니다.');
+        setInfo('이미 진행 중인 분쟁이 있습니다. 결과를 확인합니다.');
         setTimeout(() => onCreated(data.id), 800);
       } else {
         onCreated(data.id);
@@ -129,6 +130,12 @@ export function DisputeModal({ projectId, accessToken, onClose, onCreated }: Pro
               <p className="text-xs text-text-muted mt-1">{description.length}자</p>
             </div>
 
+            {info && (
+              <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-500/10 rounded-lg p-3">
+                <Info size={14} className="flex-shrink-0" />
+                {info}
+              </div>
+            )}
             {error && <p className="text-xs text-red-500 bg-red-500/10 rounded-lg p-3">{error}</p>}
 
             <p className="text-xs text-text-muted bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg p-3">
