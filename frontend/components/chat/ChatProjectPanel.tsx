@@ -51,9 +51,6 @@ const emptyForm: ProjectForm = {
   memo: '',
 };
 const visibleStatuses = ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING', 'COMPLETED', 'REJECTED', 'CANCELED'];
-const deadlineTimes = Array.from({ length: 24 }, (_, hour) =>
-  `${String(hour).padStart(2, '0')}:00`,
-);
 
 function getTomorrowMin() {
   const tomorrow = new Date();
@@ -324,10 +321,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
               </label>
               <label className="text-sm font-bold text-text-secondary">
                 마감 시간
-                <select required value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2 leading-normal">
-                  <option value="">시간 선택</option>
-                  {deadlineTimes.map((time) => <option key={time} value={time}>{time}</option>)}
-                </select>
+                <input required type="time" value={form.deadlineTime} onChange={(event) => setForm((current) => ({ ...current, deadlineTime: event.target.value }))} className="form-input mt-2" />
               </label>
             </div>
             <label className="mt-4 block text-sm font-bold text-text-secondary">
