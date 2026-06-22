@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useState } from 'react';
 import { Check, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
@@ -11,7 +13,7 @@ type Ticket = {
 };
 
 function authHeaders(json = false) {
-  const headers: Record<string, string> = { Authorization: `Bearer ${localStorage.getItem('accessToken') ?? ''}` };
+  const headers: Record<string, string> = { Authorization: `Bearer ${getAccessToken() ?? ''}` };
   if (json) headers['Content-Type'] = 'application/json';
   return headers;
 }

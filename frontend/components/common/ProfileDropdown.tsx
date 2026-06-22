@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -101,7 +103,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   }, [open]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) return;
 
     fetch(`${API_BASE_URL}/api/point`, {
@@ -120,7 +122,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       setMatchingPrice(null);
       return;
@@ -167,8 +169,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
   }, []);
 
   const logout = async () => {
-    const accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
+    const accessToken = getAccessToken();
     try {
       if (accessToken) {
         await fetch(`${API_BASE_URL}/api/auth/logout`, {
@@ -178,7 +179,6 @@ export function ProfileDropdown({ user, onLogout }: Props) {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ refreshToken }),
         });
       }
     } finally {
@@ -205,7 +205,7 @@ export function ProfileDropdown({ user, onLogout }: Props) {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       return;
     }

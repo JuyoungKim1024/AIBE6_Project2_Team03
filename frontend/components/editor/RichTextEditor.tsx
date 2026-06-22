@@ -13,6 +13,7 @@ import ResizableImage from "tiptap-extension-resize-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { API_BASE_URL } from "@/lib/api";
 import { useModal } from "@/store/modalStore";
+import { getAccessToken } from "@/lib/auth-session";
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
   AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2, FileIcon, CheckCircle2,
@@ -295,7 +296,7 @@ function Toolbar({
   };
 
   const uploadFile = async (file: File): Promise<string> => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch(`${API_BASE_URL}/api/files/upload`, {
@@ -514,6 +515,7 @@ export function RichTextEditor({
     immediatelyRender: true,
     extensions: [
       StarterKit.configure({ link: false }),
+      Underline,
       TextStyle,
       Color,
       TextAlign.configure({ types: ["heading", "paragraph"] }),

@@ -7,6 +7,7 @@ import { Heart, MessageCircle, Eye } from "lucide-react";
 import { PriceChip } from "@/components/common/PriceChip";
 import { UserActionMenu } from "@/components/common/UserActionMenu";
 import { togglePostLike } from "@/lib/api/post";
+import { getAccessToken } from "@/lib/auth-session";
 
 export type PostType = "hiring" | "looking" | "info" | "rate" | "portfolio" | "free";
 
@@ -80,7 +81,7 @@ export function PostCard({
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!localStorage.getItem("accessToken")) {
+    if (!getAccessToken()) {
       router.push("/login");
       return;
     }

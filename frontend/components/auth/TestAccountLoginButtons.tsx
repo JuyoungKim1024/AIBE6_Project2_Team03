@@ -4,11 +4,16 @@ import { Scissors, Youtube } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { formatSuspensionMessage, isSuspensionResponse } from '@/lib/suspension';
 import { useModal } from '@/store/modalStore';
+import { saveAuthSession } from '@/lib/auth-session';
 
 const TEST_ACCOUNT_LOGIN_ENABLED = true;
 
 type TestRole = 'YOUTUBER' | 'EDITOR';
-type AuthResponse = { accessToken: string; refreshToken: string };
+type AuthResponse = {
+  accessToken: string;
+  onboardingRequired: boolean;
+  user: { role: TestRole };
+};
 
 export function TestAccountLoginButtons({
   disabled,
@@ -47,8 +52,7 @@ export function TestAccountLoginButtons({
         throw new Error(data?.message ?? '테스트 계정 로그인에 실패했습니다.');
       }
       const auth = data as AuthResponse;
-      localStorage.setItem('accessToken', auth.accessToken);
-      localStorage.setItem('refreshToken', auth.refreshToken);
+      saveAuthSession(auth.accessToken, auth.onboardingRequired, auth.user.role);
       window.location.href = '/';
     } catch (error) {
       onError(error instanceof Error ? error.message : '테스트 계정 로그인에 실패했습니다.');

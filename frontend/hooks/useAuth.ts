@@ -7,7 +7,9 @@ import {
   clearAuthSession,
   completeOnboarding,
   discardPendingAuthSession,
+  getAccessToken,
   isOnboardingPending,
+  setUserRole,
 } from '@/lib/auth-session';
 import {
   announceAccountSuspension,
@@ -44,7 +46,7 @@ export function useAuth() {
       return;
     }
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       setIsAuthChecked(true);
       return;
@@ -71,7 +73,7 @@ export function useAuth() {
         if (!data.onboardingRequired) {
           completeOnboarding();
         }
-        if (data.role) localStorage.setItem('userRole', data.role);
+        setUserRole(data.role);
         setUser(data);
       })
       .catch(() => {

@@ -8,7 +8,6 @@ import com.backend.domain.auth.dto.EmailVerificationCompleteResponse;
 import com.backend.domain.auth.dto.EmailVerificationSendRequest;
 import com.backend.domain.auth.dto.LocalLoginRequest;
 import com.backend.domain.auth.dto.LocalSignupRequest;
-import com.backend.domain.auth.dto.LogoutRequest;
 import com.backend.domain.auth.dto.PasswordChangeRequest;
 import com.backend.domain.auth.dto.ProfileUpdateRequest;
 import com.backend.domain.auth.dto.RoleUpdateRequest;
@@ -43,17 +42,20 @@ public class AuthController {
     private final AuthService authService;
     private final String frontendUrl;
     private final boolean secureCookie;
+    private final String cookieSameSite;
     private final long refreshTokenValiditySeconds;
 
     public AuthController(
             AuthService authService,
             @Value("${app.frontend-url}") String frontendUrl,
             @Value("${app.cookie.secure:false}") boolean secureCookie,
+            @Value("${app.cookie.same-site:Lax}") String cookieSameSite,
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds
     ) {
         this.authService = authService;
         this.frontendUrl = frontendUrl;
         this.secureCookie = secureCookie;
+        this.cookieSameSite = cookieSameSite;
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
     }
 
@@ -93,8 +95,6 @@ public class AuthController {
         }
         URI redirectUri = UriComponentsBuilder.fromUriString(frontendUrl)
                 .path("/login/callback")
-                .queryParam("accessToken", response.accessToken())
-                .queryParam("refreshToken", response.refreshToken())
                 .queryParam("onboardingRequired", response.onboardingRequired())
                 .build()
                 .toUri();
@@ -136,6 +136,9 @@ public class AuthController {
     public ResponseEntity<AuthResponse> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken
     ) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.noContent().build();
+        }
         AuthResponse response = authService.refresh(refreshToken);
         return withRefreshCookie(response);
     }
@@ -143,9 +146,9 @@ public class AuthController {
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout(
             @RequestHeader("Authorization") String authorizationHeader,
-            @RequestBody(required = false) LogoutRequest request
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
     ) {
-        authService.logout(authorizationHeader, request == null ? null : request.refreshToken());
+        authService.logout(authorizationHeader, refreshToken);
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
                 .build();
@@ -209,7 +212,7 @@ public class AuthController {
         return ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/api/auth")
                 .maxAge(Duration.ofSeconds(refreshTokenValiditySeconds))
                 .build();
@@ -219,7 +222,7 @@ public class AuthController {
         return ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/api/auth")
                 .maxAge(Duration.ZERO)
                 .build();

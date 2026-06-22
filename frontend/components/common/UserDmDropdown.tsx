@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import React, { MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
@@ -50,7 +52,7 @@ export function UserDmDropdown({ targetUserId, targetName, children }: UserDmDro
     event.stopPropagation();
     setErrorMessage('');
 
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push('/login');
       return;

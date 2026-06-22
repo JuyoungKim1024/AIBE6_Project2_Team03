@@ -35,9 +35,10 @@ import {
   getPostLikedStatus,
 } from "@/lib/api/post";
 import { createPostChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
-import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup, AttachedPortfolioItem } from "@/types/post";
+import { JobPostDetailDto, CommentDto, AttachedPortfolioGroup } from "@/types/post";
 import { formatTimeAgo } from "@/lib/utils/time";
 import { useModal } from "@/store/modalStore";
+import { getAccessToken, getUserRole } from "@/lib/auth-session";
 
 export default function JobDetailPage() {
   const router = useRouter();
@@ -91,8 +92,8 @@ export default function JobDetailPage() {
     getPostLikedStatus(id)
       .then((r) => setLiked(r.liked))
       .catch(() => {});
-    setUserRole(localStorage.getItem("userRole"));
-    const token = localStorage.getItem("accessToken");
+    setUserRole(getUserRole());
+    const token = getAccessToken();
     if (token) {
       fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -104,7 +105,7 @@ export default function JobDetailPage() {
   }, [id]);
 
   const handleDeletePost = async () => {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (!token) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/posts/job/${id}`, {
@@ -121,7 +122,7 @@ export default function JobDetailPage() {
   };
 
   const handleLike = async () => {
-    if (!localStorage.getItem("accessToken")) {
+    if (!getAccessToken()) {
       router.push("/login");
       return;
     }
@@ -139,7 +140,7 @@ export default function JobDetailPage() {
   const openChatRequestModal = () => {
     if (!post || isStartingChat || currentUserId === post.author.id) return;
 
-    if (!localStorage.getItem("accessToken")) {
+    if (!getAccessToken()) {
       router.push("/login");
       return;
     }

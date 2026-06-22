@@ -13,7 +13,6 @@ import { TestAccountLoginButtons } from '@/components/auth/TestAccountLoginButto
 
 type AuthResponse = {
   accessToken: string;
-  refreshToken: string;
   onboardingRequired: boolean;
   user: { role: 'YOUTUBER' | 'EDITOR' | null; admin: boolean };
 };
@@ -78,7 +77,7 @@ export default function LoginPage() {
       }
 
       const auth = data as AuthResponse;
-      saveAuthSession(auth.accessToken, auth.refreshToken, auth.onboardingRequired);
+      saveAuthSession(auth.accessToken, auth.onboardingRequired, auth.user.role);
       router.replace(auth.user.admin
         ? '/admin'
         : auth.onboardingRequired

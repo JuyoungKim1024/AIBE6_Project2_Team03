@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { FormEvent, useEffect, useState } from 'react';
 import { Briefcase, Check, ChevronDown, Pencil, X } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
@@ -70,7 +72,7 @@ export function ChatProjectPanel({ roomId, userId, project, post, onProjectChang
   const [form, setForm] = useState<ProjectForm>(emptyForm);
   const [errorMessage, setErrorMessage] = useState('');
   const minDeadline = getTomorrowMin();
-  const accessToken = typeof window === 'undefined' ? null : localStorage.getItem('accessToken');
+  const accessToken = typeof window === 'undefined' ? null : getAccessToken();
   const isOpenProject = project ? ['WAITING', 'WORKING', 'COMPLETION_PENDING', 'CANCELLATION_PENDING'].includes(project.status) : false;
 
   const request = async <T,>(path: string, init?: RequestInit) => {

@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ExternalLink, Loader2, MessageSquare, Paperclip, RefreshCw, Send, Trash2, X } from 'lucide-react';
@@ -73,7 +75,7 @@ export function ChatFAB() {
 
   const accessToken = useMemo(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
+    return getAccessToken();
   }, [isOpen]);
 
   const fetchJson = async <T,>(path: string, init?: RequestInit): Promise<T> => {
@@ -191,7 +193,7 @@ export function ChatFAB() {
   useEffect(() => {
     if (!activeDMUser) return;
 
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (!token) {
       closeDM();
       router.push('/login');

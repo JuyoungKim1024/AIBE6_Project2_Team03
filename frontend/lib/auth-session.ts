@@ -1,57 +1,102 @@
 import { API_BASE_URL } from '@/lib/api';
 
-const ONBOARDING_PENDING_KEY = 'onboardingPending';
+type AuthSessionResponse = {
+  accessToken: string;
+  onboardingRequired: boolean;
+  user: {
+    role: 'YOUTUBER' | 'EDITOR' | null;
+  };
+};
+
+let accessToken: string | null = null;
+let onboardingPending = false;
+let userRole: 'YOUTUBER' | 'EDITOR' | null = null;
+let restorePromise: Promise<AuthSessionResponse | null> | null = null;
 
 export function saveAuthSession(
-  accessToken: string,
-  refreshToken: string | undefined,
+  token: string,
   onboardingRequired: boolean,
+  role: 'YOUTUBER' | 'EDITOR' | null = null,
 ) {
-  localStorage.setItem('accessToken', accessToken);
-  if (refreshToken) {
-    localStorage.setItem('refreshToken', refreshToken);
-  }
+  accessToken = token;
+  onboardingPending = onboardingRequired;
+  userRole = role;
+  window.dispatchEvent(new Event('authSessionUpdated'));
+}
 
-  if (onboardingRequired) {
-    localStorage.setItem(ONBOARDING_PENDING_KEY, 'true');
-  } else {
-    localStorage.removeItem(ONBOARDING_PENDING_KEY);
-  }
+export function getAccessToken() {
+  return accessToken;
+}
+
+export function getUserRole() {
+  return userRole;
+}
+
+export function setUserRole(role: 'YOUTUBER' | 'EDITOR' | null) {
+  userRole = role;
 }
 
 export function completeOnboarding() {
-  localStorage.removeItem(ONBOARDING_PENDING_KEY);
+  onboardingPending = false;
 }
 
 export function isOnboardingPending() {
-  return localStorage.getItem(ONBOARDING_PENDING_KEY) === 'true';
+  return onboardingPending;
 }
 
 export function clearAuthSession() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem(ONBOARDING_PENDING_KEY);
+  accessToken = null;
+  onboardingPending = false;
+  userRole = null;
 }
 
-export function discardPendingAuthSession() {
-  const accessToken = localStorage.getItem('accessToken');
-  const refreshToken = localStorage.getItem('refreshToken');
-  clearAuthSession();
-
-  if (!accessToken) {
-    return;
+export async function restoreAuthSession() {
+  if (accessToken) {
+    return { accessToken, onboardingRequired: onboardingPending };
   }
+  return refreshAuthSession();
+}
 
-  void fetch(`${API_BASE_URL}/api/auth/logout`, {
+export async function refreshAuthSession() {
+  if (restorePromise) return restorePromise;
+
+  restorePromise = fetch(`${API_BASE_URL}/api/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ refreshToken }),
-  }).catch(() => {
-    // Local tokens are already cleared even if server-side revocation fails.
-  });
+  })
+    .then(async (response) => {
+      if (response.status === 204) {
+        clearAuthSession();
+        return null;
+      }
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 401) {
+          clearAuthSession();
+          window.dispatchEvent(new Event('authSessionCleared'));
+        }
+        return null;
+      }
+      const auth = await response.json() as AuthSessionResponse;
+      saveAuthSession(auth.accessToken, auth.onboardingRequired, auth.user.role);
+      return auth;
+    })
+    .catch(() => null)
+    .finally(() => {
+      restorePromise = null;
+    });
+
+  return restorePromise;
+}
+
+export async function discardPendingAuthSession() {
+  const token = accessToken;
+  clearAuthSession();
+
+  if (!token) return;
+
+  await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => undefined);
 }

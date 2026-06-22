@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { API_BASE_URL } from "@/lib/api";
 import { RichTextEditor } from "@/components/editor/RichTextEditor";
+import { getAccessToken } from "@/lib/auth-session";
 
 const CATEGORY_TAGS = ["꿀팁", "단축키", "오류해결", "템플릿", "협업", "계약", "장비추천", "잡담", "기타"];
 
@@ -26,7 +27,7 @@ function CommunityWriteContent() {
 
   useEffect(() => {
     if (!editId) return;
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
     if (!token) { router.push("/login"); return; }
     fetch(`${API_BASE_URL}/api/posts/community/${editId}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -54,7 +55,7 @@ function CommunityWriteContent() {
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getAccessToken();
     if (!accessToken) { router.push("/login"); return; }
     setSubmitting(true);
     try {

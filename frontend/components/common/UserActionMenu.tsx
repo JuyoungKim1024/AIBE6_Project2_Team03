@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { createDirectChatRequest, getInitialChatRequestMessage, markInitialChatRequestMessageUsed } from "@/lib/api/chat";
 import { DirectChatRequestModal } from "@/components/common/DirectChatRequestModal";
 import { useModal } from "@/store/modalStore";
+import { getAccessToken } from "@/lib/auth-session";
 
 type UserActionMenuProps = {
   userId?: string | null;
@@ -45,7 +46,7 @@ export function UserActionMenu({ userId, nickname, profileImage, size = "md" }: 
     stopLinkClick(event);
     if (!userId || isStartingDm) return;
 
-    const accessToken = localStorage.getItem("accessToken");
+    const accessToken = getAccessToken();
     if (!accessToken) {
       router.push("/login");
       return;

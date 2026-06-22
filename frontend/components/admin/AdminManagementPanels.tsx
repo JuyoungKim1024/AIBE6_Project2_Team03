@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@/lib/auth-session';
+
 import { useEffect, useMemo, useState } from 'react';
 import { Search, ShieldOff, ShieldCheck, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
@@ -43,7 +45,7 @@ type AdminComment = {
 
 function authHeaders(json = false) {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${localStorage.getItem('accessToken') ?? ''}`,
+    Authorization: `Bearer ${getAccessToken() ?? ''}`,
   };
   if (json) headers['Content-Type'] = 'application/json';
   return headers;
