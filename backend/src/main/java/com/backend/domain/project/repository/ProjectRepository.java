@@ -35,4 +35,7 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
 
     @Query("SELECT p FROM Project p WHERE (p.editor.id = :userId OR p.requester.id = :userId) AND p.status = 'COMPLETED' ORDER BY p.createdAt DESC")
     List<Project> findCompletedByUser(@Param("userId") String userId);
+
+    @Query("SELECT p.field, AVG(p.price), p.workUnit, COUNT(p) FROM Project p WHERE p.status = 'COMPLETED' AND p.field IN :fields GROUP BY p.field, p.workUnit")
+    List<Object[]> findAvgPriceByFields(@Param("fields") List<String> fields);
 }
