@@ -293,13 +293,13 @@ function JobsWriteContent() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div>
         <div className="flex items-center justify-between mb-8">
-          <Link
-            href={editId ? `/jobs/${editId}` : "/jobs"}
+          <button
+            onClick={() => editId ? router.push(`/jobs/${editId}`) : router.back()}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
           >
             <ArrowLeft size={16} />
             {editId ? "상세로" : "목록으로"}
-          </Link>
+          </button>
           <h1 className="text-xl font-bold text-text-primary">
             {editId ? "글 수정" : "글 작성"}
           </h1>

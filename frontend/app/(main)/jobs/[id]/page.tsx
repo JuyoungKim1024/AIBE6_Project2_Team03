@@ -306,7 +306,7 @@ export default function JobDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
         <Link
-          href="/jobs"
+          href={`/jobs?tab=${post.postType === "RECRUITING" ? "hiring" : "looking"}`}
           className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium mb-6 transition-colors"
         >
           <ArrowLeft size={16} />

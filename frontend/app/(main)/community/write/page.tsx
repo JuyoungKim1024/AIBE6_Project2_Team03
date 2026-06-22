@@ -97,13 +97,13 @@ function CommunityWriteContent() {
     <div className="min-h-screen pb-32">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link
-            href={isEditMode ? `/community/${editId}` : "/community"}
+          <button
+            onClick={() => isEditMode ? router.push(`/community/${editId}`) : router.back()}
             className="inline-flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
           >
             <ArrowLeft size={16} />
             {isEditMode ? "돌아가기" : "목록으로"}
-          </Link>
+          </button>
           <h1 className="text-xl font-bold text-text-primary">
             {isEditMode ? "글 수정" : "글 작성"}
           </h1>

@@ -32,11 +32,22 @@ function JobsContent() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sort, setSort] = useState("latest");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const saved = sessionStorage.getItem("jobs_page");
+    sessionStorage.removeItem("jobs_page");
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const PAGE_SIZE = 5;
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
+    const savedScroll = sessionStorage.getItem("jobs_scroll");
+    if (savedScroll) {
+      sessionStorage.removeItem("jobs_scroll");
+      setTimeout(() => window.scrollTo({ top: parseInt(savedScroll, 10), behavior: "instant" }), 50);
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
     const token = getAccessToken();
     if (token) {
@@ -132,6 +143,8 @@ function JobsContent() {
             <button
               onClick={() => {
                 if (!getAccessToken()) { router.push("/login"); return; }
+                sessionStorage.setItem("jobs_page", String(safePage));
+                sessionStorage.setItem("jobs_scroll", String(window.scrollY));
                 router.push("/jobs/write");
               }}
               className="flex items-center gap-1.5 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
@@ -263,6 +276,10 @@ function JobsContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.04 }}
+                onClick={() => {
+                  sessionStorage.setItem("jobs_page", String(safePage));
+                  sessionStorage.setItem("jobs_scroll", String(window.scrollY));
+                }}
               >
                 <PostCard
                   id={job.id}

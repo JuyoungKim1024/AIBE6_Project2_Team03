@@ -2,7 +2,7 @@
 
 import { getAccessToken } from '@/lib/auth-session';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -27,10 +27,25 @@ function CommunityContent() {
   const router = useRouter();
   const query = searchParams.get('q') ?? '';
 
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (typeof window === 'undefined') return 'all';
+    const saved = sessionStorage.getItem('community_category');
+    if (saved) { sessionStorage.removeItem('community_category'); return saved; }
+    return 'all';
+  });
   const [sort, setSort] = useState<'latest' | 'popular'>('latest');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [page, setPage] = useState(1);
+  const pageRestoredRef = useRef(false);
+  const [page, setPage] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = sessionStorage.getItem('community_page');
+    if (saved) {
+      sessionStorage.removeItem('community_page');
+      pageRestoredRef.current = true;
+      return parseInt(saved, 10);
+    }
+    return 1;
+  });
   const PAGE_SIZE = 5;
 
   const toggleTag = (tag: string) => {
@@ -50,7 +65,13 @@ function CommunityContent() {
   };
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const savedScroll = sessionStorage.getItem('community_scroll');
+    if (savedScroll) {
+      sessionStorage.removeItem('community_scroll');
+      setTimeout(() => window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'instant' }), 50);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
     getLikedPostIds().then((ids) => setLikedIds(new Set(ids))).catch(() => {});
     const token = getAccessToken();
     if (token) {
@@ -75,7 +96,11 @@ function CommunityContent() {
 
   useEffect(() => {
     setLoading(true);
-    setPage(1);
+    if (pageRestoredRef.current) {
+      pageRestoredRef.current = false;
+    } else {
+      setPage(1);
+    }
     const request =
       activeCategory === 'all'
         ? Promise.all([fetchCommunityPosts('INFO'), fetchCommunityPosts('FREE')]).then(
@@ -134,6 +159,8 @@ function CommunityContent() {
             <button
               onClick={() => {
                 if (!getAccessToken()) { router.push("/login"); return; }
+                sessionStorage.setItem('community_page', String(safePage));
+                sessionStorage.setItem('community_scroll', String(window.scrollY));
                 router.push("/community/write");
               }}
               className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.3)]"
@@ -173,7 +200,7 @@ function CommunityContent() {
             ) : (
               <>
                 {pagedPosts.map((post, i) => (
-                  <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
+                  <motion.div key={post.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }} onClick={() => { sessionStorage.setItem('community_page', String(safePage)); sessionStorage.setItem('community_scroll', String(window.scrollY)); sessionStorage.setItem('community_category', activeCategory); }}>
                     <PostCard
                       id={post.id}
                       linkTo={`/community/${post.id}`}
