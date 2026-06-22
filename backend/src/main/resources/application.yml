@@ -48,6 +48,8 @@ server:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   base-url: ${BACKEND_URL:http://localhost:8080}
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000,https://*.vercel.app}
   admin:
     email: ${ADMIN_EMAIL:keukeukkeu47@gmail.com}
     password: ${ADMIN_PASSWORD:}
