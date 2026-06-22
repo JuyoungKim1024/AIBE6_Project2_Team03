@@ -5,7 +5,7 @@ import { getAccessToken } from '@/lib/auth-session';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Loader2, MessageSquare, Paperclip, Send } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2, Paperclip, Send } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { ChatRoomList } from '@/components/chat/ChatRoomList';
 import { ChatProjectPanel } from '@/components/chat/ChatProjectPanel';
@@ -17,6 +17,7 @@ import { parseProjectMessage, ProjectMessageCard, type ProjectMessagePayload } f
 import { DisputeModal } from '@/components/dispute/DisputeModal';
 import { DisputeResultModal } from '@/components/dispute/DisputeResultModal';
 import type { ChatMessage, MyChatRoom } from '@/types/chat';
+import { PartnerAvatarDropdown } from '@/components/chat/PartnerAvatarDropdown';
 type AuthUser = {
   id: string;
   nickname: string;
@@ -240,9 +241,12 @@ export default function ChatRoomPage() {
             <Link href="/chat" className="rounded-lg p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary" aria-label="채팅 목록으로 이동">
               <ArrowLeft size={18} />
             </Link>
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
-              <MessageSquare size={18} className="text-text-muted" />
-            </div>
+            <PartnerAvatarDropdown
+              partnerName={roomSummary?.partnerName ?? '?'}
+              partnerId={roomSummary?.partnerId}
+              size="lg"
+              dropdownPosition="below"
+            />
             <div className="min-w-0">
               <h1 className="truncate text-base font-bold text-text-primary">{roomSummary?.partnerName ?? '채팅방'}</h1>
               <p className="truncate text-xs text-text-muted">
@@ -308,8 +312,11 @@ export default function ChatRoomPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {messages.map((message) => {
+              {messages.map((message, index) => {
                 const isMine = message.senderId === user?.id;
+                const isLastInGroup =
+                  index === messages.length - 1 ||
+                  messages[index + 1].senderId !== message.senderId;
                 const projectMessage = parseProjectMessage(message.content);
 
                 if (projectMessage) {
@@ -324,7 +331,12 @@ export default function ChatRoomPage() {
                 }
 
                 return (
-                  <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={message.messageId} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    {!isMine && (
+                      isLastInGroup
+                        ? <PartnerAvatarDropdown partnerName={roomSummary?.partnerName ?? '?'} partnerId={roomSummary?.partnerId} />
+                        : <div className="w-8 flex-shrink-0" />
+                    )}
                     <div className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${isMine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md border border-border bg-surface text-text-primary'}`}>
                       <ChatMessageContent message={message} isMine={isMine} />
                       <p className={`mt-1 text-[10px] ${isMine ? 'text-white/70' : 'text-text-muted'}`}>
