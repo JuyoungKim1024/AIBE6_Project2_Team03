@@ -1,6 +1,12 @@
 spring:
   profiles:
-    active: dev,local
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/matching_service?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:app_user}
+    password: ${DB_PASSWORD:app_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   servlet:
     multipart:
@@ -37,9 +43,11 @@ logging:
     org.flywaydb: debug
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  base-url: ${BACKEND_URL:http://localhost:8080}
   admin:
     email: ${ADMIN_EMAIL:keukeukkeu47@gmail.com}
     password: ${ADMIN_PASSWORD:}
@@ -51,6 +59,20 @@ app:
   cookie:
     secure: ${COOKIE_SECURE:false}
     same-site: ${COOKIE_SAME_SITE:Lax}
+  jwt:
+    secret: ${JWT_SECRET:local-development-jwt-secret-change-before-production-32bytes}
+    access-token-validity-seconds: ${JWT_ACCESS_TOKEN_VALIDITY_SECONDS:3600}
+    refresh-token-validity-seconds: ${JWT_REFRESH_TOKEN_VALIDITY_SECONDS:1209600}
+
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/auth/google/callback}
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/api/auth/kakao/callback}
 
 cloudflare:
   r2:

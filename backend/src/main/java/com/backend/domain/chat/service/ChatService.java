@@ -34,7 +34,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ChatService {
 
-    @Value("${app.base-url:http://localhost:8080}")
+    @Value("${app.base-url}")
     private String baseUrl;
 
     @Value("${cloudflare.r2.public-url}")
