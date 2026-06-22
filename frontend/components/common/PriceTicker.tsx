@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 interface PriceItem {
   label: string;
@@ -9,16 +10,8 @@ interface PriceItem {
   unit: string;
 }
 
-// TODO: 백엔드 연동 후 GET /api/market/prices 호출로 교체
-const mockPrices: PriceItem[] = [
-  { label: '롱폼 편집 평균', price: 15000, unit: '분' },
-  { label: '숏폼 편집 평균', price: 8500, unit: '분' },
-  { label: '썸네일 제작 평균', price: 35000, unit: '건' },
-  { label: '모션그래픽 평균', price: 22000, unit: '분' },
-];
-
-const REPEAT = 10;  // 복제 수 — 화면이 넓어도 항상 꽉 차게
-const SPEED = 1;    // px per frame
+const REPEAT = 10;
+const SPEED_PX_PER_SEC = 60; // 60px/s — Hz 무관 일정 속도
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat('ko-KR').format(price);
@@ -26,38 +19,55 @@ function formatPrice(price: number) {
 
 export function PriceTicker() {
   const [paused, setPaused] = useState(false);
+  const [prices, setPrices] = useState<PriceItem[]>([]);
   const innerRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const offsetRef = useRef(0);
 
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/market/prices`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { label: string; price: number; unit: string }[]) =>
+        setPrices(data.map((d) => ({ label: d.label, price: d.price, unit: d.unit })))
+      )
+      .catch(() => {});
+  }, []);
+
   useEffect(() => { pausedRef.current = paused; }, [paused]);
 
   useEffect(() => {
-    if (mockPrices.length === 0) return;
+    if (prices.length === 0) return;
 
     const inner = innerRef.current;
     if (!inner) return;
 
-    // 레이아웃 확정 후 1세트 너비 한 번만 측정
-    const singleWidth = inner.scrollWidth / REPEAT;
     let animId: number;
+    let measureId: number;
 
-    function step() {
-      if (!pausedRef.current) {
-        offsetRef.current += SPEED;
-        if (offsetRef.current >= singleWidth) offsetRef.current -= singleWidth;
-        inner!.style.transform = `translateX(-${offsetRef.current}px)`;
+    measureId = requestAnimationFrame(() => {
+      const singleWidth = inner.scrollWidth / REPEAT;
+      let lastTime: number | null = null;
+
+      function step(now: number) {
+        if (!pausedRef.current) {
+          const delta = lastTime != null ? (now - lastTime) / 1000 : 0;
+          offsetRef.current += SPEED_PX_PER_SEC * delta;
+          if (offsetRef.current >= singleWidth) offsetRef.current -= singleWidth;
+          inner!.style.transform = `translateX(-${offsetRef.current}px)`;
+        }
+        lastTime = now;
+        animId = requestAnimationFrame(step);
       }
+
       animId = requestAnimationFrame(step);
-    }
+    });
 
-    animId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animId);
-  }, []);
+    return () => { cancelAnimationFrame(measureId); cancelAnimationFrame(animId); };
+  }, [prices]);
 
-  if (mockPrices.length === 0) return null;
+  if (prices.length === 0) return null;
 
-  const items = Array.from({ length: REPEAT }, () => mockPrices).flat();
+  const items = Array.from({ length: REPEAT }, () => prices).flat();
 
   return (
     <div
