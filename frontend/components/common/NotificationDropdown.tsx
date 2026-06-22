@@ -8,13 +8,11 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
-import { useModal } from '@/store/modalStore';
 
 const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
-  const { openModal } = useModal();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
