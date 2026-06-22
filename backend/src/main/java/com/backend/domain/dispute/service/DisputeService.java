@@ -56,7 +56,8 @@ public class DisputeService {
         }
 
         if (project.getStatus() != ProjectStatus.WORKING
-                && project.getStatus() != ProjectStatus.COMPLETION_PENDING) {
+                && project.getStatus() != ProjectStatus.COMPLETION_PENDING
+                && project.getStatus() != ProjectStatus.CANCELLATION_PENDING) {
             throw new IllegalArgumentException("진행 중인 프로젝트에서만 분쟁을 신고할 수 있습니다.");
         }
 
@@ -121,13 +122,11 @@ public class DisputeService {
             pointService.settleDispute(dispute.getProject(), finalAmount);
             dispute.getProject().completeByDispute();
 
-            // 커밋 후 브로드캐스트 (커밋 실패 시 잘못된 상태 전송 방지)
             Project project = dispute.getProject();
-            String actorId = userId;
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    broadcastProjectUpdate(project, actorId);
+                    broadcastProjectUpdate(project, userId);
                 }
             });
         }
@@ -139,6 +138,13 @@ public class DisputeService {
     public DisputeResponse reject(String userId, String disputeId) {
         Dispute dispute = findAndValidateParticipant(disputeId, userId);
         dispute.reject(userId);
+        Project project = dispute.getProject();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                projectNotificationService.notify(project, userId, ProjectNotificationType.PROJECT_DISPUTE_REJECTED);
+            }
+        });
         return DisputeResponse.from(dispute);
     }
 
