@@ -1,63 +1,79 @@
 package com.backend.domain.auth.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailAuthenticationException;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 public class VerificationMailService {
 
-    private final JavaMailSender mailSender;
-    private final String fromAddress;
-    private final String smtpUsername;
+    private final RestClient restClient;
+    private final String apiKey;
+    private final String senderEmail;
+    private final String senderName;
 
     public VerificationMailService(
-            JavaMailSender mailSender,
-            @Value("${app.mail.from:}") String fromAddress,
-            @Value("${spring.mail.username:}") String smtpUsername
+            RestClient.Builder restClientBuilder,
+            @Value("${brevo.api-key:}") String apiKey,
+            @Value("${brevo.sender-email:}") String senderEmail,
+            @Value("${brevo.sender-name:크크킄}") String senderName
     ) {
-        this.mailSender = mailSender;
-        this.fromAddress = fromAddress;
-        this.smtpUsername = smtpUsername;
+        this.restClient = restClientBuilder.baseUrl("https://api.brevo.com").build();
+        this.apiKey = apiKey;
+        this.senderEmail = senderEmail;
+        this.senderName = senderName;
     }
 
     public void sendSignupCode(String email, String code) {
-        if (smtpUsername == null || smtpUsername.isBlank()) {
-            throw new IllegalStateException("발신 계정이 설정되지 않았습니다. Spring 실행 환경에 SMTP_USERNAME과 SMTP_PASSWORD를 설정해주세요.");
+        if (apiKey.isBlank() || senderEmail.isBlank()) {
+            throw new IllegalStateException(
+                    "Brevo 발송 설정이 없습니다. BREVO_API_KEY와 BREVO_SENDER_EMAIL을 확인해주세요."
+            );
         }
 
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(
-                    fromAddress == null || fromAddress.isBlank() ? smtpUsername : fromAddress,
-                    "크크킄"
+            SendEmailRequest request = new SendEmailRequest(
+                    new Sender(senderEmail, senderName),
+                    List.of(new Recipient(email)),
+                    "[크크킄] 회원가입 이메일 인증",
+                    createSignupVerificationHtml(code)
             );
-            helper.setTo(email);
-            helper.setSubject("[크크킄] 회원가입 이메일 인증");
-            helper.setText(createSignupVerificationHtml(code), true);
-            helper.addInline(
-                    "brandVideoLogo",
-                    new ClassPathResource("mail/video-logo.png"),
-                    "image/png"
+
+            restClient.post()
+                    .uri("/v3/smtp/email")
+                    .header("api-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException exception) {
+            throw new IllegalStateException(
+                    "Brevo 이메일 발송에 실패했습니다. 발신자 인증과 API Key를 확인해주세요."
             );
-            mailSender.send(message);
-        } catch (MailAuthenticationException exception) {
-            throw new IllegalStateException("메일 서버 인증에 실패했습니다. SMTP 계정과 앱 비밀번호를 확인해주세요.");
-        } catch (UnsupportedEncodingException exception) {
-            throw new IllegalStateException("메일 발신자 이름을 설정하지 못했습니다.");
-        } catch (MessagingException exception) {
-            throw new IllegalStateException("인증 메일을 생성하지 못했습니다.");
-        } catch (MailException exception) {
-            throw new IllegalStateException("인증 메일 발송에 실패했습니다. 메일 서버 설정을 확인해주세요.");
+        } catch (ResourceAccessException exception) {
+            throw new IllegalStateException("Brevo 이메일 서버에 연결하지 못했습니다.");
         }
+    }
+
+    private record SendEmailRequest(
+            Sender sender,
+            List<Recipient> to,
+            String subject,
+            String htmlContent
+    ) {
+    }
+
+    private record Sender(String email, String name) {
+    }
+
+    private record Recipient(String email) {
     }
 
     private String createSignupVerificationHtml(String code) {
@@ -84,7 +100,7 @@ public class VerificationMailService {
                               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:28px;">
                                 <tr>
                                   <td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;background:#EFF6FF;border-radius:12px;">
-                                    <img src="cid:brandVideoLogo" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border:0;">
+                                    <img src="%s" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border:0;">
                                   </td>
                                   <td style="padding-left:12px;font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR',Arial,sans-serif;font-size:26px;line-height:1;font-weight:800;color:#111827;letter-spacing:0;">
                                     크크<span style="color:#3B82F6;">킄</span>
@@ -120,6 +136,15 @@ public class VerificationMailService {
                   </table>
                 </body>
                 </html>
-                """.formatted(code);
+                """.formatted(createLogoDataUrl(), code);
+    }
+
+    private String createLogoDataUrl() {
+        try {
+            byte[] logo = new ClassPathResource("mail/video-logo.png").getContentAsByteArray();
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(logo);
+        } catch (IOException exception) {
+            return "";
+        }
     }
 }
