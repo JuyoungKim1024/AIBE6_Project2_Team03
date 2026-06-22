@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { mergeAttributes } from "@tiptap/core";
-import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import { mergeAttributes, Node } from "@tiptap/core";
+import { useEditor, EditorContent, Editor, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Color } from "@tiptap/extension-color";
@@ -15,7 +15,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { useModal } from "@/store/modalStore";
 import {
   Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter,
-  AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2,
+  AlignRight, Link as LinkIcon, Image as ImageIcon, ChevronDown, Loader2, FileIcon, CheckCircle2,
 } from "lucide-react";
 
 const ResizableImageWithAlign = ResizableImage.extend({
@@ -35,6 +35,138 @@ const ResizableImageWithAlign = ResizableImage.extend({
       "img",
       mergeAttributes(HTMLAttributes, { "data-align": node.attrs.dataAlign ?? "left" }),
     ];
+  },
+});
+
+function LinkCardView({ node, deleteNode }: { node: { attrs: { url: string; title: string | null; description: string | null; image: string | null; hostname: string | null } }; deleteNode: () => void }) {
+  const { url, title, description, image, hostname } = node.attrs;
+  return (
+    <NodeViewWrapper>
+      <div className="relative inline-flex my-1.5 group/card max-w-sm">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          contentEditable={false}
+          className="flex items-stretch border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors no-underline w-full"
+        >
+          {image && (
+            <div className="w-20 flex-shrink-0 bg-surface-elevated overflow-hidden">
+              <img src={image} alt={title ?? ""} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <div className="px-3 py-2 flex flex-col justify-center min-w-0">
+            {title && <div className="font-bold text-text-primary text-xs mb-0.5 line-clamp-1">{title}</div>}
+            {description && <div className="text-xs text-text-muted mb-0.5 line-clamp-1">{description}</div>}
+            <div className="text-xs text-primary">{hostname ?? url}</div>
+          </div>
+        </a>
+        <button
+          type="button"
+          contentEditable={false}
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteNode(); }}
+          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-surface-elevated border border-border text-text-muted hover:text-text-primary hover:bg-surface hover:border-accent flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity z-10"
+        >
+          <span className="text-[9px] leading-none">✕</span>
+        </button>
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+const LinkCard = Node.create({
+  name: "linkCard",
+  group: "block",
+  atom: true,
+  addAttributes() {
+    return {
+      url: { default: null },
+      title: { default: null },
+      description: { default: null },
+      image: { default: null },
+      hostname: { default: null },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "a[data-link-card]" }];
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  renderHTML({ HTMLAttributes }): any {
+    const { url, title, description, image, hostname } = HTMLAttributes;
+    return [
+      "a",
+      { "data-link-card": "", href: url ?? "#", target: "_blank", rel: "noopener noreferrer" },
+      ...(image ? [["img", { src: image, alt: title ?? "" }]] : []),
+      ["div", { class: "lc-body" },
+        ...(title ? [["div", { class: "lc-title" }, title]] : []),
+        ...(description ? [["div", { class: "lc-desc" }, description]] : []),
+        ["div", { class: "lc-host" }, hostname ?? url ?? ""],
+      ],
+    ];
+  },
+  addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ReactNodeViewRenderer(LinkCardView as any);
+  },
+});
+
+function FileCardView({ node, deleteNode }: { node: { attrs: { url: string; name: string } }; deleteNode: () => void }) {
+  const { url, name } = node.attrs;
+  return (
+    <NodeViewWrapper>
+      <div className="relative inline-flex my-1.5 group/fcard max-w-sm w-full">
+        <a
+          href={url}
+          download={name}
+          target="_blank"
+          rel="noopener noreferrer"
+          contentEditable={false}
+          className="flex items-center gap-3 border border-border rounded-lg px-4 py-3 hover:border-primary/50 transition-colors no-underline w-full bg-surface"
+        >
+          <FileIcon size={18} className="text-text-muted flex-shrink-0" />
+          <span className="text-sm text-text-primary font-medium flex-1 truncate">{name}</span>
+          <CheckCircle2 size={16} className="text-primary flex-shrink-0" />
+        </a>
+        <button
+          type="button"
+          contentEditable={false}
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); deleteNode(); }}
+          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-surface-elevated border border-border text-text-muted hover:text-text-primary hover:border-accent flex items-center justify-center opacity-0 group-hover/fcard:opacity-100 transition-opacity z-10"
+        >
+          <span className="text-[9px] leading-none">✕</span>
+        </button>
+      </div>
+    </NodeViewWrapper>
+  );
+}
+
+const FileCard = Node.create({
+  name: "fileCard",
+  group: "block",
+  atom: true,
+  addAttributes() {
+    return {
+      url: { default: null },
+      name: { default: "파일" },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "a[data-file-card]" }];
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  renderHTML({ HTMLAttributes }): any {
+    const { url, name } = HTMLAttributes;
+    return [
+      "a",
+      { "data-file-card": "", href: url ?? "#", download: name, target: "_blank", rel: "noopener noreferrer" },
+      ["span", { class: "fc-icon" }, "📄"],
+      ["span", { class: "fc-name" }, name ?? "파일"],
+      ["span", { class: "fc-check" }, "✓"],
+    ];
+  },
+  addNodeView() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ReactNodeViewRenderer(FileCardView as any);
   },
 });
 
@@ -77,6 +209,10 @@ function Toolbar({
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileKey, setFileKey] = useState(0);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkFetching, setLinkFetching] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const setHeading = (level: 0 | 1 | 2 | 3) => {
@@ -92,22 +228,58 @@ function Toolbar({
   };
 
   const insertLink = () => {
-    const url = window.prompt("링크 URL을 입력하세요");
-    if (!url) return;
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url, target: "_blank" }).run();
+    const existing = editor.getAttributes("link").href ?? "";
+    setLinkUrl(existing);
+    setLinkOpen((v) => !v);
+    setShowColors(false);
+    setShowBlockMenu(false);
   };
 
-  const insertImageUrl = () => {
-    const url = window.prompt("이미지 URL을 입력하세요");
-    if (url) editor.chain().focus().setImage({ src: url }).createParagraphNear().run();
+  const confirmLink = async () => {
+    const url = linkUrl.trim();
+    if (!url) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      setLinkOpen(false);
+      setLinkUrl("");
+      return;
+    }
+    const { from, to } = editor.state.selection;
+    const hasSelection = from !== to;
+    if (hasSelection) {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: url, target: "_blank" }).run();
+      setLinkOpen(false);
+      setLinkUrl("");
+      return;
+    }
+    // 선택 없으면 OG 카드 삽입
+    setLinkFetching(true);
+    try {
+      const res = await fetch(`/api/og?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      editor.chain().focus().insertContent({
+        type: "linkCard",
+        attrs: { url: data.url, title: data.title, description: data.description, image: data.image, hostname: data.hostname },
+      }).run();
+    } catch {
+      // OG fetch 실패 시 일반 링크 텍스트 삽입
+      editor.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run();
+    } finally {
+      setLinkFetching(false);
+    }
+    setLinkOpen(false);
+    setLinkUrl("");
   };
 
   const setAlignment = (align: "left" | "center" | "right") => {
     const imagePos = selectedImagePosRef.current;
     if (imagePos !== null) {
+      const marginMap = { left: "0 auto 0 0", center: "0 auto", right: "0 0 0 auto" };
+      const node = editor.state.doc.nodeAt(imagePos);
+      const base = (node?.attrs.containerStyle ?? "").replace(/margin:\s*[^;]+(;|$)/g, "").trim();
+      const newContainerStyle = `${base}${base ? "; " : ""}margin: ${marginMap[align]};`;
       editor.chain()
         .setNodeSelection(imagePos)
-        .updateAttributes("image", { dataAlign: align })
+        .updateAttributes("imageResize", { dataAlign: align, containerStyle: newContainerStyle })
         .run();
       setSelectedImageAlign(align);
       return;
@@ -122,25 +294,49 @@ function Toolbar({
     return editor.isActive({ textAlign: align });
   };
 
+  const uploadFile = async (file: File): Promise<string> => {
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_BASE_URL}/api/files/upload`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) throw new Error("upload failed");
+    const data = await res.json();
+    return data.url;
+  };
+
   const insertImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileKey((k) => k + 1);
     setUploading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${API_BASE_URL}/api/files/upload`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-      if (!res.ok) throw new Error("upload failed");
-      const data = await res.json();
-      editor.chain().focus("end").setImage({ src: data.url }).createParagraphNear().run();
+      const url = await uploadFile(file);
+      editor.chain().focus("end").setImage({ src: url }).createParagraphNear().run();
     } catch {
       openModal({ title: "업로드 실패", message: "이미지 업로드에 실패했습니다." });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const insertAnyFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileKey((k) => k + 1);
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      if (file.type.startsWith("image/")) {
+        editor.chain().focus("end").setImage({ src: url }).createParagraphNear().run();
+      } else {
+        editor.chain().focus().insertContent({ type: "fileCard", attrs: { url, name: file.name } }).run();
+      }
+    } catch {
+      alert("파일 업로드에 실패했습니다.");
     } finally {
       setUploading(false);
     }
@@ -248,13 +444,37 @@ function Toolbar({
       <div className="w-px h-5 bg-border mx-1" />
 
       {/* 링크 */}
-      <ToolbarButton onClick={insertLink} active={editor.isActive("link")} title="링크">
-        <LinkIcon size={15} />
-      </ToolbarButton>
+      <div className="relative">
+        <ToolbarButton onClick={insertLink} active={editor.isActive("link")} title="링크">
+          <LinkIcon size={15} />
+        </ToolbarButton>
+        {linkOpen && (
+          <div className="absolute top-full left-0 mt-1 bg-surface border border-border rounded-lg shadow-lg z-20 p-2 flex items-center gap-1.5 w-64">
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirmLink(); } if (e.key === "Escape") { setLinkOpen(false); } }}
+              placeholder="https://"
+              autoFocus
+              className="flex-1 bg-surface-elevated border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={confirmLink}
+              disabled={linkFetching}
+              className="text-xs px-2 py-1 bg-primary text-white rounded hover:bg-primary/90 transition-colors whitespace-nowrap disabled:opacity-50 flex items-center gap-1"
+            >
+              {linkFetching ? <Loader2 size={11} className="animate-spin" /> : "확인"}
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* 이미지 */}
+      {/* 이미지 + 파일 */}
       <div className="flex items-center gap-0.5">
-        <ToolbarButton onClick={insertImageUrl} title="이미지 URL">
+        <ToolbarButton onClick={() => imageFileRef.current?.click()} title="이미지 첨부" active={false}>
           <ImageIcon size={15} />
         </ToolbarButton>
         <button
@@ -262,12 +482,13 @@ function Toolbar({
           disabled={uploading}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => fileRef.current?.click()}
-          title="이미지 파일"
+          title="파일 첨부"
           className="text-xs px-1.5 py-1 rounded text-text-muted hover:bg-surface-elevated hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
         >
           {uploading ? <Loader2 size={12} className="animate-spin" /> : "파일"}
         </button>
-        <input key={fileKey} ref={fileRef} type="file" accept="image/*" className="hidden" onChange={insertImageFile} />
+        <input key={`img-${fileKey}`} ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={insertImageFile} />
+        <input key={`file-${fileKey}`} ref={fileRef} type="file" className="hidden" onChange={insertAnyFile} />
       </div>
     </div>
   );
@@ -298,6 +519,8 @@ export function RichTextEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: false }),
       ResizableImageWithAlign,
+      LinkCard,
+      FileCard,
       Placeholder.configure({ placeholder }),
     ],
     content: value,
@@ -321,7 +544,7 @@ export function RichTextEditor({
       if (target.tagName === "IMG") {
         let foundPos: number | null = null;
         editor.state.doc.descendants((node, pos) => {
-          if (node.type.name === "image" && foundPos === null) {
+          if (node.type.name === "imageResize" && foundPos === null) {
             const nodeDom = editor.view.nodeDOM(pos);
             if (nodeDom instanceof Element && nodeDom.contains(target)) {
               foundPos = pos;
