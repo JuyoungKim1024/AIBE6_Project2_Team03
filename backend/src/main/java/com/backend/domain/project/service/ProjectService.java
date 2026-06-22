@@ -7,6 +7,7 @@ import com.backend.domain.chat.repository.ChatRoomRepository;
 import com.backend.domain.dispute.entity.DisputeStatus;
 import com.backend.domain.dispute.repository.DisputeRepository;
 import com.backend.domain.point.service.PointService;
+import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.project.dto.ProjectCreateRequestDTO;
 import com.backend.domain.project.dto.ProjectResponseDTO;
 import com.backend.domain.project.dto.ProjectUpdateRequestDTO;
@@ -17,6 +18,7 @@ import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.notification.entity.ProjectNotificationType;
 import com.backend.domain.notification.service.ProjectNotificationService;
 import com.backend.domain.user.entity.User;
+import com.backend.domain.user.entity.UserRole;
 import com.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -39,11 +41,12 @@ public class ProjectService {
     private final PointService pointService;
     private final DisputeRepository disputeRepository;
     private final ProjectNotificationService projectNotificationService;
+    private final ReviewRepository reviewRepository;
 
     private ProjectResponseDTO publishProject(Project project) {
         // 트랜잭션 커밋 전에 WebSocket을 보내면 프론트엔드가 구버전 데이터를 읽는 race condition 발생
         // → snapshot을 미리 만들고 커밋 후에 전송
-        ProjectResponseDTO response = ProjectResponseDTO.from(project);
+        ProjectResponseDTO response = toResponse(project);
         String roomId = project.getRoom().getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
@@ -55,6 +58,10 @@ public class ProjectService {
             }
         });
         return response;
+    }
+
+    private ProjectResponseDTO toResponse(Project project) {
+        return ProjectResponseDTO.from(project, reviewRepository.existsByProject_Id(project.getId()));
     }
 
     private ProjectResponseDTO publishProjectChange(
@@ -95,7 +102,7 @@ public class ProjectService {
         ChatRoom room = chatRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
 
-        User requester = userRepository.findById(userId)
+        User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         if(!chatParticipantRepository.existsByChatRoom_IdAndUser_Id(room.getId(), userId)) {
@@ -116,21 +123,24 @@ public class ProjectService {
             throw new IllegalArgumentException("이미 진행 중인 프로젝트가 있습니다.");
         }
 
-        User editor = chatParticipantRepository.findByChatRoom_Id(room.getId())
+        User partner = chatParticipantRepository.findByChatRoom_Id(room.getId())
                 .stream()
                 .map(ChatParticipant::getUser)
                 .filter(user -> !user.getId().equals(userId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("상대 사용자를 찾을 수 없습니다."));
 
-        if (requester.getRole() != null && requester.getRole() == editor.getRole()) {
+        if (currentUser.getRole() == null || partner.getRole() == null || currentUser.getRole() == partner.getRole()) {
             throw new IllegalArgumentException("같은 역할의 사용자끼리는 프로젝트를 생성할 수 없습니다.");
         }
+        User creator = currentUser.getRole() == UserRole.YOUTUBER ? currentUser : partner;
+        User editor = currentUser.getRole() == UserRole.EDITOR ? currentUser : partner;
 
         Project project = new Project (
                 room,
-                requester,
+                creator,
                 editor,
+                currentUser,
                 request.field(),
                 request.price(),
                 request.workAmount(),
@@ -163,7 +173,7 @@ public class ProjectService {
                         ProjectStatus.REJECTED
                 )
         );
-        return Optional.ofNullable(project).map(ProjectResponseDTO::from);
+        return Optional.ofNullable(project).map(this::toResponse);
     }
 
     @Transactional
@@ -171,7 +181,7 @@ public class ProjectService {
         validateRequiredFields(request.field(), request.price(), request.workAmount(), request.workUnit(), request.revisionCount(), request.revisionUnlimited(), request.deadline());
 
         Project project = getProject(projectId);
-        validateRequester(project, userId);
+        validateProposer(project, userId);
         if (isClosed(project)) {
             throw new IllegalArgumentException("이미 종료된 프로젝트입니다.");
         }
@@ -192,7 +202,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponseDTO startProject(String userId, String projectId) {
         Project project = getProject(projectId);
-        validateEditor(project, userId);
+        validateProposalRecipient(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         // 안전결제 보관 먼저: 포인트 부족이면 여기서 실패해야 status가 오염되지 않음
         pointService.holdSafePaymentForProject(project);
@@ -203,7 +213,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponseDTO rejectProject(String userId, String projectId) {
         Project project = getProject(projectId);
-        validateEditor(project, userId);
+        validateProposalRecipient(project, userId);
         validateStatus(project, ProjectStatus.WAITING);
         project.reject();
         return publishProjectChange(project, userId, ProjectNotificationType.PROJECT_REJECTED);
@@ -276,15 +286,15 @@ public class ProjectService {
         }
     }
 
-    private void validateEditor(Project project, String userId) {
-        if (!project.getEditor().getId().equals(userId)) {
+    private void validateProposalRecipient(Project project, String userId) {
+        if (project.getProposedBy().getId().equals(userId)) {
             throw new IllegalArgumentException("상대방만 수락 또는 거절할 수 있습니다.");
         }
         validateParticipant(project, userId);
     }
 
-    private void validateRequester(Project project, String userId) {
-        if (!project.getRequester().getId().equals(userId)) {
+    private void validateProposer(Project project, String userId) {
+        if (!project.getProposedBy().getId().equals(userId)) {
             throw new IllegalArgumentException("프로젝트 생성자만 수정할 수 있습니다.");
         }
         validateParticipant(project, userId);

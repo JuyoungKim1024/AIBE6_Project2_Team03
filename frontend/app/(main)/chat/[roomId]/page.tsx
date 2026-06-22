@@ -299,8 +299,9 @@ export default function ChatRoomPage() {
 
         {!isSameRoleDirectMessage && (
           <ChatProjectPanel
-            roomId={roomId}
-            userId={user?.id ?? null}
+          roomId={roomId}
+          userId={user?.id ?? null}
+          userRole={user?.role ?? null}
             project={currentProject}
             post={roomSummary?.post ?? null}
             onProjectChange={setCurrentProject}
@@ -333,7 +334,7 @@ export default function ChatRoomPage() {
                     : projectMessage;
                   return (
                     <div key={message.messageId} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <ProjectMessageCard project={displayProject} />
+                      <ProjectMessageCard project={displayProject} canReview={user?.role === 'YOUTUBER'} />
                     </div>
                   );
                 }

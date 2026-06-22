@@ -20,7 +20,6 @@ import com.backend.domain.profile.repository.PortfolioRepository;
 import com.backend.domain.profile.repository.ReviewRepository;
 import com.backend.domain.profile.repository.UserTagRepository;
 import com.backend.domain.project.entity.Project;
-import com.backend.domain.project.entity.ProjectStatus;
 import com.backend.domain.project.repository.ProjectRepository;
 import com.backend.domain.profile.dto.*;
 import com.backend.domain.profile.entity.*;
@@ -97,7 +96,7 @@ public class PublicProfileService {
                 user.getRole() == null ? null : user.getRole().name(),
                 getTagNames(userId, UserTagType.FIELD),
                 getTagNames(userId, UserTagType.TOOL),
-                projectRepository.countByEditor_IdAndStatus(userId, ProjectStatus.COMPLETED),
+                projectRepository.countCompletedByParticipant(userId),
                 reviewRepository.countByTargetUser_Id(userId),
                 getPortfolioGroups(userId),
                 getPortfolios(userId),

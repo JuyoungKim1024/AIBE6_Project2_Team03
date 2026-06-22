@@ -11,6 +11,7 @@ public record ProjectResponseDTO(
         String roomId,
         String requesterId,
         String editorId,
+        String proposedById,
         String field,
         Integer price,
         Integer workAmount,
@@ -21,15 +22,21 @@ public record ProjectResponseDTO(
         String memo,
         ProjectStatus status,
         String completionRequestedBy,
-        String cancellationRequestedBy
+        String cancellationRequestedBy,
+        boolean reviewSubmitted
 
 ) {
     public static ProjectResponseDTO from(Project project) {
+        return from(project, false);
+    }
+
+    public static ProjectResponseDTO from(Project project, boolean reviewSubmitted) {
         return new ProjectResponseDTO(
                 project.getId(),
                 project.getRoom().getId(),
                 project.getRequester().getId(),
                 project.getEditor().getId(),
+                project.getProposedBy().getId(),
                 project.getField(),
                 project.getPrice(),
                 project.getWorkAmount(),
@@ -40,7 +47,8 @@ public record ProjectResponseDTO(
                 project.getMemo(),
                 project.getStatus(),
                 project.getCompletionRequestedBy(),
-                project.getCancellationRequestedBy()
+                project.getCancellationRequestedBy(),
+                reviewSubmitted
         );
     }
 

@@ -13,4 +13,6 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Double avgRatingByUserId(@Param("userId") String userId);
 
     long countByTargetUser_Id(String userId);
+
+    boolean existsByProject_Id(String projectId);
 }
