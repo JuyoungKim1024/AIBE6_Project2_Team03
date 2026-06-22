@@ -63,7 +63,14 @@ public class ProjectService {
             ProjectNotificationType notificationType
     ) {
         ProjectResponseDTO response = publishProject(project);
-        projectNotificationService.notify(project, changedByUserId, notificationType);
+        // notify()도 afterCommit에서 실행해야 WebSocket이 DB 커밋 이후에 전송된다.
+        // (publishProject와 동일한 이유: 커밋 전 발송 시 프론트 polling이 구버전 데이터를 읽는 race condition)
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                projectNotificationService.notify(project, changedByUserId, notificationType);
+            }
+        });
         return response;
     }
 
