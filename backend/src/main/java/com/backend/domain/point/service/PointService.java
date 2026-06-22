@@ -132,6 +132,7 @@ public class PointService {
         User performer = getPerformer(project);
         int amount = project.getPrice();
         creator.releaseSafePayment(amount, performer);
+        project.clearSafePaymentHeld();
         transactionRepository.save(new PointTransaction(
                 performer, amount, PointTransactionType.SAFE_PAYMENT_RELEASE,
                 creator.getNickname() + "님 프로젝트 완료 수령",
@@ -155,6 +156,7 @@ public class PointService {
         int refundAmount = Math.min(amount, creator.getSafePaymentPoint());
         if (refundAmount <= 0) return;
         creator.refundSafePayment(refundAmount);
+        project.clearSafePaymentHeld();
         transactionRepository.save(new PointTransaction(
                 creator, refundAmount, PointTransactionType.SAFE_PAYMENT_REFUND,
                 performer.getNickname() + "님과의 프로젝트 취소 환불",
@@ -195,6 +197,7 @@ public class PointService {
                     "분쟁 조정 환불 (" + performer.getNickname() + "님)", null
             ));
         }
+        project.clearSafePaymentHeld();
     }
 
     // 역할 기반으로 크리에이터(YOUTUBER) 반환 - 카드 생성자와 무관하게 항상 포인트 내는 쪽
