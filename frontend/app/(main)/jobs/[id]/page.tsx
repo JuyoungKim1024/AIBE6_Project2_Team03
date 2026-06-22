@@ -388,7 +388,7 @@ export default function JobDetailPage() {
             <div className="inline-flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl px-5 py-3">
               <span className="font-mono text-2xl font-bold text-primary">
                 {priceText}
-                <span className="text-base font-sans text-primary/70">/분</span>
+                <span className="text-base font-sans text-primary/70">{post.priceUnit === "PER_PROJECT" ? "/건" : "/분"}</span>
               </span>
               {post.fieldTags.length > 0 && (
                 <>

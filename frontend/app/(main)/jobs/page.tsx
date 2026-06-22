@@ -292,6 +292,7 @@ function JobsContent() {
                   minPrice={job.minPrice ?? undefined}
                   maxPrice={job.maxPrice ?? undefined}
                   priceHidden={!job.priceVisible}
+                  priceUnit={job.priceUnit}
                   likes={job.likeCount}
                   comments={job.commentCount}
                   views={job.viewCount}

@@ -23,6 +23,7 @@ export interface PostCardProps {
   minPrice?: number;
   maxPrice?: number;
   priceHidden?: boolean;
+  priceUnit?: "PER_MINUTE" | "PER_PROJECT";
   likes: number;
   comments: number;
   views: number;
@@ -62,6 +63,7 @@ export function PostCard({
   minPrice,
   maxPrice,
   priceHidden,
+  priceUnit,
   likes: initialLikes,
   comments,
   views,
@@ -139,6 +141,7 @@ export function PostCard({
             maxPrice={maxPrice}
             hidden={priceHidden}
             display="list"
+            unit={priceUnit === "PER_PROJECT" ? "건" : "분"}
             variant={
               !priceHidden
                 ? type === "hiring"

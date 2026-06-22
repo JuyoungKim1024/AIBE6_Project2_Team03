@@ -38,6 +38,7 @@ function JobsWriteContent() {
   const [minPrice, setMinPrice] = useState(10000);
   const [maxPrice, setMaxPrice] = useState(20000);
   const [priceHidden, setPriceHidden] = useState(false);
+  const [priceUnit, setPriceUnit] = useState<"PER_MINUTE" | "PER_PROJECT">("PER_MINUTE");
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string[]>([]);
   const [selectedVideoTools, setSelectedVideoTools] = useState<string[]>([]);
@@ -113,6 +114,7 @@ function JobsWriteContent() {
           const fetchedMinPrice = post.minPrice ?? 10000;
           const fetchedMaxPrice = post.maxPrice ?? 20000;
           const fetchedPriceHidden = !post.priceVisible;
+          if (post.priceUnit) setPriceUnit(post.priceUnit);
           const fetchedCategory = post.fieldTags.filter((t) => categoryTags.includes(t));
           const fetchedSubCategory = post.fieldTags.filter((t) => subCategoryTags.includes(t));
           const fetchedVideoTools = post.toolTags.filter((t) => videoToolTags.includes(t));
@@ -246,6 +248,7 @@ function JobsWriteContent() {
       minPrice: priceHidden ? null : minPrice,
       maxPrice: priceHidden ? null : maxPrice,
       priceVisible: !priceHidden,
+      priceUnit,
       fieldTags: [...selectedCategory, ...selectedSubCategory],
       toolTags,
       revisionCount: unlimitedRevision ? null : revisionCount,
@@ -412,9 +415,23 @@ function JobsWriteContent() {
           {/* 단가 */}
           <div ref={priceSectionRef} className="bg-surface border border-border rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-text-primary">
-                희망 단가 (분당) <span className="text-accent">*</span>
-              </label>
+              <div className="flex items-center gap-3">
+                <label className="block text-sm font-bold text-text-primary">
+                  희망 단가 <span className="text-accent">*</span>
+                </label>
+                <div className="flex bg-surface-elevated p-0.5 rounded-lg border border-border">
+                  {([{ value: "PER_MINUTE", label: "분당" }, { value: "PER_PROJECT", label: "건당" }] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPriceUnit(opt.value)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${priceUnit === opt.value ? "bg-primary/10 text-primary" : "text-text-secondary hover:text-text-primary"}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => setPriceHidden(!priceHidden)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${priceHidden ? "bg-primary/10 text-primary" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}

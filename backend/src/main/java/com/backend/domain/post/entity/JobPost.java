@@ -29,6 +29,14 @@ public class JobPost extends Post {
         RECRUITING, JOB_SEARCH
     }
 
+    public enum PriceUnit {
+        PER_MINUTE, PER_PROJECT
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "price_unit", length = 20)
+    private PriceUnit priceUnit = PriceUnit.PER_MINUTE;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "post_type")
     private PostType postType;
@@ -42,20 +50,22 @@ public class JobPost extends Post {
     private List<PortfolioGroup> portfolioGroups = new ArrayList<>();
 
     public JobPost(User author, String title, String content, String thumbnailUrl,
-                   Integer minPrice, Integer maxPrice, boolean priceVisible, PostType postType) {
+                   Integer minPrice, Integer maxPrice, boolean priceVisible, PostType postType, PriceUnit priceUnit) {
         super(author, title, content, thumbnailUrl);
         this.minPrice = minPrice;
         this.maxPrice = maxPrice;
         this.priceVisible = priceVisible;
         this.postType = postType;
+        this.priceUnit = priceUnit != null ? priceUnit : PriceUnit.PER_MINUTE;
     }
 
     public void update(String title, String content, String thumbnailUrl,
-                       Integer minPrice, Integer maxPrice, boolean priceVisible, Integer revisionCount) {
+                       Integer minPrice, Integer maxPrice, boolean priceVisible, Integer revisionCount, PriceUnit priceUnit) {
         updateBase(title, content, thumbnailUrl);
         this.minPrice = minPrice;
         this.maxPrice = maxPrice;
         this.priceVisible = priceVisible;
+        this.priceUnit = priceUnit != null ? priceUnit : PriceUnit.PER_MINUTE;
         setRevisionCount(revisionCount);
     }
 }

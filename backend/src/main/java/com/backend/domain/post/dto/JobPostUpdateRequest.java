@@ -1,5 +1,6 @@
 package com.backend.domain.post.dto;
 
+import com.backend.domain.post.entity.JobPost;
 import java.util.List;
 
 public record JobPostUpdateRequest(
@@ -9,6 +10,7 @@ public record JobPostUpdateRequest(
         Integer minPrice,
         Integer maxPrice,
         boolean priceVisible,
+        JobPost.PriceUnit priceUnit,
         Integer revisionCount,
         List<String> fieldTags,
         List<String> toolTags,
