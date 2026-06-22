@@ -63,6 +63,9 @@ public class Project extends BaseEntity {
     @Column(name = "cancellation_requested_by", length = 36)
     private String cancellationRequestedBy;
 
+    @Column(name = "safe_payment_held", nullable = false)
+    private boolean safePaymentHeld = false;
+
 
 
     public Project(ChatRoom room, User requester, User editor, String field, Integer price, Integer workAmount, ProjectWorkUnit workUnit, int revisionCount, boolean revisionUnlimited, LocalDateTime deadline, String memo) {
@@ -92,6 +95,11 @@ public class Project extends BaseEntity {
 
     public void start() {
         this.status = ProjectStatus.WORKING;
+        this.safePaymentHeld = true;
+    }
+
+    public void clearSafePaymentHeld() {
+        this.safePaymentHeld = false;
     }
 
     public void requestComplete(String userId) {

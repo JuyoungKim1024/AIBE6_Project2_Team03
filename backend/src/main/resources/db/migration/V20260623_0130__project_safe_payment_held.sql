@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN safe_payment_held BOOLEAN NOT NULL DEFAULT FALSE;
