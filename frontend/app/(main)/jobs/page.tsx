@@ -31,6 +31,8 @@ function JobsContent() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [sort, setSort] = useState("latest");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -47,11 +49,13 @@ function JobsContent() {
   useEffect(() => {
     const postType = activeTab === "hiring" ? "RECRUITING" : "JOB_SEARCH";
     setLoading(true);
+    setPage(1);
     fetchJobPosts(postType)
       .then(setJobs)
       .catch((err) => console.error("fetchJobPosts error:", err))
       .finally(() => setLoading(false));
   }, [activeTab]);
+
 
   const toggleFilter = (group: string, chip: string) => {
     const key = `${group}:${chip}`;
@@ -92,6 +96,10 @@ function JobsContent() {
       if (a.priceVisible !== b.priceVisible) return a.priceVisible ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedJobs = filteredJobs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="min-h-screen">
@@ -248,7 +256,7 @@ function JobsContent() {
               게시물이 없습니다.
             </p>
           ) : (
-            filteredJobs.map((job, i) => (
+            pagedJobs.map((job, i) => (
               <motion.div
                 key={job.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -277,6 +285,33 @@ function JobsContent() {
               </motion.div>
             ))
           )}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-1 mt-8">
+            <button
+              onClick={() => { setPage(1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              disabled={safePage === 1}
+              className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ←
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${p === safePage ? "bg-primary text-white" : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"}`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => { setPage(totalPages); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              disabled={safePage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              →
+            </button>
+          </div>
+        )}
         </div>
       </div>
     </div>
