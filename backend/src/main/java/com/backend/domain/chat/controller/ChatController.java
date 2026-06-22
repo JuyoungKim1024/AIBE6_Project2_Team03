@@ -30,7 +30,10 @@ public class ChatController {
     private final ChatAttachmentService chatAttachmentService;
 
     @GetMapping
-    public List<ChatRoomResponseDTO> findRoomsByUserId (@RequestParam String userId) {
+    public List<ChatRoomResponseDTO> findMyRooms(
+            @RequestHeader("Authorization") String authorization
+    ) {
+        String userId = authService.resolveUserId(authorization);
         return chatService.findRoomsByUserId(userId);
     }
 
@@ -40,7 +43,11 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}")
-    public ChatRoomResponseDTO findByChatRoom(@PathVariable String roomId) {
+    public ChatRoomResponseDTO findByChatRoom(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String roomId
+    ) {
+        authService.resolveUserId(authorization);
         return chatService.findByChatRoomId(roomId);
     }
 
@@ -54,7 +61,11 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}/messages")
-    public List<ChatMessageResponseDTO> findByChatRoomMessage(@PathVariable String roomId) {
+    public List<ChatMessageResponseDTO> findByChatRoomMessage(
+            @RequestHeader("Authorization") String authorization,
+            @PathVariable String roomId
+    ) {
+        authService.resolveUserId(authorization);
         return chatService.getMessageList(roomId);
     }
 
