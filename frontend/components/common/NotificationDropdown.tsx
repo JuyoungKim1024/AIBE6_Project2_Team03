@@ -20,7 +20,10 @@ export function NotificationDropdown({ userId }: { userId: string }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  const hasUnread = notifications.some((n) => n.status === 'PENDING');
+  const hasUnread = notifications.some((n) =>
+    n.status === 'PENDING' ||
+    (n.type === 'DISPUTE_FILED' && ['AI_PENDING', 'AI_JUDGED', 'AI_FAILED'].includes(n.status))
+  );
 
   const fetchNotifications = async () => {
     const accessToken = getAccessToken();

@@ -44,6 +44,7 @@ export function ChatFAB() {
   const pathname = usePathname();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const prevProjectStatusRef = useRef<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);

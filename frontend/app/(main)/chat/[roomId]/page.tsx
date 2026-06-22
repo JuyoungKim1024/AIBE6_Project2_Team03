@@ -225,7 +225,7 @@ export default function ChatRoomPage() {
           onClose={() => {
             setActiveDisputeId(null);
             fetchJson<ProjectMessagePayload>(`/api/projects/rooms/${roomId}`)
-              .then(setCurrentProject)
+              .then((project) => { if (project !== null) setCurrentProject(project); })
               .catch(() => {});
           }}
         />
