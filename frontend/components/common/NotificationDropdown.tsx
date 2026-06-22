@@ -5,7 +5,7 @@ import { API_BASE_URL } from '@/lib/api';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Bell, Check, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Bell, Check, X } from 'lucide-react';
 import type { ChatRequestNotification, Notification } from '@/types/notification';
 import { createStompFrame, getWebSocketUrl } from '@/hooks/useChatSocket';
 import { useModal } from '@/store/modalStore';
@@ -14,7 +14,7 @@ const POLL_INTERVAL_MS = 5_000;
 
 export function NotificationDropdown({ userId }: { userId: string }) {
   const router = useRouter();
-  const { openModal, confirmModal } = useModal();
+  const { openModal } = useModal();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -121,31 +121,23 @@ export function NotificationDropdown({ userId }: { userId: string }) {
 
   const handleDelete = async (notification: Notification) => {
     if (deletingId) return;
-    const confirmed = await confirmModal({
-      title: '알림 삭제',
-      message: '이 알림을 삭제하시겠습니까?',
-      confirmLabel: '삭제',
-    });
-    if (!confirmed) return;
     const accessToken = getAccessToken();
     if (!accessToken) return;
+
+    // 즉시 목록에서 제거
+    setNotifications((current) => current.filter((item) => item.id !== notification.id));
 
     setDeletingId(notification.id);
     try {
       const path = notification.type === 'CHAT_REQUEST'
         ? `/api/chat/requests/${notification.id}`
         : `/api/notifications/${notification.id}`;
-      const response = await fetch(`${API_BASE_URL}${path}`, {
+      await fetch(`${API_BASE_URL}${path}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!response.ok) throw new Error('알림을 삭제하지 못했습니다.');
-      setNotifications((current) => current.filter((item) => item.id !== notification.id));
     } catch {
-      openModal({
-        title: '알림 삭제 실패',
-        message: '알림을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      });
+      // 백엔드 삭제 실패해도 UI는 이미 제거됨
     } finally {
       setDeletingId(null);
     }
@@ -405,11 +397,11 @@ function NotificationItem({ notification, onAccept, onReject, onOpenProject, onD
           type="button"
           onClick={() => onDelete(notification)}
           disabled={isDeleting}
-          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="알림 삭제"
-          title="알림 삭제"
+          className="flex-shrink-0 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="알림 닫기"
+          title="알림 닫기"
         >
-          <Trash2 size={14} />
+          <X size={14} />
         </button>
       </div>
     </div>
