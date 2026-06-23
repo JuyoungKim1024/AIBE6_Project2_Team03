@@ -265,7 +265,7 @@ export default function MatchingPage() {
                     <div key={editor.id} className="min-w-[280px] sm:min-w-[320px] flex-1 snap-center">
                       <MatchingCard
                         id={editor.id}
-                        thumbnails={editor.thumbnails}
+                        portfolios={editor.portfolios}
                         categories={editor.categories}
                         tools={editor.tools}
                         videoLengths={editor.videoLengths}
