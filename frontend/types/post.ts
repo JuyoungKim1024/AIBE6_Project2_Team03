@@ -47,7 +47,8 @@ export interface AttachedPortfolioGroup {
 export interface CompletedDeal {
   createdAt: string | null;
   field: string | null;
-  videoLength: number | null;
+  workAmount: number | null;
+  workUnit: 'MINUTE' | 'CASE' | null;
   price: number | null;
 }
 
