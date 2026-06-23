@@ -507,18 +507,21 @@ export default function JobDetailPage() {
               ) : (
                 <>
                   <div className="divide-y divide-border">
-                    {preview.map((tx: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between py-3.5">
-                        <div className="flex items-center gap-6 text-sm">
-                          <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
-                          <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
-                          <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                    {preview.map((tx, i) => {
+                      const unit = tx.workUnit === 'CASE' ? '건' : '분';
+                      return (
+                        <div key={i} className="flex items-center justify-between py-3.5">
+                          <div className="flex items-center gap-6 text-sm">
+                            <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                            <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                            <span className="text-text-secondary">{tx.workAmount != null ? `${tx.workAmount}${unit}` : "-"}</span>
+                          </div>
+                          <span className="font-mono font-bold text-text-primary">
+                            {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/{unit}</span></> : "-"}
+                          </span>
                         </div>
-                        <span className="font-mono font-bold text-text-primary">
-                          {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {hasMore && (
                     <button
@@ -874,18 +877,21 @@ export default function JobDetailPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto divide-y divide-border px-5">
-                {(post.completedDeals ?? []).map((tx, i) => (
-                  <div key={i} className="flex items-center justify-between py-3.5">
-                    <div className="flex items-center gap-6 text-sm">
-                      <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
-                      <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
-                      <span className="text-text-secondary">{tx.videoLength != null ? `${tx.videoLength}분` : "-"}</span>
+                {(post.completedDeals ?? []).map((tx, i) => {
+                  const unit = tx.workUnit === 'CASE' ? '건' : '분';
+                  return (
+                    <div key={i} className="flex items-center justify-between py-3.5">
+                      <div className="flex items-center gap-6 text-sm">
+                        <span className="text-text-muted font-mono w-16 flex-shrink-0">{tx.createdAt ? tx.createdAt.slice(0, 7).replace("-", ".") : "-"}</span>
+                        <span className="font-bold text-text-primary">{tx.field ?? "-"}</span>
+                        <span className="text-text-secondary">{tx.workAmount != null ? `${tx.workAmount}${unit}` : "-"}</span>
+                      </div>
+                      <span className="font-mono font-bold text-text-primary">
+                        {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/{unit}</span></> : "-"}
+                      </span>
                     </div>
-                    <span className="font-mono font-bold text-text-primary">
-                      {tx.price != null ? <>₩{tx.price.toLocaleString("ko-KR")}<span className="text-text-muted font-normal text-xs">/분</span></> : "-"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           </>
