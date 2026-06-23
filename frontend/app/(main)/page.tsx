@@ -280,7 +280,7 @@ export default function HomePage() {
                     >
                       <MatchingCard
                         id={editor.id}
-                        thumbnails={editor.thumbnails}
+                        portfolios={editor.portfolios}
                         categories={editor.categories}
                         tools={editor.tools}
                         videoLengths={editor.videoLengths}

@@ -6,11 +6,12 @@ import com.backend.domain.profile.entity.UserTagType;
 import com.backend.domain.user.entity.MatchPriceUnit;
 import com.backend.domain.user.entity.User;
 
+import java.util.Comparator;
 import java.util.List;
 
 public record BlindEditorResponse(
         String id,
-        List<String> thumbnails,
+        List<PortfolioPreview> portfolios,
         List<String> categories,
         List<String> tools,
         List<String> videoLengths,
@@ -18,6 +19,8 @@ public record BlindEditorResponse(
         Integer matchPriceMax,
         String matchPriceUnit
 ) {
+    public record PortfolioPreview(String url, String type) {}
+
     public static BlindEditorResponse of(User user, List<UserTag> tags, List<Portfolio> portfolios) {
         List<String> categories = tags.stream()
                 .filter(t -> t.getTagType() == UserTagType.FIELD)
@@ -34,13 +37,17 @@ public record BlindEditorResponse(
                 .map(UserTag::getTagName)
                 .toList();
 
-        boolean hasGroupedPortfolio = portfolios.stream().anyMatch(portfolio -> portfolio.getGroup() != null);
-        List<String> thumbnails = portfolios.stream()
-                .filter(portfolio -> !hasGroupedPortfolio
-                        || portfolio.getGroup() != null && portfolio.getGroup().isRepresentative())
-                .sorted(java.util.Comparator.comparingInt(Portfolio::getDisplayOrder))
-                .map(p -> p.getThumbnailUrl() != null ? p.getThumbnailUrl() : p.getImageUrl())
-                .filter(url -> url != null && !url.isBlank())
+        boolean hasGroupedPortfolio = portfolios.stream().anyMatch(p -> p.getGroup() != null);
+        List<PortfolioPreview> previews = portfolios.stream()
+                .filter(p -> !hasGroupedPortfolio || (p.getGroup() != null && p.getGroup().isRepresentative()))
+                .sorted(Comparator.comparingInt(Portfolio::getDisplayOrder))
+                .map(p -> {
+                    boolean isImage = p.getImageUrl() != null && p.getThumbnailUrl() == null;
+                    String url = isImage ? p.getImageUrl() : p.getThumbnailUrl();
+                    String type = isImage ? "image" : "video";
+                    return new PortfolioPreview(url, type);
+                })
+                .filter(preview -> preview.url() != null && !preview.url().isBlank())
                 .limit(2)
                 .toList();
 
@@ -48,7 +55,7 @@ public record BlindEditorResponse(
 
         return new BlindEditorResponse(
                 user.getId(),
-                thumbnails,
+                previews,
                 categories,
                 tools,
                 videoLengths,

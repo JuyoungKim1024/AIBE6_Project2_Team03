@@ -101,20 +101,32 @@ export default function EditorDetailPage() {
           </div>
 
           {/* 포트폴리오 갤러리 */}
-          {editor.thumbnails.length > 0 ? (
-            <div className={`grid gap-0.5 bg-border mx-6 mt-4 rounded-xl overflow-hidden ${editor.thumbnails.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {editor.thumbnails.map((thumb, i) => (
-                <img
-                  key={i}
-                  src={thumb}
-                  alt={`포트폴리오 ${i + 1}`}
-                  className="w-full aspect-video object-cover"
-                />
-              ))}
+          {editor.portfolios.length > 0 ? (
+            <div className={`grid gap-0.5 bg-border mx-6 mt-4 rounded-xl overflow-hidden ${editor.portfolios.length >= 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {editor.portfolios.map((item, i) =>
+                item.type === 'video' ? (
+                  <video
+                    key={i}
+                    src={item.url}
+                    className="w-full aspect-video object-cover"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    key={i}
+                    src={item.url}
+                    alt={`포트폴리오 ${i + 1}`}
+                    className="w-full aspect-video object-cover"
+                  />
+                )
+              )}
             </div>
           ) : (
             <div className="mx-6 mt-4 rounded-xl bg-surface-elevated border border-border aspect-video flex items-center justify-center">
-              <p className="text-sm text-text-muted">포트폴리오 이미지가 없습니다.</p>
+              <p className="text-sm text-text-muted">포트폴리오가 없습니다.</p>
             </div>
           )}
 
