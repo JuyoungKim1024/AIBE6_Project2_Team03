@@ -1,6 +1,8 @@
 package com.backend.domain.auth.service;
 
 import com.backend.domain.auth.dto.AuthResponse;
+import com.backend.domain.auth.dto.AdminOtpChallengeResponse;
+import com.backend.domain.auth.dto.AdminOtpVerifyRequest;
 import com.backend.domain.auth.dto.EmailVerificationRequest;
 import com.backend.domain.auth.dto.EmailVerificationResponse;
 import com.backend.domain.auth.dto.EmailVerificationCompleteResponse;
@@ -58,6 +60,7 @@ public class AuthService {
     private final VerificationMailService verificationMailService;
     private final PasswordEncoder passwordEncoder;
     private final R2UploadService r2UploadService;
+    private final AdminLoginService adminLoginService;
     private final long refreshTokenValiditySeconds;
     private final boolean testAccountsEnabled;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -73,6 +76,7 @@ public class AuthService {
             VerificationMailService verificationMailService,
             PasswordEncoder passwordEncoder,
             R2UploadService r2UploadService,
+            AdminLoginService adminLoginService,
             @Value("${app.jwt.refresh-token-validity-seconds}") long refreshTokenValiditySeconds,
             @Value("${app.test-accounts.enabled:false}") boolean testAccountsEnabled
     ) {
@@ -86,6 +90,7 @@ public class AuthService {
         this.verificationMailService = verificationMailService;
         this.passwordEncoder = passwordEncoder;
         this.r2UploadService = r2UploadService;
+        this.adminLoginService = adminLoginService;
         this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
         this.testAccountsEnabled = testAccountsEnabled;
     }
@@ -273,7 +278,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse localLogin(LocalLoginRequest request) {
+    public LocalLoginResult localLogin(LocalLoginRequest request) {
         String email = normalizeAndValidateEmail(request.email());
         if (request.password() == null || request.password().isBlank()) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
@@ -288,7 +293,15 @@ public class AuthService {
                 || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
-        return issueTokens(user);
+        if (user.isAdmin()) {
+            return LocalLoginResult.adminOtp(adminLoginService.requestOtp(user));
+        }
+        return LocalLoginResult.authenticated(issueTokens(user));
+    }
+
+    @Transactional
+    public AuthResponse verifyAdminOtp(AdminOtpVerifyRequest request) {
+        return issueTokens(adminLoginService.verifyOtp(request));
     }
 
     @Transactional
@@ -522,6 +535,19 @@ public class AuthService {
                 LocalDateTime.now().plusSeconds(refreshTokenValiditySeconds)
         ));
         return AuthResponse.of(accessToken, refreshToken, user, isOnboardingRequired(user));
+    }
+
+    public record LocalLoginResult(
+            AuthResponse authResponse,
+            AdminOtpChallengeResponse adminOtpChallenge
+    ) {
+        static LocalLoginResult authenticated(AuthResponse response) {
+            return new LocalLoginResult(response, null);
+        }
+
+        static LocalLoginResult adminOtp(AdminOtpChallengeResponse challenge) {
+            return new LocalLoginResult(null, challenge);
+        }
     }
 
     private void ensureNotSuspended(User user) {

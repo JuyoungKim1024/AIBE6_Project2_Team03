@@ -1,6 +1,7 @@
 package com.backend.domain.auth.controller;
 
 import com.backend.domain.auth.dto.AuthResponse;
+import com.backend.domain.auth.dto.AdminOtpVerifyRequest;
 import com.backend.domain.auth.dto.DeleteAccountRequest;
 import com.backend.domain.auth.dto.EmailVerificationRequest;
 import com.backend.domain.auth.dto.EmailVerificationResponse;
@@ -139,9 +140,17 @@ public class AuthController {
     }
 
     @PostMapping("/auth/local/login")
-    public ResponseEntity<AuthResponse> localLogin(@RequestBody LocalLoginRequest request) {
-        AuthResponse response = authService.localLogin(request);
-        return withRefreshCookie(response);
+    public ResponseEntity<?> localLogin(@RequestBody LocalLoginRequest request) {
+        AuthService.LocalLoginResult result = authService.localLogin(request);
+        if (result.adminOtpChallenge() != null) {
+            return ResponseEntity.accepted().body(result.adminOtpChallenge());
+        }
+        return withRefreshCookie(result.authResponse());
+    }
+
+    @PostMapping("/auth/admin/otp/verify")
+    public ResponseEntity<AuthResponse> verifyAdminOtp(@RequestBody AdminOtpVerifyRequest request) {
+        return withRefreshCookie(authService.verifyAdminOtp(request));
     }
 
     @PostMapping("/auth/test-login/{role}")
