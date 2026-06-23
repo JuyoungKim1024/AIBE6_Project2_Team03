@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import type { PortfolioPreview } from '@/types/matching';
 
 export interface MatchingCardProps {
   id: string;
-  thumbnails: string[];
+  portfolios: PortfolioPreview[];
   categories: string[];
   tools: string[];
   videoLengths: string[];
@@ -15,24 +16,31 @@ export interface MatchingCardProps {
   showBlindBadge?: boolean;
 }
 
-export function MatchingCard({ id, thumbnails, categories, tools, videoLengths, minPrice, maxPrice, priceUnit = '분', showBlindBadge = true }: MatchingCardProps) {
-  const validThumbs = thumbnails.slice(0, 2);
+function PortfolioItem({ item, className }: { item: PortfolioPreview; className: string }) {
+  if (item.type === 'video') {
+    return <video src={item.url} className={className} autoPlay muted loop playsInline />;
+  }
+  return <img src={item.url} alt="포트폴리오" className={className} />;
+}
+
+export function MatchingCard({ id, portfolios, categories, tools, videoLengths, minPrice, maxPrice, priceUnit = '분', showBlindBadge = true }: MatchingCardProps) {
+  const items = portfolios.slice(0, 2);
   const fmt = (n: number) => new Intl.NumberFormat('ko-KR').format(n);
 
   return (
     <div className="group bg-surface rounded-xl border border-border overflow-hidden hover:border-primary/50 transition-colors flex flex-col h-full">
       <Link href={`/matching/editor/${id}`} className="relative aspect-video overflow-hidden bg-surface-elevated">
-        {validThumbs.length === 0 && (
+        {items.length === 0 && (
           <div className="w-full h-full flex items-center justify-center text-text-muted text-sm">포트폴리오 없음</div>
         )}
-        {validThumbs.length === 1 && (
-          <img src={validThumbs[0]} alt="Portfolio preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        {items.length === 1 && (
+          <PortfolioItem item={items[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         )}
-        {validThumbs.length === 2 && (
+        {items.length === 2 && (
           <div className="grid grid-cols-2 gap-0.5 w-full h-full bg-border">
-            {validThumbs.map((thumb, idx) => (
+            {items.map((item, idx) => (
               <div key={idx} className="relative w-full h-full overflow-hidden">
-                <img src={thumb} alt="Portfolio preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <PortfolioItem item={item} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
             ))}
           </div>
