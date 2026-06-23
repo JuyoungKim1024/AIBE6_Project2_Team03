@@ -53,6 +53,17 @@ public class VerificationMailService {
         );
     }
 
+    public void sendAdminLoginCode(String email, String code) {
+        sendVerificationCode(
+                email,
+                code,
+                "[크크킄] 관리자 로그인 인증",
+                "관리자 로그인 인증",
+                "관리자 로그인을 완료하려면 아래 인증번호를 입력해주세요.",
+                "본인이 요청하지 않았다면 관리자 비밀번호를 즉시 변경해주세요."
+        );
+    }
+
     private void sendVerificationCode(
             String email,
             String code,

@@ -22,8 +22,19 @@ export default function LoginPage() {
   const { openModal } = useModal();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [adminOtp, setAdminOtp] = useState('');
+  const [adminOtpRequired, setAdminOtpRequired] = useState(false);
+  const [adminOtpSeconds, setAdminOtpSeconds] = useState(0);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!adminOtpRequired || adminOtpSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setAdminOtpSeconds((current) => Math.max(current - 1, 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [adminOtpRequired, adminOtpSeconds]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -75,6 +86,12 @@ export default function LoginPage() {
         }
         throw new Error(data?.message ?? '로그인에 실패했습니다.');
       }
+      if (response.status === 202 && data?.adminOtpRequired) {
+        setAdminOtpRequired(true);
+        setAdminOtpSeconds(data.expiresInSeconds ?? 300);
+        setAdminOtp('');
+        return;
+      }
 
       const auth = data as AuthResponse;
       saveAuthSession(auth.accessToken, auth.onboardingRequired, auth.user.role);
@@ -85,6 +102,30 @@ export default function LoginPage() {
           : '/');
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : '로그인에 실패했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const verifyAdminOtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (adminOtp.length !== 6 || adminOtpSeconds <= 0 || isSubmitting) return;
+    setError('');
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/admin/otp/verify`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code: adminOtp }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? '관리자 인증에 실패했습니다.');
+      const auth = data as AuthResponse;
+      saveAuthSession(auth.accessToken, false, auth.user.role);
+      router.replace('/admin');
+    } catch (otpError) {
+      setError(otpError instanceof Error ? otpError.message : '관리자 인증에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +145,26 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold text-text-primary text-center mb-1">로그인</h1>
           <p className="text-sm text-text-secondary text-center mb-6">이메일 또는 소셜 계정으로 로그인하세요.</p>
 
-          <form onSubmit={handleLocalLogin} className="space-y-3">
+          <form onSubmit={adminOtpRequired ? verifyAdminOtp : handleLocalLogin} className="space-y-3">
+            {adminOtpRequired ? (
+              <>
+                <input value={email} disabled className="form-input opacity-60" />
+                <div className="relative">
+                  <input
+                    value={adminOtp}
+                    onChange={(event) => setAdminOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="관리자 인증번호 6자리"
+                    inputMode="numeric"
+                    className="form-input pr-16"
+                    required
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-primary">
+                    {Math.floor(adminOtpSeconds / 60)}:{String(adminOtpSeconds % 60).padStart(2, '0')}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
             <input
               type="email"
               value={email}
@@ -123,10 +183,26 @@ export default function LoginPage() {
               required
               className="form-input"
             />
+              </>
+            )}
             {error && <p className="text-sm font-bold text-accent">{error}</p>}
-            <button type="submit" disabled={isSubmitting} className="w-full py-3.5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 disabled:opacity-50">
-              {isSubmitting ? '로그인 중...' : '이메일 로그인'}
+            <button type="submit" disabled={isSubmitting || (adminOtpRequired && (adminOtp.length !== 6 || adminOtpSeconds <= 0))} className="w-full py-3.5 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 disabled:opacity-50">
+              {isSubmitting ? '확인 중...' : adminOtpRequired ? '관리자 인증' : '이메일 로그인'}
             </button>
+            {adminOtpRequired && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminOtpRequired(false);
+                  setAdminOtp('');
+                  setAdminOtpSeconds(0);
+                  setError('');
+                }}
+                className="w-full text-sm font-bold text-text-secondary hover:text-primary"
+              >
+                로그인 정보 다시 입력
+              </button>
+            )}
           </form>
 
           <div className="mt-4 flex items-center justify-center gap-3 text-sm font-bold">
