@@ -35,12 +35,13 @@ public record JobPostDetailResponse(
 ) {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
-    public record CompletedDeal(String createdAt, String field, Integer workAmount, Integer price) {
+    public record CompletedDeal(String createdAt, String field, Integer workAmount, String workUnit, Integer price) {
         public static CompletedDeal from(Project p) {
             return new CompletedDeal(
                     p.getCreatedAt() != null ? p.getCreatedAt().format(DATE_FMT) : null,
                     p.getField(),
                     p.getWorkAmount(),
+                    p.getWorkUnit() != null ? p.getWorkUnit().name() : null,
                     p.getPrice()
             );
         }
