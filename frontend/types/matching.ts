@@ -1,6 +1,11 @@
+export type PortfolioPreview = {
+  url: string;
+  type: 'image' | 'video';
+};
+
 export type BlindEditor = {
   id: string;
-  thumbnails: string[];
+  portfolios: PortfolioPreview[];
   categories: string[];
   tools: string[];
   videoLengths: string[];
